@@ -161,4 +161,3 @@ server.listen(PORT, () => {
   console.log(`GTA-X Multiplayer rodando na porta ${PORT}`);
 });
 
-Só colar no server.js do GitHub, esperar o deploy do Render terminar e abrir a URL principal do serviço.
