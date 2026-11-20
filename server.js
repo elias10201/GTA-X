@@ -1,4 +1,3 @@
-Aqui está o server.js completo já priorizando index.html (e buscando outros .html caso mude), mantendo /health, as duas salas (srv-1 e srv-2) com até 20 jogadores cada, sincronização de estado e limpeza de inativos:
 const express = require('express');
 const http = require('http');
 const fs = require('fs');
@@ -160,4 +159,3 @@ setInterval(() => {
 server.listen(PORT, () => {
   console.log(`GTA-X Multiplayer rodando na porta ${PORT}`);
 });
-
