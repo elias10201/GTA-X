@@ -1,107 +1,142 @@
-const path = require('path');
-const http = require('http');
 const express = require('express');
+const http = require('http');
+const path = require('path');
 const { Server } = require('socket.io');
 
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
-  cors: { origin: '*', methods: ['GET', 'POST'] }
+  cors: { origin: '*' }
 });
 
 const PORT = process.env.PORT || 3000;
-const MAX_PLAYERS_PER_SERVER = 20;
+const MAX_PLAYERS = 20;
+const SERVERS = ['srv-1', 'srv-2'];
+const IDLE_TIMEOUT_MS = 120000; // 2 min sem atualizar estado
 
-const SERVERS = {
-  'srv-1': { id: 'srv-1', name: 'Servidor Brasil #1 — Centro', maxPlayers: MAX_PLAYERS_PER_SERVER, players: new Map() },
-  'srv-2': { id: 'srv-2', name: 'Servidor Brasil #2 — Aeroporto & Praia', maxPlayers: MAX_PLAYERS_PER_SERVER, players: new Map() }
+// Estado por servidor: { [socketId]: playerData }
+const roomsState = {
+  'srv-1': {},
+  'srv-2': {}
 };
 
 app.use(express.static(__dirname));
 
-app.get('/', (req, res) => {
-  res.send('GTA X Online (2x20) ativo! SRV-1: ' + SERVERS['srv-1'].players.size + '/20 | SRV-2: ' + SERVERS['srv-2'].players.size + '/20');
+app.get('/health', (req, res) => {
+  res.status(200).json({
+    ok: true,
+    servers: SERVERS.map((id) => ({
+      id,
+      players: Object.keys(roomsState[id]).length,
+      maxPlayers: MAX_PLAYERS
+    }))
+  });
 });
 
-function broadcastLobbyStats() {
-  const stats = Object.values(SERVERS).map(s => ({
-    id: s.id,
-    name: s.name,
-    players: s.players.size,
-    maxPlayers: s.maxPlayers
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'GTAX-CameraLivre-Voz-PTBR-Online-2x20_2.html'));
+});
+
+function getLobbyStats() {
+  return SERVERS.map((id) => ({
+    id,
+    players: Object.keys(roomsState[id]).length,
+    maxPlayers: MAX_PLAYERS
   }));
-  io.emit('lobby_stats', stats);
 }
 
-function broadcastSnapshot(serverId) {
-  const srv = SERVERS[serverId];
-  if (!srv) return;
-  io.to(serverId).emit('players_snapshot', Array.from(srv.players.values()));
+function broadcastLobbyStats() {
+  io.emit('lobby_stats', getLobbyStats());
 }
 
 io.on('connection', (socket) => {
-  const reqServerId = String(socket.handshake.query.serverId || 'srv-1');
-  const serverId = SERVERS[reqServerId] ? reqServerId : 'srv-1';
-  const srv = SERVERS[serverId];
-  const rawNick = String(socket.handshake.query.nick || '').trim().slice(0, 16);
-  const nick = rawNick || ('Player_' + socket.id.slice(0, 4));
+  const rawServerId = String(socket.handshake.query.serverId || 'srv-1');
+  const serverId = SERVERS.includes(rawServerId) ? rawServerId : 'srv-1';
+  const rawNick = String(socket.handshake.query.nick || '').trim();
+  const nick = rawNick.slice(0, 18) || `Jogador_${socket.id.slice(0, 4)}`;
 
-  if (srv.players.size >= MAX_PLAYERS_PER_SERVER) {
-    socket.emit('server_full', {
-      serverId,
-      maxPlayers: MAX_PLAYERS_PER_SERVER,
-      message: `O ${srv.name} está cheio (${MAX_PLAYERS_PER_SERVER}/${MAX_PLAYERS_PER_SERVER} jogadores).`
-    });
-    broadcastLobbyStats();
+  const currentCount = Object.keys(roomsState[serverId]).length;
+  if (currentCount >= MAX_PLAYERS) {
+    socket.emit('server_full', { serverId, maxPlayers: MAX_PLAYERS });
     socket.disconnect(true);
     return;
   }
 
   socket.join(serverId);
-  srv.players.set(socket.id, {
+  roomsState[serverId][socket.id] = {
     id: socket.id,
     serverId,
     name: nick,
-    x: 32,
-    z: 32,
+    x: 0,
+    z: 0,
     yaw: 0,
-    hp: 200,
-    weapon: 0,
+    hp: 100,
+    weapon: 'fists',
     inCar: false,
-    updatedAt: Date.now()
-  });
+    lastSeen: Date.now()
+  };
 
+  socket.emit('lobby_stats', getLobbyStats());
   broadcastLobbyStats();
-  broadcastSnapshot(serverId);
 
-  socket.on('player_state', (data) => {
-    if (!data || typeof data !== 'object') return;
-    const current = srv.players.get(socket.id);
-    if (!current) return;
-    current.name = String(data.name || current.name || 'Jogador').trim().slice(0, 16) || current.name;
-    current.x = Number.isFinite(Number(data.x)) ? Number(data.x) : current.x;
-    current.z = Number.isFinite(Number(data.z)) ? Number(data.z) : current.z;
-    current.yaw = Number.isFinite(Number(data.yaw)) ? Number(data.yaw) : current.yaw;
-    current.hp = Number.isFinite(Number(data.hp)) ? Number(data.hp) : current.hp;
-    current.weapon = Number.isFinite(Number(data.weapon)) ? Number(data.weapon) : current.weapon;
-    current.inCar = Boolean(data.inCar);
-    current.updatedAt = Date.now();
+  socket.on('player_state', (data = {}) => {
+    const player = roomsState[serverId]?.[socket.id];
+    if (!player) return;
+
+    player.name = typeof data.name === 'string' && data.name.trim()
+      ? data.name.trim().slice(0, 18)
+      : player.name;
+    player.x = Number.isFinite(data.x) ? data.x : player.x;
+    player.z = Number.isFinite(data.z) ? data.z : player.z;
+    player.yaw = Number.isFinite(data.yaw) ? data.yaw : player.yaw;
+    player.hp = Number.isFinite(data.hp) ? Math.max(0, Math.min(100, data.hp)) : player.hp;
+    player.weapon = typeof data.weapon === 'string' ? data.weapon.slice(0, 24) : player.weapon;
+    player.inCar = Boolean(data.inCar);
+    player.lastSeen = Date.now();
+
+    // Envia apenas os outros jogadores da mesma sala
+    const others = {};
+    for (const [id, p] of Object.entries(roomsState[serverId])) {
+      if (id !== socket.id) {
+        others[id] = p;
+      }
+    }
+    socket.to(serverId).emit('players_snapshot', roomsState[serverId]);
+    socket.emit('players_snapshot', others);
   });
 
   socket.on('disconnect', () => {
-    if (srv.players.has(socket.id)) {
-      srv.players.delete(socket.id);
-      io.to(serverId).emit('player_left', socket.id);
+    if (roomsState[serverId]?.[socket.id]) {
+      delete roomsState[serverId][socket.id];
+      socket.to(serverId).emit('player_left', { id: socket.id, serverId });
       broadcastLobbyStats();
-      broadcastSnapshot(serverId);
     }
   });
 });
 
+// Limpa conexões zumbis / inativas
 setInterval(() => {
-  Object.keys(SERVERS).forEach(broadcastSnapshot);
-}, 100);
+  const now = Date.now();
+  let changed = false;
+
+  for (const serverId of SERVERS) {
+    for (const [id, p] of Object.entries(roomsState[serverId])) {
+      if (now - p.lastSeen > IDLE_TIMEOUT_MS) {
+        delete roomsState[serverId][id];
+        io.to(serverId).emit('player_left', { id, serverId });
+        io.sockets.sockets.get(id)?.disconnect(true);
+        changed = true;
+      }
+    }
+  }
+
+  if (changed) {
+    broadcastLobbyStats();
+  } else {
+    broadcastLobbyStats();
+  }
+}, 10000);
 
 server.listen(PORT, () => {
-  console.log(`GTA X Online rodando na porta ${PORT}`);
+  console.log(`GTA-X Multiplayer rodando na porta ${PORT}`);
 });
