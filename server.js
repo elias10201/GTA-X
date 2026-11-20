@@ -1,3 +1,4 @@
+Aqui está o server.js completo já priorizando index.html (e buscando outros .html caso mude), mantendo /health, as duas salas (srv-1 e srv-2) com até 20 jogadores cada, sincronização de estado e limpeza de inativos:
 const express = require('express');
 const http = require('http');
 const fs = require('fs');
@@ -21,11 +22,16 @@ const roomsState = {
 };
 
 function findGameHtml() {
-  const preferred = path.join(__dirname, 'GTAX-CameraLivre-Voz-PTBR-Online-2x20_2.html');
-  if (fs.existsSync(preferred)) return preferred;
+  const candidates = [
+    path.join(__dirname, 'index.html'),
+    path.join(__dirname, 'public', 'index.html'),
+    path.join(__dirname, 'GTAX-CameraLivre-Voz-PTBR-Online-2x20_2.html'),
+    path.join(__dirname, 'public', 'GTAX-CameraLivre-Voz-PTBR-Online-2x20_2.html')
+  ];
 
-  const subPreferred = path.join(__dirname, 'public', 'GTAX-CameraLivre-Voz-PTBR-Online-2x20_2.html');
-  if (fs.existsSync(subPreferred)) return subPreferred;
+  for (const file of candidates) {
+    if (fs.existsSync(file)) return file;
+  }
 
   const rootFiles = fs.readdirSync(__dirname).filter((f) => f.endsWith('.html'));
   if (rootFiles.length > 0) return path.join(__dirname, rootFiles[0]);
@@ -154,3 +160,5 @@ setInterval(() => {
 server.listen(PORT, () => {
   console.log(`GTA-X Multiplayer rodando na porta ${PORT}`);
 });
+
+Só colar no server.js do GitHub, esperar o deploy do Render terminar e abrir a URL principal do serviço.
