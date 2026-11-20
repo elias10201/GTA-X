@@ -1,5 +1,6 @@
 const express = require('express');
 const http = require('http');
+const fs = require('fs');
 const path = require('path');
 const { Server } = require('socket.io');
 
@@ -12,15 +13,34 @@ const io = new Server(server, {
 const PORT = process.env.PORT || 3000;
 const MAX_PLAYERS = 20;
 const SERVERS = ['srv-1', 'srv-2'];
-const IDLE_TIMEOUT_MS = 120000; // 2 min sem atualizar estado
+const IDLE_TIMEOUT_MS = 120000;
 
-// Estado por servidor: { [socketId]: playerData }
 const roomsState = {
   'srv-1': {},
   'srv-2': {}
 };
 
+function findGameHtml() {
+  const preferred = path.join(__dirname, 'GTAX-CameraLivre-Voz-PTBR-Online-2x20_2.html');
+  if (fs.existsSync(preferred)) return preferred;
+
+  const subPreferred = path.join(__dirname, 'public', 'GTAX-CameraLivre-Voz-PTBR-Online-2x20_2.html');
+  if (fs.existsSync(subPreferred)) return subPreferred;
+
+  const rootFiles = fs.readdirSync(__dirname).filter((f) => f.endsWith('.html'));
+  if (rootFiles.length > 0) return path.join(__dirname, rootFiles[0]);
+
+  const publicDir = path.join(__dirname, 'public');
+  if (fs.existsSync(publicDir)) {
+    const publicFiles = fs.readdirSync(publicDir).filter((f) => f.endsWith('.html'));
+    if (publicFiles.length > 0) return path.join(publicDir, publicFiles[0]);
+  }
+
+  return null;
+}
+
 app.use(express.static(__dirname));
+app.use(express.static(path.join(__dirname, 'public')));
 
 app.get('/health', (req, res) => {
   res.status(200).json({
@@ -34,7 +54,11 @@ app.get('/health', (req, res) => {
 });
 
 app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'GTAX-CameraLivre-Voz-PTBR-Online-2x20_2.html'));
+  const htmlPath = findGameHtml();
+  if (!htmlPath) {
+    return res.status(404).send('Arquivo HTML do jogo não encontrado no servidor.');
+  }
+  return res.sendFile(htmlPath);
 });
 
 function getLobbyStats() {
@@ -94,7 +118,6 @@ io.on('connection', (socket) => {
     player.inCar = Boolean(data.inCar);
     player.lastSeen = Date.now();
 
-    // Envia apenas os outros jogadores da mesma sala
     const others = {};
     for (const [id, p] of Object.entries(roomsState[serverId])) {
       if (id !== socket.id) {
@@ -114,27 +137,18 @@ io.on('connection', (socket) => {
   });
 });
 
-// Limpa conexões zumbis / inativas
 setInterval(() => {
   const now = Date.now();
-  let changed = false;
-
   for (const serverId of SERVERS) {
     for (const [id, p] of Object.entries(roomsState[serverId])) {
       if (now - p.lastSeen > IDLE_TIMEOUT_MS) {
         delete roomsState[serverId][id];
         io.to(serverId).emit('player_left', { id, serverId });
         io.sockets.sockets.get(id)?.disconnect(true);
-        changed = true;
       }
     }
   }
-
-  if (changed) {
-    broadcastLobbyStats();
-  } else {
-    broadcastLobbyStats();
-  }
+  broadcastLobbyStats();
 }, 10000);
 
 server.listen(PORT, () => {
