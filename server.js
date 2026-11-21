@@ -1,3 +1,4 @@
+const fs = require('fs');
 const path = require('path');
 const express = require('express');
 const http = require('http');
@@ -36,8 +37,28 @@ function broadcastRoomPlayers(serverId) {
   io.to(serverId).emit('players_snapshot', Array.from(srv.players.values()));
 }
 
+function resolveIndexHtml() {
+  const candidates = [
+    path.join(__dirname, 'index.html'),
+    path.join(__dirname, 'public', 'index.html'),
+    path.join(__dirname, 'GTAX-CameraLivre-Voz-PTBR-Online-2x20.html')
+  ];
+  for (const file of candidates) {
+    if (fs.existsSync(file)) return file;
+  }
+  return null;
+}
+
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.static(__dirname));
+
+app.get('/', (_req, res) => {
+  const htmlFile = resolveIndexHtml();
+  if (htmlFile) {
+    return res.sendFile(htmlFile);
+  }
+  return res.status(404).send('index.html nao encontrado na raiz do projeto.');
+});
 
 app.get('/health', (_req, res) => {
   res.json({ ok: true, servers: getLobbyStats() });
