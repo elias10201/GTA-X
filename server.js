@@ -1,3 +1,4 @@
+const fs = require('fs');
 const path = require('path');
 const http = require('http');
 const express = require('express');
@@ -12,7 +13,6 @@ const io = new Server(server, {
 const PORT = process.env.PORT || 3000;
 const MAX_PLAYERS_PER_SERVER = 20;
 
-// 2 servidores independentes com limite estrito de 20 jogadores cada
 const SERVERS = {
   'srv-1': {
     id: 'srv-1',
@@ -28,13 +28,36 @@ const SERVERS = {
   }
 };
 
-app.use(express.static(__dirname));
+function findIndexFile() {
+  const dirs = [__dirname, path.join(__dirname, 'public'), path.join(__dirname, '..')];
+  const names = ['index.html', 'Index.html', 'GTAX-CameraLivre-Voz-PTBR-Online-2x20.html'];
+  for (const dir of dirs) {
+    for (const name of names) {
+      const full = path.join(dir, name);
+      try {
+        if (fs.existsSync(full) && fs.statSync(full).isFile()) return full;
+      } catch (_) {}
+    }
+  }
+  return null;
+}
 
-app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'GTAX-CameraLivre-Voz-PTBR-Online-2x20.html'));
+app.use(express.static(__dirname));
+app.use(express.static(path.join(__dirname, 'public')));
+
+app.get('/', (_req, res) => {
+  const filePath = findIndexFile();
+  if (filePath) {
+    return res.sendFile(filePath, (err) => {
+      if (err && !res.headersSent) {
+        res.status(500).send('Erro ao enviar o index.html.');
+      }
+    });
+  }
+  res.status(404).send('index.html nao encontrado na raiz do projeto.');
 });
 
-app.get('/health', (req, res) => {
+app.get('/health', (_req, res) => {
   res.json({
     ok: true,
     servers: Object.values(SERVERS).map(s => ({
@@ -59,15 +82,14 @@ function broadcastLobbyStats() {
 function broadcastSnapshot(serverId) {
   const srv = SERVERS[serverId];
   if (!srv) return;
-  const list = Array.from(srv.players.values());
-  io.to(serverId).emit('players_snapshot', list);
+  io.to(serverId).emit('players_snapshot', Array.from(srv.players.values()));
 }
 
 io.on('connection', (socket) => {
-  const reqServerId = String(socket.handshake.query.serverId || 'srv-1');
+  const reqServerId = String((socket.handshake.query && socket.handshake.query.serverId) || 'srv-1');
   const serverId = SERVERS[reqServerId] ? reqServerId : 'srv-1';
   const srv = SERVERS[serverId];
-  const rawNick = String(socket.handshake.query.nick || '').trim().slice(0, 16);
+  const rawNick = String((socket.handshake.query && socket.handshake.query.nick) || '').trim().slice(0, 16);
   const nick = rawNick || ('Player_' + socket.id.slice(0, 4));
 
   if (srv.players.size >= MAX_PLAYERS_PER_SERVER) {
@@ -131,5 +153,5 @@ setInterval(() => {
 }, 100);
 
 server.listen(PORT, () => {
-  console.log(`GTA X Online (2 servidores x 20 players) rodando em http://localhost:${PORT}`);
+  console.log(`GTA X Online (2 servidores x 20 players) rodando na porta ${PORT}`);
 });
