@@ -48,6 +48,17 @@ canvas{display:block;width:100vw;height:100vh}
 #mpModal button.sec{background:#37474f;color:#fff}
 .srv-card{background:#0f161d;border:1px solid #37474f;border-radius:10px;padding:10px;margin:7px 0;text-align:left;font-size:12px}
 
+
+#chatBtn{background:#10151acc;border:1px solid #ffffff70;color:#fff;border-radius:8px;padding:5px 9px;font-size:11px;font-weight:bold;cursor:pointer;text-shadow:1px 1px 2px #000}
+#chatBtn.has-msg{border-color:#ffd600;color:#ffe082}
+#chatBox{display:none;position:fixed;left:calc(2% + var(--ms) + 16px);bottom:calc(3% + 56px);z-index:12;pointer-events:auto;width:min(320px,62vw);background:#10151aeb;border:1px solid #8995a0;border-radius:10px;padding:8px;box-shadow:0 4px 14px #000c}
+#chatMsgs{max-height:125px;overflow-y:auto;font-size:11px;line-height:1.35;margin-bottom:6px;display:flex;flex-direction:column;gap:4px;text-align:left}
+.chat-line{background:#17212b;padding:4px 7px;border-radius:6px;word-break:break-word}
+.chat-who{color:#ffd600;font-weight:bold}
+#chatForm{display:flex;gap:5px}
+#chatInput{flex:1;min-width:0;padding:6px 8px;border-radius:7px;border:1px solid #546e7a;background:#0f161d;color:#fff;font-size:12px}
+#chatSend{padding:6px 10px;border:0;border-radius:7px;background:#e0a323;color:#111;font-weight:bold;font-size:11px;cursor:pointer}
+
 </style>
 </head>
 <body>
@@ -97,6 +108,19 @@ canvas{display:block;width:100vw;height:100vh}
 <div id="mpBar">
   <button id="mpOpenBtn" class="mp-pill warn" type="button">🌐 ONLINE: OFFLINE</button>
   <span id="mpCountBadge" class="mp-pill" style="cursor:default">SRV 1 · 0/20</span>
+  <button id="chatBtn" type="button" title="Abrir chat dos players">💬 CHAT</button>
+</div>
+
+<div id="chatBox">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;font-size:11px;font-weight:bold;color:#ffd600">
+    <span>CHAT DOS PLAYERS</span>
+    <button id="chatClose" type="button" style="background:none;border:0;color:#fff;font-weight:bold;cursor:pointer;padding:0 4px">✕</button>
+  </div>
+  <div id="chatMsgs"><div class="chat-line" style="color:#cfd8dc">Conecte-se em um servidor online ou mande mensagem aqui.</div></div>
+  <form id="chatForm">
+    <input id="chatInput" type="text" maxlength="120" placeholder="Digite para todos..." autocomplete="off">
+    <button id="chatSend" type="submit">ENVIAR</button>
+  </form>
 </div>
 
 <div id="mpModal">
@@ -942,7 +966,6 @@ function relocate(e,lo,hi){
 }
 
 function spawn(type,role){
-  // Sem NPCs de rua / pedestres
   return null;
 }
 
@@ -1005,7 +1028,7 @@ function hurt(v){hp[chr]-=cur?v*.5:v;sfx.hurt()}
 
 function alertArea(ax,az,radius,byPlayer){
   panicT=6.5;panicX=ax;panicZ=az;aggroX=ax;aggroZ=az;aggroIsPlayer=byPlayer;
-  for(let e of ents){ if(true) continue; // Sem NPCs
+  for(let e of ents){ if(true) continue;
     if(e.dead)continue;
     let d=Math.hypot(e.x-ax,e.z-az);
     if(d>radius)continue;
@@ -1469,7 +1492,7 @@ function updateNPCsAndTraffic(dt){
       spawn(1,wanted>=4&&Math.random()<.55?'swat':'cop');
       spawnT=1.4;
     }
-// Sem viaturas de tráfego/polícia automáticas
+// Sem viaturas automáticas
   }else{
     hp[chr]=Math.min(200,hp[chr]+1.5*dt);
     for(let i=cars.length-1;i>=0;i--)if(cars[i].police&&Math.hypot(cars[i].x-player.x,cars[i].z-player.z)>75)cars.splice(i,1);
@@ -1500,7 +1523,7 @@ function updateNPCsAndTraffic(dt){
       }
       continue;
     }
-    continue; // Carros ficam estacionados para os players pegarem
+    continue;
 
     let desiredSpd=panicT>0&&Math.hypot(c.x-panicX,c.z-panicZ)<55?19:11;
     let fx=sin(c.yaw),fz=cos(c.yaw),blocked=false;
@@ -2363,6 +2386,12 @@ function frame(t){
         renderServerCards();
         setMpStatus('Conectado em '+targetSrv.name+' como '+mpNick+'!');
         if(typeof say==='function')say('Conectado ao '+targetSrv.name+' ('+mpNick+')');
+        sock.off('chat_message');
+        sock.on('chat_message',(msgData)=>{
+          if(!msgData||!msgData.text)return;
+          if(msgData.id&&msgData.id===sock.id)return;
+          if(typeof appendChatLine==='function')appendChatLine(msgData.name||'Player',String(msgData.text).slice(0,120),false);
+        });
       });
 
       sock.on('server_full',(data)=>{
@@ -2496,6 +2525,75 @@ function frame(t){
       g2.restore();
     };
   }
+
+
+  // Chat entre os players (sincronizado via Socket.io + local)
+  const chatBtn=document.getElementById('chatBtn');
+  const chatBox=document.getElementById('chatBox');
+  const chatClose=document.getElementById('chatClose');
+  const chatMsgs=document.getElementById('chatMsgs');
+  const chatForm=document.getElementById('chatForm');
+  const chatInput=document.getElementById('chatInput');
+  let chatOpen=false;
+
+  function appendChatLine(who,text,isSelf){
+    if(!chatMsgs)return;
+    const row=document.createElement('div');
+    row.className='chat-line';
+    const w=document.createElement('span');
+    w.className='chat-who';
+    w.style.color=isSelf?'#80e27e':'#ffd600';
+    w.textContent=(who||'Player')+': ';
+    row.appendChild(w);
+    row.appendChild(document.createTextNode(text));
+    chatMsgs.appendChild(row);
+    while(chatMsgs.children.length>40)chatMsgs.removeChild(chatMsgs.firstChild);
+    chatMsgs.scrollTop=chatMsgs.scrollHeight;
+    if(!chatOpen&&chatBtn)chatBtn.classList.add('has-msg');
+  }
+
+  if(chatBtn)chatBtn.onclick=()=>{
+    chatOpen=!chatOpen;
+    if(chatBox)chatBox.style.display=chatOpen?'block':'none';
+    chatBtn.classList.remove('has-msg');
+    if(chatOpen&&chatInput)setTimeout(()=>chatInput.focus(),30);
+  };
+  if(chatClose)chatClose.onclick=()=>{
+    chatOpen=false;
+    if(chatBox)chatBox.style.display='none';
+  };
+  if(chatForm)chatForm.onsubmit=(ev)=>{
+    ev.preventDefault();
+    if(!chatInput)return;
+    const txt=chatInput.value.trim();
+    if(!txt)return;
+    chatInput.value='';
+    appendChatLine(mpNick,txt,true);
+    if(mpConnected&&mpSocket&&mpSocket.connected){
+      mpSocket.emit('chat_message',{serverId:mpServerId,name:mpNick,text:txt});
+    }
+  };
+
+  const origConnectMp=connectMultiplayer;
+  function bindChatSocket(){
+    if(!mpSocket)return;
+    mpSocket.off('chat_message');
+    mpSocket.on('chat_message',(msgData)=>{
+      if(!msgData||!msgData.text)return;
+      if(msgData.id&&mpSocket&&msgData.id===mpSocket.id)return;
+      appendChatLine(msgData.name||'Player',String(msgData.text).slice(0,120),false);
+    });
+  }
+  const origMpOpen=mpOpenBtn&&mpOpenBtn.onclick;
+  const origConnectBtn=document.getElementById('mpConnectBtn');
+  if(origConnectBtn){
+    const prevClick=origConnectBtn.onclick;
+    origConnectBtn.onclick=function(){
+      if(prevClick)prevClick.apply(this,arguments);
+      setTimeout(bindChatSocket,250);
+    };
+  }
+  setInterval(bindChatSocket,1500);
 
   updateHudBadges();
 })();
