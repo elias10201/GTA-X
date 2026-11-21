@@ -97,6 +97,7 @@ canvas{display:block;width:100vw;height:100vh}
   <button class="b" data="car" data-foot>ENTRAR</button>
   <button class="b" data="passenger" data-foot style="display:none">PASSAGEIRO</button>
   <button class="b" data="elevator" data-foot style="display:none">ELEVADOR</button>
+  <button class="b" data="seat" data-foot style="display:none">SENTAR</button>
   <button class="b" data="weapon" data-foot>ARMA</button>
   <button class="b" data="swap" data-foot>TROCAR</button>
   <button class="b" data="accelerate" data-vehicle style="display:none">ACELERAR</button>
@@ -239,6 +240,7 @@ let tod=.68,weather=0,wTime=30,flash=0,steer=0,dayL=1,night=false;
 let vx=0,vz=0,hudT=0,jy=0,jv=0,landT=0,ca=0,sink=0;
 let wheelOpen=false,wheelHover=-1,wheelPointerId=null;
 let myBubbleText='',myBubbleT=0;
+let sitting=false,seatSpot=null,sitBlend=0;
 
 // Sem NPCs: ents fica vazio; carros têm IDs fixos para sincronizar entre jogadores
 let ents=[];
@@ -316,6 +318,7 @@ function getElevatorTarget(){
   return best;
 }
 function useElevator(){
+  if(sitting){say('Levante-se antes de usar o elevador');return}
   if(cur||passengerCar){say('Saia do veículo antes de usar o elevador');return}
   const t=playerElevation>0?elevatorTower:getElevatorTarget();
   if(!t){say('Aproxime-se da entrada de uma das torres');return}
@@ -593,6 +596,7 @@ function syncControls(){
   document.querySelectorAll('[data-vehicle]').forEach(b=>{const a=b.getAttribute('data');b.style.display=inside?(passengerCar&&(a==='accelerate'||a==='brake')?'none':''):'none';if(a==='car')b.textContent=passengerCar?'SAIR PASSAGEIRO':'SAIR'});
   const elevatorButton=document.querySelector('[data="elevator"]');
   if(elevatorButton){elevatorButton.style.display=(!inside&&(playerElevation>0||getElevatorTarget()))?'':'none';elevatorButton.textContent=playerElevation>0?'DESCER':'ELEVADOR';}
+  const seatBtn=document.querySelector('[data="seat"]');if(seatBtn){const spot=sitting?seatSpot:getNearestBench();seatBtn.style.display=(!inside&&(sitting||spot))?'':'none';seatBtn.textContent=sitting?'LEVANTAR':'SENTAR'}
   const passBtn=document.querySelector('[data="passenger"]');if(passBtn){const candidate=getPassengerTarget();passBtn.style.display=(!inside&&candidate)?'':'none'}
   held.up=false;held.brake=false;held.run=false;held.fire=false;
   document.querySelectorAll('.b').forEach(b=>b.classList.remove('active'));
@@ -614,6 +618,7 @@ function exitPassenger(){
   if(!passengerCar)return;const c=passengerCar;player.x=c.x+cos(c.yaw)*2.3;player.z=c.z-sin(c.yaw)*2.3;if(solid(player.x,player.z)){player.x=c.x;player.z=c.z}passengerCar=null;syncControls();sfx.door();say('Você saiu do veículo');
 }
 function enterCar(){
+  if(sitting){say('Levante-se antes de entrar no veículo');return}
   if(passengerCar){exitPassenger();return}
   if(cur){
     if(cur.type===8&&(cur.altitude||0)>1.2){say('Pouse o avião antes de sair');return}
@@ -634,7 +639,7 @@ function enterCar(){
   if(window.mpSocket&&window.mpSocket.connected)window.mpSocket.emit('car:toggle');
 }
 
-function jump(){if(cur||jy>0)return;crouch=false;jv=7;jy=.001}
+function jump(){if(cur||sitting||jy>0)return;crouch=false;jv=7;jy=.001}
 function swap(){if(cur||playerElevation>0){say('Desça pelo elevador antes de trocar de personagem');return}chars[chr]={...player};chr=(chr+1)%3;player={...chars[chr]};crouch=prone=false;say('Controlando '+names[chr])}
 function openWeaponWheel(){if(cur)return;wheelOpen=true;wheelHover=WHEEL_ITEMS.findIndex(it=>it.id===weapon);held.fire=false}
 function closeWeaponWheel(){
@@ -655,6 +660,7 @@ function action(a){
   else if(a==='car')enterCar();
   else if(a==='passenger')enterPassenger();
   else if(a==='elevator')useElevator();
+  else if(a==='seat')toggleSeat();
   else if(a==='swap')swap();
   else if(a==='weapon'){if(wheelOpen)closeWeaponWheel();else openWeaponWheel()}
   else if(a==='crouch'){crouch=!crouch;prone=false}
@@ -720,6 +726,7 @@ function update(dt){
   if(elevatorRide){elevatorRide.time-=dt;if(elevatorRide.time<=0)finishElevatorRide();return}
   if(wheelOpen)dt*=0.18;
   anim+=dt;
+  sitBlend+=(sitting?1-sitBlend:-sitBlend)*Math.min(1,dt*5);
   myBubbleT=Math.max(0,myBubbleT-dt);
   if(window.mpRemotePlayers){
     window.mpRemotePlayers.forEach(rp=>{rp.bubbleT=Math.max(0,rp.bubbleT-dt)});
@@ -756,7 +763,7 @@ function update(dt){
     let mx=jx*cos(camYaw)-jyAxis*sin(camYaw);
     let mz=-jx*sin(camYaw)-jyAxis*cos(camYaw);
     let sp=(prone?.9:crouch?1.8:(held.run||keyRun)?6.5:3.4)*[1,1.15,.9][chr];
-    let on=mag>.15,ac=Math.min(1,(jy>0?3:12)*dt);
+    let on=mag>.15&&!sitting,ac=Math.min(1,(jy>0?3:12)*dt);
     vx+=((on?mx*sp:0)-vx)*ac;
     vz+=((on?mz*sp:0)-vz)*ac;
     let v=Math.hypot(vx,vz);
@@ -815,6 +822,7 @@ function update(dt){
   if(passengerButton&&!cur&&!passengerCar)passengerButton.style.display=getPassengerTarget()?'':'none';
   const elevatorButton=document.querySelector('[data="elevator"]');
   if(elevatorButton&&!cur&&!passengerCar){const available=playerElevation>0||getElevatorTarget();elevatorButton.style.display=available?'':'none';elevatorButton.textContent=playerElevation>0?'DESCER':'ELEVADOR'}
+  const seatBtn=document.querySelector('[data="seat"]');if(seatBtn&&!cur&&!passengerCar){const spot=sitting?seatSpot:getNearestBench();seatBtn.style.display=(sitting||spot)?'':'none';seatBtn.textContent=sitting?'LEVANTAR':'SENTAR'}
   $('cash').textContent='$'+Math.floor(money);
   $('name').textContent=(window.getMpNick&&window.getMpNick())||names[chr];
   $('weapon').textContent=weapon<0?'Desarmado (Punhos)':(wn[weapon]+' '+ammo[weapon]+'/'+maxAmmo[weapon]);
@@ -910,6 +918,8 @@ function box(x,z,hw,hl,y0,y1,ang,col,win,outlineW){
 function drawTwinTower(t){
   const X=t.x,Z=t.z,Ht=t.height;
   box(X,Z,13,13,0,Ht,0,t.color,false,1.9);
+  // Piso sólido do terraço: evita que desapareça quando a câmera olha para baixo.
+  if(cy>Ht)polygon3([pt(X-13,Ht,Z-13),pt(X+13,Ht,Z-13),pt(X+13,Ht,Z+13),pt(X-13,Ht,Z+13)],color(0xff687982,dayL),1.2);
   box(X,Z,13.45,13.45,0,4.2,0,0xff303943,false,1.35);
   for(let y=20;y<Ht-12;y+=24)box(X,Z,13.35,13.35,y,y+.30,0,0xffb9d9df,false,.55);
   box(X,Z,12.7,12.7,Ht,Ht+1.1,0,0xff8ad7e3,false,1.1);
@@ -980,6 +990,12 @@ function hull(Q){
   L.pop();U.pop();return L.concat(U);
 }
 
+function drawLampPool(x,z){
+  const p=project(x,.035,z);if(!p||p[0]<-80||p[0]>W+80||p[1]<-80||p[1]>H+80)return;
+  const r=cl(9.5*p[3],3,78),gr=g.createRadialGradient(p[0],p[1],0,p[0],p[1],r);
+  gr.addColorStop(0,'rgba(255,222,140,.46)');gr.addColorStop(.34,'rgba(255,204,112,.25)');gr.addColorStop(1,'rgba(255,186,75,0)');
+  g.save();g.globalCompositeOperation='screen';g.fillStyle=gr;g.beginPath();g.ellipse(p[0],p[1],r*1.4,r*.72,0,0,PI*2);g.fill();g.restore();
+}
 function post(x,z){
   bone(x,0,z,x,6.4,z,.26,0xff55595f,true);
   bone(x,6.4,z,x+1.3,6.55,z,.3,0xff55595f,true);
@@ -1086,14 +1102,17 @@ function person(x,z,yaw,tc,sk,seed,height,pose,wp,ph,amp,r,aim,ci,jy,jv,role,pun
     g.closePath();g.fill();
   }
   let am=Math.min(1,amp*1.35),jt=jy>.01?1:0,tk=jt?1-Math.min(1,Math.abs(jv)/7)**2:0;
+  let seated=role!=='riding'?cl(pose,0,1):0;
   let S=(.52+.14*r)*am*(1-.55*ci),lf=(.11+.25*r)*am,du=.6-.2*r,L1=.44,L2=.46,u0=ph/(2*PI);u0-=Math.floor(u0);
   let swayX=sin(2*PI*u0)*(.012+.012*r)*am*(1-jt);
   let hy=((.96-.03*am-.08*r*am)*(1-ci)+.56*ci)+jy-(1-jt)*(.016+.03*r)*am*(1-ci)*cos(4*PI*(u0-du/2));
+  if(seated>0)hy-=.28*seated-Math.sin(anim*2)*.012*seated;
   if(role!=='riding')for(let i=0;i<2;i++){
     let u=u0+(i?.5:0);u-=Math.floor(u);let zf,yf;
     if(u<du){zf=S-2*S*(u/du);yf=0}else{let w=(u-du)/(1-du);zf=-S+2*S*w*w*(3-2*w);yf=lf*sin(PI*w)}
     if(jt){zf=zf*(1-jt)+(i?.28:-.12);yf=.4*tk}
     let dy=.07+jy+yf-hy,d=Math.min(L1+L2-.004,Math.max(.12,Math.hypot(zf,dy))),b=Math.atan2(zf,-dy),t=b+Math.acos(cl((L1*L1+d*d-L2*L2)/(2*L1*d),-1,1)),Zk=sin(t)*L1,Yk=-cos(t)*L1,Za=sin(b)*d,Ya=-cos(b)*d,lx=(i?1:-1)*.11+swayX*.35;
+    Yk=Yk*(1-seated)-.12*seated;Zk=Zk*(1-seated)+.68*seated;Ya=Ya*(1-seated)+(.08-hy)*seated;Za=Za*(1-seated)+.76*seated;
     sg(lx,hy,0,lx,hy+Yk,Zk,.17,pc);sg(lx,hy+Yk,Zk,lx,hy+Ya,Za,.14,pc);sg(lx,hy+Ya+.03,Za,lx,hy+Ya+.03,Za+.2,.12,sh);
   }
   let ln=.04+.3*ci+.3*r*am,zs=sin(ln)*.5,ys=hy+cos(ln)*.5,tx2=-swayX*.5,hz=zs+sin(ln)*.2,hh=ys+cos(ln)*.2+.1,hxHead=tx2*.5+sin(2*PI*u0)*.006*am;
@@ -1105,7 +1124,10 @@ function person(x,z,yaw,tc,sk,seed,height,pose,wp,ph,amp,r,aim,ci,jy,jv,role,pun
     let ey=sy-.3*cos(aa),ez=zs+.3*sin(aa),ex=tx2+sd*(.26-.02*cos(2*PI*u)*am);
     arm(sd,ex,ey,ez,tx2+sd*(.21-.03*cos(2*PI*u)*am),ey-.28*cos(fa),ez+.28*sin(fa));
   };
-  if(wp>=0){
+  if(seated>.5){
+    arm(-1,tx2-.20,sy-.18,zs+.12,tx2-.16,sy-.28,zs+.34);
+    arm(1,tx2+.20,sy-.18,zs+.12,tx2+.16,sy-.28,zs+.34);
+  }else if(wp>=0){
     if(aim){
       let hx=tx2+.1,hy2=sy-.06,hz2=zs+.55;
       arm(1,tx2+.2,sy-.2,zs+.25,hx,hy2,hz2);
@@ -1182,9 +1204,29 @@ function drawPlazaGround(ix,iz){
   // Piso decorativo no mesmo plano do chão e desenhado antes do personagem.
   polygon3([pt(x-3,.022,z-3),pt(x+3,.022,z-3),pt(x+3,.022,z+3),pt(x-3,.022,z+3)],color(0xff6bb3c0,dayL),0);
 }
+function benchPoint(x,z,lx,lz,yaw){const sn=sin(yaw),cs=cos(yaw);return [x+lx*cs+lz*sn,z-lx*sn+lz*cs]}
+function drawBench(x,z,yaw){
+  const wood=night?0xff986b3d:0xffbd8750,metal=0xff38434a;
+  box(x,z,1.72,.32,.68,.84,yaw,wood,false,.8);
+  const back=benchPoint(x,z,0,-.28,yaw);box(back[0],back[1],1.72,.13,.86,1.48,yaw,wood,false,.8);
+  for(const side of [-1,1]){const leg=benchPoint(x,z,side*1.35,0,yaw);box(leg[0],leg[1],.10,.11,.05,.69,yaw,metal,false,.45)}
+}
+function plazaBenchSpots(ix,iz){const x=ix*P,z=iz*P;return [-14,14].flatMap(a=>[-1,1].map(side=>({x:x+a,z:z+side*8,yaw:side<0?0:PI,benchX:x+a,benchZ:z+side*8,ix,iz}))) }
+function getNearestBench(){
+  if(playerElevation>0||cur||passengerCar)return null;
+  let best=null,bd=4.3,ix0=Math.round(player.x/P),iz0=Math.round(player.z/P);
+  for(let ix=ix0-1;ix<=ix0+1;ix++)for(let iz=iz0-1;iz<=iz0+1;iz++)if(isPlazaLot(ix,iz))for(const b of plazaBenchSpots(ix,iz)){const d=Math.hypot(player.x-b.x,player.z-b.z);if(d<bd){best=b;bd=d}}
+  return best;
+}
+function toggleSeat(){
+  if(sitting){sitting=false;seatSpot=null;vx=vz=0;say('Você se levantou.');syncControls();return}
+  if(cur||passengerCar||playerElevation>0)return;
+  const spot=getNearestBench();if(!spot){say('Chegue perto de um banco da praça para sentar.');return}
+  sitting=true;seatSpot=spot;player.x=spot.x;player.z=spot.z;player.yaw=spot.yaw;vx=vz=0;joy.x=joy.y=0;crouch=prone=false;syncControls();say('Você sentou no banco. Toque em LEVANTAR para continuar.');
+}
 function drawPlaza(ix,iz){
   const x=ix*P,z=iz*P;
-  for(let a of [-14,14]){box(x+a,z-8,1.8,.6,.35,1.05,0,0xff765438,false,1);box(x+a,z+8,1.8,.6,.35,1.05,0,0xff765438,false,1);}
+  for(const seat of plazaBenchSpots(ix,iz))drawBench(seat.benchX,seat.benchZ,0);
   for(let a of [-15,15])tree(x+a,z-15,h(ix+a,iz),0);
 }
 function drawHouse(ix,iz){
@@ -1335,7 +1377,7 @@ function drawWeaponWheel(){
 
 function render(){
   night=sin((tod-.25)*PI*2)<-.15;dayL=night?.55:1;f=H*.95;hor=H*.42;sn=sin(camYaw);cs=cos(camYaw);
-  let D=cur?11.5:8.2;
+  let D=cur?11.5:playerElevation>0?26:8.2;
   let baseCamY=(cur?4.2:3.2)+(cur&&cur.type===8?(cur.altitude||0):cur?0:playerElevation+Math.abs(sin(pph))*pamp*.02+jy*.5);
   // Não deixe a câmera atravessar a parede quando o jogador encosta no prédio.
   let cameraD=D;
@@ -1420,8 +1462,8 @@ function render(){
     g.fillStyle=fgd;g.fillRect(0,horizonY,W,H*.3);
   }
 
-  let bx=Math.round(cx/P),bz=Math.round(cz/P);
-  for(let i=-3;i<=3;i++)for(let j=-3;j<=3;j++){
+  let bx=Math.round(cx/P),bz=Math.round(cz/P),viewRange=playerElevation>0?4:3;
+  for(let i=-viewRange;i<=viewRange;i++)for(let j=-viewRange;j<=viewRange;j++){
     let X=(bx+i)*P,Z=(bz+j)*P;if((X-cx)*sn+(Z-cz)*cs<-30)continue;
     fogK=cl((Math.hypot(X-cx,Z-cz)-50)/190,0,.7);
     let zn=zone(bx+i,bz+j);
@@ -1438,13 +1480,15 @@ function render(){
       }
     }
   }
+  // Poças de luz discretas no asfalto, limitadas à noite e à área de jogo visível.
+  if(night){for(let i=-viewRange;i<=viewRange;i++)for(let j=-viewRange;j<=viewRange;j++){const ix=bx+i,iz=bz+j;if(zone(ix,iz))continue;const ps=getPostPos(ix,iz),d2=(ps.x-cx)**2+(ps.z-cz)**2;if(d2<260*260&&(ps.x-cx)*sn+(ps.z-cz)*cs>-35)drawLampPool(ps.x,ps.z)}}
   // Solos especiais antes da cena: objetos e personagens serão desenhados por cima.
   drawAirportGround();
-  for(let i=-3;i<=3;i++)for(let j=-3;j<=3;j++){let ix=bx+i,iz=bz+j;if(isPlazaLot(ix,iz))drawPlazaGround(ix,iz)}
+  for(let i=-viewRange;i<=viewRange;i++)for(let j=-viewRange;j<=viewRange;j++){let ix=bx+i,iz=bz+j;if(isPlazaLot(ix,iz))drawPlazaGround(ix,iz)}
   fogK=0;
 
   const shadowRange=(cur&&cur.type===8&&(cur.altitude||0)>70)?65:135;
-  if(sunY>0.03&&weather!==2)for(let i=-3;i<=3;i++)for(let j=-3;j<=3;j++){
+  if(sunY>0.03&&weather!==2)for(let i=-viewRange;i<=viewRange;i++)for(let j=-viewRange;j<=viewRange;j++){
     let ix=bx+i,iz=bz+j;if(zone(ix,iz)||h(ix,iz)%6===0)continue;
     let X=ix*P,Z=iz*P;if((X-cx)*sn+(Z-cz)*cs<-35||(X-cx)**2+(Z-cz)**2>shadowRange*shadowRange)continue;
     let hh=h(ix,iz),h0=10+(hh>>4)%38,ht=h0<18?5+hh%4:h0,Ls=Math.min(42,ht/Math.max(0.28,sunY)),ox2=-sunX*Ls,oz2=-sunZ*Ls,pp=[];
@@ -1455,7 +1499,7 @@ function render(){
   let items=[];
   // Profundidade real na câmera: inclui a altura do objeto, indispensável ao olhar de cima.
   const cameraDepth=(x,z,y=0)=>(x-cx)*sn*cos(camPitch)+(z-cz)*cs*cos(camPitch)+(y-cy)*sin(camPitch);
-  for(let i=-3;i<=3;i++)for(let j=-3;j<=3;j++){
+  for(let i=-viewRange;i<=viewRange;i++)for(let j=-viewRange;j<=viewRange;j++){
     let ix=bx+i,iz=bz+j;if((ix*P-cx)*sn+(iz*P-cz)*cs<=-25)continue;
     let zn=zone(ix,iz),dd=(ix*P-cx)**2+(iz*P-cz)**2,pk=h(ix,iz)%6===0;
     if(zn===0){
@@ -1484,7 +1528,7 @@ function render(){
   items.sort((a,b)=>b.depth-a.depth).forEach(it=>{fogK=cl((Math.sqrt(Math.max(0,it.d))-45)/190,0,.7);it.fn()});
   fogK=0;
   if(!cur&&!passengerCar&&(playerElevation>0||hasSceneLineOfSight(player.x,player.z))){
-    person(player.x,player.z,player.yaw,shirts[chr],skin[chr],chr*7+1,1.75,0,weapon,pph,pamp,
+    person(player.x,player.z,player.yaw,shirts[chr],skin[chr],chr*7+1,1.75,sitBlend,(sitting||sitBlend>.1)?-1:weapon,pph,sitting?0:pamp,
       cl((Math.hypot(vx,vz)-3.6)/2.8,0,1),(held.fire||keyFire||shootT>.06)?1:0,ca,jy,jv,'player',punchT,playerElevation);
   }
 
@@ -1935,7 +1979,7 @@ C.onpointermove=e=>{
   if(e.pointerId===camId){
     let dx=e.clientX-lastX,dy=e.clientY-lastY;
     camYaw=Math.atan2(sin(camYaw+dx*.006),cos(camYaw+dx*.006));
-    camPitch=cl(camPitch-dy*.0065,-0.55,1.25);
+    camPitch=cl(camPitch-dy*.0065,-1.20,1.25);
     lastX=e.clientX;lastY=e.clientY;
   }
 };
@@ -1952,8 +1996,8 @@ addEventListener('keydown',e=>{
   if(k==='f')useElevator();
   if(k==='j')jump();
   if(k==='q'){if(wheelOpen)closeWeaponWheel();else openWeaponWheel()}
-  if(k==='i'||k==='pageup')camPitch=cl(camPitch+0.08,-0.55,1.25);
-  if(k==='k'||k==='pagedown')camPitch=cl(camPitch-0.08,-0.55,1.25);
+  if(k==='i'||k==='pageup')camPitch=cl(camPitch+0.08,-1.20,1.25);
+  if(k==='k'||k==='pagedown')camPitch=cl(camPitch-0.08,-1.20,1.25);
   if(k==='escape'){if(wheelOpen)closeWeaponWheel();else pause()}
 });
 addEventListener('keyup',e=>{keysDown.delete(e.key.toLowerCase());refreshKeyInput()});
