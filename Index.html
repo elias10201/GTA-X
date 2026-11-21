@@ -874,7 +874,8 @@ function box(x,z,hw,hl,y0,y1,ang,col,win,outlineW){
       }
     }
   }
-  if(cy>y1)polygon3(wx.map((x,i)=>pt(x,y1,wz[i])),color(col,glow?1:dayL),ow);
+  // Fecha sempre o topo da caixa de forma opaca para nunca mostrar o interior do prédio
+  polygon3(wx.map((px,i)=>pt(px,y1,wz[i])),color(col,glow?1:Math.max(.35,dayL*.92)),ow);
 }
 
 function bld(ix,iz){
@@ -1068,7 +1069,7 @@ function ellipseBody(q,rx,rz,y0,y1,col){
     let ex=p1[0]-p0[0],ez=p1[2]-p0[2],mx=(p0[0]+p1[0])/2,mz=(p0[2]+p1[2])/2;
     if(ez*(cx-mx)-ex*(cz-mz)>0)polygon3([pt(...p0),pt(...p1),pt(...p2),pt(...p3)],color(col,glow?1:dayL),1.25);
   }
-  if(cy>y1)polygon3(ring(y1,.96),color(col,glow?1:dayL),1.25);
+  polygon3(ring(y1,.96),color(col,glow?1:Math.max(.35,dayL*.92)),1.25);
 }
 function wheel(q,lx,lz,r,rotation){
   const pts=[];for(let i=0;i<16;i++){let a=i*PI/8,p=localPoint(q,lx,r+Math.cos(a)*r,lz+Math.sin(a)*r);pts.push(pt(p[0],p[1],p[2]))}
@@ -1372,7 +1373,6 @@ function render(){
 
   let items=[];
   const cameraDepth=(x,z,y=0)=>(x-cx)*sn*cos(camPitch)+(z-cz)*cs*cos(camPitch)+(y-cy)*sin(camPitch);
-  // Distância até a caixa mais próxima do prédio para oclusão realista
   const boxCameraDepth=(x,z,hw,hl,yMid)=>{
     let ncx=cl(cx,x-hw,x+hw),ncz=cl(cz,z-hl,z+hl);
     return cameraDepth(ncx,ncz,yMid);
@@ -1394,8 +1394,6 @@ function render(){
     }
   }
   cars.forEach(q=>{if((q.x-cx)**2+(q.z-cz)**2<42000)items.push({d:(q.x-cx)**2+(q.z-cz)**2,depth:cameraDepth(q.x,q.z,(q.altitude||0)+.8),fn:()=>car(q)})});
-  // Jogador local e jogadores remotos entram na mesma ordenação de profundidade dos prédios:
-  // quem estiver atrás da parede é desenhado ANTES do prédio e fica oculto atrás dele.
   if(!cur&&!passengerCar){
     items.push({
       d:(player.x-cx)**2+(player.z-cz)**2,
