@@ -2230,6 +2230,7 @@ function render(){
   g.fillStyle=vg;g.fillRect(0,0,W,H);
   drawWeaponWheel();
   drawMap();
+  if(typeof window.__gtaxDrawRemotePlayers==='function')window.__gtaxDrawRemotePlayers();
 }
 
 let mf=0;
@@ -2499,32 +2500,27 @@ function frame(t){
     }catch(_){}
   },80);
 
-  // Desenha jogadores remotos no canvas principal e no minimapa se as funções globais existirem
-  const origRender=window.render;
-  if(typeof origRender==='function'){
-    window.render=function(){
-      origRender.apply(this,arguments);
-      if(!mpConnected||!remotePlayers.size||typeof project!=='function')return;
-      const g2=document.getElementById('c').getContext('2d');
-      g2.save();
-      g2.font='bold 12px Arial';
-      g2.textAlign='center';
-      remotePlayers.forEach(rp=>{
-        const p=project(rp.x,1.9,rp.z);
-        if(!p)return;
-        const k=p[3]||1;
-        g2.fillStyle='#00e5ff';
-        g2.strokeStyle='#0b0e13';
-        g2.lineWidth=2;
-        g2.beginPath();
-        g2.arc(p[0],p[1]+0.6*k,Math.max(5,0.42*k),0,Math.PI*2);
-        g2.fill();g2.stroke();
-        g2.fillStyle='#ffffff';
-        g2.fillText('🌐 '+rp.name,p[0],p[1]-10);
-      });
-      g2.restore();
-    };
-  }
+  // Disponibiliza desenho dos jogadores remotos para o loop renderizador lexical.
+  window.__gtaxDrawRemotePlayers=function(){
+    if(!mpConnected||!remotePlayers.size)return;
+    const g2=document.getElementById('c').getContext('2d');
+    g2.save();
+    g2.font='bold 12px Arial';
+    g2.textAlign='center';
+    remotePlayers.forEach(rp=>{
+      const p=project(rp.x,1.9,rp.z);
+      if(!p)return;
+      person(rp.x,rp.z,rp.yaw,rp.color||0xff00bcd4,0xffe0ac69,7,1.7,0,
+        Number.isInteger(rp.weapon)&&rp.weapon>=0&&rp.weapon<=4?rp.weapon:-1,0,0,0,0,0,0,0,'player',0);
+      g2.fillStyle='#00e5ff';
+      g2.strokeStyle='#0b0e13';
+      g2.lineWidth=3;
+      g2.strokeText('🌐 '+rp.name,p[0],p[1]-10);
+      g2.fillStyle='#ffffff';
+      g2.fillText('🌐 '+rp.name,p[0],p[1]-10);
+    });
+    g2.restore();
+  };
 
 
   // Chat entre os players (sincronizado via Socket.io + local)
@@ -2598,7 +2594,6 @@ function frame(t){
   updateHudBadges();
 })();
 
-}
 
 // Controles de toque, mouse e teclado
 let joyEl=$('joy'),knob=$('knob'),joyId=null,camId=null,lastX=0,lastY=0;
