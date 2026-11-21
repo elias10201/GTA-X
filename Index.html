@@ -763,8 +763,8 @@ function update(dt){
     if(v>.04){
       let nx=player.x+vx*dt,nz=player.z+vz*dt;
       if(playerElevation>0&&elevatorTower){
-        player.x=cl(nx,elevatorTower.x-10.8,elevatorTower.x+10.8);
-        player.z=cl(nz,elevatorTower.z-10.8,elevatorTower.z+10.8);
+        player.x=cl(nx,elevatorTower.x-12.35,elevatorTower.x+12.35);
+        player.z=cl(nz,elevatorTower.z-12.35,elevatorTower.z+12.35);
       }else{
         if(!psolid(nx,player.z))player.x=nx;
         if(!psolid(player.x,nz))player.z=nz;
@@ -1018,7 +1018,7 @@ function sg(ax,y1,z1,bx,y2,z2,w,col){
   let s=SG[SN++];
   let X1=ox+(ax*ofc+z1*ofs)*os,Z1=oz+(-ax*ofs+z1*ofc)*os;
   let X2=ox+(bx*ofc+z2*ofs)*os,Z2=oz+(-bx*ofs+z2*ofc)*os;
-  let Y1=(y1+renderGroundY)*os,Y2=(y2+renderGroundY)*os;
+  let Y1=renderGroundY+y1*os,Y2=renderGroundY+y2*os;
   let mx=(X1+X2)/2-cx,my=(Y1+Y2)/2-cy,mz=(Z1+Z2)/2-cz;
   s.a=X1;s.b=Y1;s.c=Z1;s.d=X2;s.e=Y2;s.f=Z2;s.w=w*os;s.col=col;s.k=mx*sn+mz*cs;
 }
