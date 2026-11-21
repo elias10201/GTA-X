@@ -1,3 +1,4 @@
+const fs = require('fs');
 const path = require('path');
 const express = require('express');
 const http = require('http');
@@ -36,11 +37,34 @@ function broadcastRoomPlayers(serverId) {
   io.to(serverId).emit('players_snapshot', Array.from(srv.players.values()));
 }
 
+function findHtmlOnDisk() {
+  const candidates = [
+    path.join(__dirname, 'index.html'),
+    path.join(__dirname, '..', 'index.html'),
+    path.join(__dirname, 'public', 'index.html'),
+    path.join(__dirname, 'GTAX-CameraLivre-Voz-PTBR-Online-2x20.html')
+  ];
+  for (const file of candidates) {
+    try {
+      if (fs.existsSync(file) && fs.statSync(file).isFile()) return file;
+    } catch (_) {}
+  }
+  return null;
+}
+
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.static(__dirname));
 
 app.get('/', (_req, res) => {
-  res.sendFile(path.join(__dirname, 'index.html'));
+  const diskFile = findHtmlOnDisk();
+  if (diskFile) {
+    return res.sendFile(diskFile, (err) => {
+      if (err && !res.headersSent) {
+        res.status(404).send('index.html nao encontrado.');
+      }
+    });
+  }
+  res.status(404).send('index.html nao encontrado na raiz do projeto. Envie o index.html junto com o server.js no GitHub.');
 });
 
 app.get('/health', (_req, res) => {
