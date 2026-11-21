@@ -49,17 +49,33 @@ canvas{display:block;width:100vw;height:100vh}
 #chatBox input{flex:1;padding:8px 10px;border-radius:7px;border:1px solid #546e7a;background:#0f161d;color:#fff;font-size:13px;touch-action:auto;-webkit-user-select:text;user-select:text}
 #chatBox button{padding:8px 12px;border:0;border-radius:7px;background:#e0a323;color:#111;font-weight:bold;cursor:pointer}
 
-#mpModal{display:none;position:fixed;inset:0;background:#000c;align-items:center;justify-content:center;z-index:15;pointer-events:auto;text-align:center}
+#mpModal{display:none;position:fixed;inset:0;background:#000c;align-items:center;justify-content:center;z-index:35;pointer-events:auto;text-align:center}
 #mpModal>div{background:#17212b;padding:22px;border:1px solid #8995a0;border-radius:14px;width:min(92%,440px)}
 #mpModal input{width:100%;padding:9px 10px;margin:6px 0 12px;border-radius:8px;border:1px solid #546e7a;background:#0f161d;color:#fff;font-size:13px;touch-action:auto;-webkit-user-select:text;user-select:text}
 #mpModal button{padding:10px 16px;margin:4px;border:0;border-radius:8px;background:#e0a323;color:#111;font-weight:bold;cursor:pointer}
 #mpModal button.sec{background:#37474f;color:#fff}
+#intro{position:fixed;inset:0;z-index:30;display:flex;align-items:center;justify-content:center;padding:22px;background:linear-gradient(135deg,rgba(5,13,22,.94),rgba(11,32,43,.84));text-align:center;pointer-events:auto}
+#intro .panel{width:min(92vw,540px);padding:clamp(22px,5vw,42px);border:1px solid #8be9ff88;border-radius:20px;background:linear-gradient(145deg,#142430f2,#0c151ef2);box-shadow:0 18px 70px #000b}
+#intro h1{margin:0 0 8px;font-size:clamp(34px,8vw,58px);letter-spacing:3px;color:#e9f8ff;text-shadow:0 0 24px #33c7ff70}
+#intro .subtitle{margin:0 0 24px;color:#b7cbd5}
+#intro button{display:block;width:100%;margin:10px auto;padding:14px;border:1px solid #8be9ff88;border-radius:10px;background:#e0a323;color:#14191e;font-weight:800;font-size:15px}
+#intro button.sec{background:#263845;color:white}
+#intro .foot{font-size:11px;color:#a9bbc4;margin-top:16px;line-height:1.5}
+#mpModal select{width:100%;padding:9px;margin:6px 0 12px;border-radius:8px;border:1px solid #546e7a;background:#0f161d;color:white;font-size:13px}
 </style>
 </head>
 <body>
 <div id="rot">↻ Gire o celular para o modo deitado</div>
 <canvas id="c"></canvas>
 
+<div id="intro">
+  <div class="panel">
+    <h1>GTA X</h1><p class="subtitle">Uma cidade, várias histórias.</p>
+    <button id="playBtn" type="button">JOGAR</button>
+    <button id="menuServersBtn" class="sec" type="button">MULTIPLAYER · ESCOLHER SERVIDOR</button>
+    <p class="foot">Servidor 1 e Servidor 2 são endereços configuráveis. A capacidade real de 35 jogadores por servidor depende da configuração do backend.</p>
+  </div>
+</div>
 <div id="ui">
   <div id="stats">GTA X<br><span id="cash">$500</span> · <span id="name">Rafa</span><br><span id="weapon">Pistola 12/12</span></div>
   <div id="mission">MISSÃO: Primeiro Assalto</div>
@@ -79,6 +95,7 @@ canvas{display:block;width:100vw;height:100vh}
   <button class="b" data="crouch" data-foot>AGACHAR</button>
   <button class="b" data="jump" data-foot>PULAR</button>
   <button class="b" data="car" data-foot>ENTRAR</button>
+  <button class="b" data="passenger" data-foot style="display:none">PASSAGEIRO</button>
   <button class="b" data="weapon" data-foot>ARMA</button>
   <button class="b" data="swap" data-foot>TROCAR</button>
   <button class="b" data="accelerate" data-vehicle style="display:none">ACELERAR</button>
@@ -118,8 +135,11 @@ canvas{display:block;width:100vw;height:100vh}
     <h3>GTA X — Conexão Multiplayer</h3>
     <label style="font-size:12px;display:block;text-align:left">Seu nome (nick):</label>
     <input id="mpNickInput" type="text" maxlength="16" placeholder="Ex.: EliasX7">
-    <label style="font-size:12px;display:block;text-align:left">URL do servidor (deixe vazio para usar o site atual):</label>
-    <input id="mpUrlInput" type="text" placeholder="Ex.: https://seu-servidor.onrender.com">
+    <label style="font-size:12px;display:block;text-align:left">Escolha um dos dois servidores:</label>
+    <select id="mpServerSelect"><option value="1">Servidor 1 · até 35 jogadores*</option><option value="2">Servidor 2 · até 35 jogadores*</option></select>
+    <label style="font-size:12px;display:block;text-align:left">URL do servidor selecionado (vazio = site atual):</label>
+    <input id="mpUrlInput" type="url" placeholder="https://seu-servidor.onrender.com">
+    <p style="font-size:10px;color:#b0bec5;text-align:left">*A capacidade real e a separação entre salas precisam estar configuradas no servidor; o HTML apenas conecta à URL escolhida.</p>
     <div>
       <button id="mpConnectBtn" type="button">SALVAR / CONECTAR</button>
       <button id="mpCloseBtn" class="sec" type="button">FECHAR</button>
@@ -338,6 +358,25 @@ function unlockAudio(){userGestured=true;ensureAudioCtx()}
 
 const sfx={
   _noiseBuf:null,
+  _engine:null,
+  engine(type,speed,active){
+    const ctx=ensureAudioCtx();if(!ctx)return;
+    try{
+      if(!this._engine){
+        const osc=ctx.createOscillator(),harm=ctx.createOscillator(),mix=ctx.createGain(),filter=ctx.createBiquadFilter(),gain=ctx.createGain();
+        osc.type='sawtooth';harm.type='triangle';mix.gain.value=.18;filter.type='lowpass';filter.frequency.value=850;gain.gain.value=0;
+        osc.connect(mix);harm.connect(mix);mix.connect(filter);filter.connect(gain);gain.connect(ctx.destination);osc.start();harm.start();
+        this._engine={osc,harm,mix,filter,gain};
+      }
+      const e=this._engine,now=ctx.currentTime,v=cl(Math.abs(speed||0)/CSP[type||0],0,1);
+      const base=type===8?72:type===7?95:55;
+      e.osc.frequency.setTargetAtTime(base+v*(type===8?90:type===7?125:75),now,.08);
+      e.harm.frequency.setTargetAtTime(base*1.51+v*45,now,.09);
+      e.mix.gain.setTargetAtTime(type===7?.22:type===8?.14:.17,now,.1);
+      e.filter.frequency.setTargetAtTime(type===8?1200:650+v*900,now,.12);
+      e.gain.gain.setTargetAtTime(active?(type===8?.055:type===7?.075:.065):0,now,.16);
+    }catch(_){}
+  },
   _getNoise(ctx){
     if(this._noiseBuf&&this._noiseBuf.sampleRate===ctx.sampleRate)return this._noiseBuf;
     const len=ctx.sampleRate;
@@ -498,20 +537,37 @@ function shoot(){
 }
 
 function syncControls(){
-  let box=$('buttons'),inside=!!cur;
+  let box=$('buttons'),inside=!!cur||!!passengerCar;
   box.classList.toggle('car-mode',inside);
   document.querySelectorAll('[data-foot]').forEach(b=>b.style.display=inside?'none':'');
-  document.querySelectorAll('[data-vehicle]').forEach(b=>b.style.display=inside?'':'none');
+  document.querySelectorAll('[data-vehicle]').forEach(b=>{const a=b.getAttribute('data');b.style.display=inside?(passengerCar&&(a==='accelerate'||a==='brake')?'none':''):'none';if(a==='car')b.textContent=passengerCar?'SAIR PASSAGEIRO':'SAIR'});
+  const passBtn=document.querySelector('[data="passenger"]');if(passBtn){const candidate=getPassengerTarget();passBtn.style.display=(!inside&&candidate)?'':'none'}
   held.up=false;held.brake=false;held.run=false;held.fire=false;
   document.querySelectorAll('.b').forEach(b=>b.classList.remove('active'));
 }
 
+let passengerCar=null;
+function getPassengerTarget(){
+  const localId=window.mpSocket&&window.mpSocket.id;
+  let best=null,bd=15;
+  for(const c of cars){if(!c.driverId||c.driverId===localId)continue;const d=Math.hypot(c.x-player.x,c.z-player.z);if(d<bd){best=c;bd=d}}
+  return best;
+}
+function enterPassenger(){
+  if(passengerCar)return;
+  const c=getPassengerTarget();if(!c){say('Chegue perto de um veículo com motorista para entrar como passageiro');return}
+  passengerCar=c;player.x=c.x;player.z=c.z;player.yaw=c.yaw;syncControls();sfx.door();say('Você entrou como passageiro. Toque em SAIR PASSAGEIRO para descer.');
+}
+function exitPassenger(){
+  if(!passengerCar)return;const c=passengerCar;player.x=c.x+cos(c.yaw)*2.3;player.z=c.z-sin(c.yaw)*2.3;if(solid(player.x,player.z)){player.x=c.x;player.z=c.z}passengerCar=null;syncControls();sfx.door();say('Você saiu do veículo');
+}
 function enterCar(){
+  if(passengerCar){exitPassenger();return}
   if(cur){
     if(cur.type===8&&(cur.altitude||0)>1.2){say('Pouse o avião antes de sair');return}
     player.x=cur.x+cos(cur.yaw)*2.6;player.z=cur.z-sin(cur.yaw)*2.6;
     if(solid(player.x,player.z)){player.x=cur.x;player.z=cur.z}
-    cur.spd=0;cur.driverId=null;cur=null;syncControls();say('Você saiu do veículo');sfx.door();
+    cur.spd=0;cur.driverId=null;cur=null;sfx.engine(0,0,false);syncControls();say('Você saiu do veículo');sfx.door();
     if(window.mpSocket&&window.mpSocket.connected)window.mpSocket.emit('car:toggle');
     return;
   }
@@ -522,7 +578,7 @@ function enterCar(){
     if(d<bd){bd=d;best=c}
   }
   if(!best){say('Nenhum carro livre perto');return}
-  cur=best;cur.driverId=window.mpSocket?window.mpSocket.id:'local';syncControls();sfx.door();say(best.type===8?'Avião: acelere ou empurre o joystick para cima; ele decola. Guie à esquerda/direita; puxe para subir e empurre para baixo para pousar.':CN[best.type]);
+  cur=best;cur.driverId=window.mpSocket?window.mpSocket.id:'local';syncControls();sfx.door();say(best.type===8?'Avião: acelere na pista; puxe o analógico para trás para levantar o nariz e decolar. Empurre para frente para descer, mesmo em alta velocidade.':CN[best.type]);
   if(window.mpSocket&&window.mpSocket.connected)window.mpSocket.emit('car:toggle');
 }
 
@@ -545,6 +601,7 @@ function action(a){
   else if(a==='run')held.run=true;
   else if(a==='brake')held.brake=true;
   else if(a==='car')enterCar();
+  else if(a==='passenger')enterPassenger();
   else if(a==='swap')swap();
   else if(a==='weapon'){if(wheelOpen)closeWeaponWheel();else openWeaponWheel()}
   else if(a==='crouch'){crouch=!crouch;prone=false}
@@ -555,6 +612,7 @@ function action(a){
 function drive(dt){
   vx=vz=0;
   const isPlane=cur.type===8;
+  sfx.engine(cur.type,cur.spd,true);
   // Em avião, joystick para cima também fornece potência; no solo isso permite iniciar a corrida de decolagem.
   let th=(held.up||held.run||keyUp||keyRun||(isPlane&&joy.y<-.16))?1:0,st=joy.x;
   if(held.brake){cur.spd=Math.sign(cur.spd)*Math.max(0,Math.abs(cur.spd)-38*dt)}
@@ -566,13 +624,14 @@ function drive(dt){
   cur.wheelRot=(cur.wheelRot||0)+cur.spd*dt/.43;
   if(isPlane){
     const airspeed=cl((cur.spd-27)/18,0,1);
-    const pull=cl(-joy.y,0,1),push=cl(joy.y,0,1);
-    const autoLift=cur.spd>32?cl((cur.spd-32)/12,0,1)*3.2:0;
-    const lift=autoLift+airspeed*pull*4.2;
-    const descend=push*(cur.altitude>0?7.5:0);
+    // Analógico para trás (baixo, joy.y positivo) levanta o nariz; para frente (cima) força descida mesmo rápido.
+    const pull=cl(joy.y,0,1),push=cl(-joy.y,0,1);
+    const autoLift=cur.spd>37?cl((cur.spd-37)/15,0,1)*1.35:0;
+    const lift=autoLift+airspeed*pull*5.4;
+    const descend=push*(cur.altitude>0?Math.max(7.5,airspeed*10):0);
     const sink=cur.altitude>.15&&lift===0&&descend===0?.42:0;
     cur.altitude=cl((cur.altitude||0)+(lift-descend-sink)*dt,0,120);
-    const targetPitch=cl(pull*.32-push*.24+(autoLift>1?.08:0),-.28,.36);
+    const targetPitch=cl(pull*.38-push*.34+(autoLift>.7?.06:0),-.38,.42);
     cur.pitch=(cur.pitch||0)+(targetPitch-(cur.pitch||0))*Math.min(1,2.5*dt);
     if(cur.altitude<.01){cur.altitude=0;cur.pitch*=Math.max(0,1-4*dt)}
     cur.prop=(cur.prop||0)+dt*Math.max(0,cur.spd)*.9;
@@ -616,7 +675,7 @@ function update(dt){
   if(hp[chr]<=0){
     money=Math.max(0,money-300);hp[chr]=200;wanted=0;
     if(cur){cur.driverId=null;cur.spd=0;cur.altitude=0;cur.pitch=0}
-    cur=null;sink=0;syncControls();
+    cur=null;passengerCar=null;sfx.engine(0,0,false);sink=0;syncControls();
     player.x=32;player.z=32;say('Você foi derrotado! -$300');
   }
 
@@ -631,7 +690,11 @@ function update(dt){
   landT=Math.max(0,landT-dt);
   ca+=(Math.min(1,((crouch&&!cur)?1:0)+landT*2.2)-ca)*Math.min(1,12*dt);
 
-  if(!cur){
+  if(passengerCar){
+    player.x=passengerCar.x;player.z=passengerCar.z;player.yaw=passengerCar.yaw;
+    sfx.engine(passengerCar.type,passengerCar.spd,true);
+  }else if(!cur){
+    sfx.engine(0,0,false);
     let mag=Math.hypot(joy.x,joy.y),norm=mag>1?1/mag:1;
     let jx=joy.x*norm,jyAxis=joy.y*norm;
     let mx=jx*cos(camYaw)-jyAxis*sin(camYaw);
@@ -687,6 +750,8 @@ function update(dt){
   mission();
 
   if((hudT+=dt)<.12)return;hudT=0;
+  const passengerButton=document.querySelector('[data="passenger"]');
+  if(passengerButton&&!cur&&!passengerCar)passengerButton.style.display=getPassengerTarget()?'':'none';
   $('cash').textContent='$'+Math.floor(money);
   $('name').textContent=(window.getMpNick&&window.getMpNick())||names[chr];
   $('weapon').textContent=weapon<0?'Desarmado (Punhos)':(wn[weapon]+' '+ammo[weapon]+'/'+maxAmmo[weapon]);
@@ -1296,7 +1361,7 @@ function render(){
   // O jogador fica fora do sort por centro: desenha-se após o chão/objetos, com oclusão real por estruturas.
   items.sort((a,b)=>b.depth-a.depth).forEach(it=>{fogK=cl((Math.sqrt(Math.max(0,it.d))-45)/190,0,.7);it.fn()});
   fogK=0;
-  if(!cur&&hasSceneLineOfSight(player.x,player.z)){
+  if(!cur&&!passengerCar&&hasSceneLineOfSight(player.x,player.z)){
     person(player.x,player.z,player.yaw,shirts[chr],skin[chr],chr*7+1,1.75,0,weapon,pph,pamp,
       cl((Math.hypot(vx,vz)-3.6)/2.8,0,1),(held.fire||keyFire||shootT>.06)?1:0,ca,jy,jv,'player',punchT);
   }
@@ -1305,7 +1370,7 @@ function render(){
 
   // Balão da própria mensagem acima do jogador ou carro
   if(myBubbleT>0&&myBubbleText){
-    drawBubbleAbove(player.x,cur?2.6:2.25,'',myBubbleText,player.z);
+    drawBubbleAbove(player.x,(cur||passengerCar)?2.6:2.25,'',myBubbleText,player.z);
   }
 
   let hz=g.createLinearGradient(0,hor-H*.22,0,hor+H*.08),hc=night?'20,28,48':weather===2?'160,168,174':'190,222,240';
@@ -1407,7 +1472,7 @@ function frame(t){
     let raw=(t-(frame.last||t))/1000,dt=Math.min(.05,Math.max(0.001,raw));
     frame.last=t;qa+=raw;
     if(++qn>=40){let av=qa/qn;if(av>.027&&q>.55){q-=.15;size()}else if(av<.02&&q<1){q=Math.min(1,q+.1);size()}qa=qn=0}
-    if(!paused)update(dt);
+    if(!paused&&gameStarted)update(dt);
     render();
   }catch(err){showErr(err)}
   requestAnimationFrame(frame);
@@ -1421,7 +1486,9 @@ function frame(t){
   window.mpRemotePlayers=remotePlayers;
   let mpConnected=false;
   let mpNick=(localStorage.getItem('gtax_mp_nick')||'').trim()||('Player_'+Math.floor(100+Math.random()*899));
-  let mpServerUrl=(localStorage.getItem('gtax_mp_url')||'').trim();
+  let selectedServer=localStorage.getItem('gtax_selected_server')||'1';
+  let serverUrls={1:(localStorage.getItem('gtax_server_1')||localStorage.getItem('gtax_mp_url')||'').trim(),2:(localStorage.getItem('gtax_server_2')||'').trim()};
+  let mpServerUrl=serverUrls[selectedServer]||'';
   window.getMpNick=()=>mpNick;
 
   const mpOpenBtn=$('mpOpenBtn');
@@ -1511,7 +1578,8 @@ function frame(t){
       y:player.z,
       angle:player.yaw,
       name:mpNick,
-      inCarId:cur?cur.id:null
+      inCarId:cur?cur.id:(passengerCar?passengerCar.id:null),
+      seatRole:passengerCar?'passenger':(cur?'driver':'foot')
     });
   }
 
@@ -1527,8 +1595,12 @@ function frame(t){
   function connectNow(){
     const inpNick=$('mpNickInput');
     if(inpNick&&inpNick.value.trim())mpNick=inpNick.value.trim();
+    selectedServer=$('mpServerSelect').value||'1';
     mpServerUrl=($('mpUrlInput')&&$('mpUrlInput').value.trim())||'';
+    serverUrls[selectedServer]=mpServerUrl;
     localStorage.setItem('gtax_mp_nick',mpNick);
+    localStorage.setItem('gtax_selected_server',selectedServer);
+    localStorage.setItem('gtax_server_'+selectedServer,mpServerUrl);
     localStorage.setItem('gtax_mp_url',mpServerUrl);
     updateBadge();
 
@@ -1644,9 +1716,11 @@ function frame(t){
 
   mpOpenBtn.onclick=()=>{
     $('mpNickInput').value=mpNick;
-    $('mpUrlInput').value=mpServerUrl;
+    $('mpServerSelect').value=selectedServer;
+    $('mpUrlInput').value=serverUrls[selectedServer]||'';
     mpModal.style.display='flex';
   };
+  $('mpServerSelect').onchange=()=>{$('mpUrlInput').value=serverUrls[$('mpServerSelect').value]||''};
   $('mpCloseBtn').onclick=()=>{mpModal.style.display='none'};
   $('mpConnectBtn').onclick=()=>{
     connectNow();
@@ -1654,7 +1728,7 @@ function frame(t){
   };
 
   updateBadge();
-  connectNow();
+  window.gtaxConnectNow=connectNow;
 })();
 
 let joyEl=$('joy'),knob=$('knob'),joyId=null,camId=null,lastX=0,lastY=0;
@@ -1751,6 +1825,11 @@ addEventListener('keydown',e=>{
 });
 addEventListener('keyup',e=>{keysDown.delete(e.key.toLowerCase());refreshKeyInput()});
 
+let gameStarted=false;
+$('playBtn').onclick=()=>{unlockAudio();gameStarted=true;$('intro').style.display='none';if(window.gtaxConnectNow)window.gtaxConnectNow();say('Bem-vindo ao GTA X!')};
+$('menuServersBtn').onclick=()=>{ $('mpOpenBtn').click(); };
+$('mpCloseBtn').addEventListener('click',()=>{if(!gameStarted)$('intro').style.display='flex'});
+$('mpConnectBtn').addEventListener('click',()=>{if(!gameStarted){gameStarted=true;$('intro').style.display='none'}});
 stage();
 syncControls();
 say('Bem-vindo ao GTA X!');
