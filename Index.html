@@ -96,6 +96,7 @@ canvas{display:block;width:100vw;height:100vh}
   <button class="b" data="jump" data-foot>PULAR</button>
   <button class="b" data="car" data-foot>ENTRAR</button>
   <button class="b" data="passenger" data-foot style="display:none">PASSAGEIRO</button>
+  <button class="b" data="elevator" data-foot style="display:none">ELEVADOR</button>
   <button class="b" data="weapon" data-foot>ARMA</button>
   <button class="b" data="swap" data-foot>TROCAR</button>
   <button class="b" data="accelerate" data-vehicle style="display:none">ACELERAR</button>
@@ -115,6 +116,7 @@ canvas{display:block;width:100vw;height:100vh}
 </div>
 
 <div id="errbox"></div>
+<div id="elevatorFx" style="display:none;position:fixed;inset:0;z-index:24;align-items:center;justify-content:center;background:radial-gradient(ellipse,#243d4cf0,#070c12f8);color:#b7f5ff;font:bold clamp(22px,5vw,42px) Arial;letter-spacing:3px;text-shadow:0 0 18px #45dfff">ELEVADOR</div>
 
 <div id="chatLog"></div>
 
@@ -268,6 +270,18 @@ const CITY_CENTERS=[
   {name:'Santa Luz',ix:0,iz:-34,r:8},
   {name:'Campo Verde',ix:34,iz:-34,r:8}
 ];
+const TWIN_TOWERS=[
+  {ix:1,iz:-1,height:154,name:'TORRE A',color:0xff428a9b},
+  {ix:2,iz:-1,height:182,name:'TORRE B',color:0xff526a91}
+].map(t=>({...t,x:t.ix*P,z:t.iz*P,doorX:t.ix*P,doorZ:t.iz*P+16.8}));
+const HILL_LAYOUT=[];
+CITY_CENTERS.forEach((c,ci)=>{
+  for(let j=0;j<3;j++){
+    const a=j*PI*2/3+ci*.19,d=(c.r+9.5+(j%2)*2.5)*P,seed=h(ci+51,j-17);
+    HILL_LAYOUT.push({x:c.ix*P+32+cos(a)*d,z:c.iz*P+32+sin(a)*d,r:155+seed%65,height:42+seed%50,seed});
+  }
+});
+let elevatorTower=null,playerElevation=0,elevatorRide=null,renderGroundY=0;
 function nearestCityCell(ix,iz){
   let best=null,d2=Infinity;
   for(const c of CITY_CENTERS){const dx=ix-c.ix,dz=iz-c.iz,v=dx*dx+dz*dz;if(v<d2){d2=v;best=c}}
@@ -292,6 +306,32 @@ function isHouseLot(ix,iz){
   if(zone(ix,iz)!==1||isAirportLot(ix,iz)||h(ix+83,iz-47)%100>=20)return false;
   const q=nearestCityCell(ix,iz);
   return q.distance<=q.city.r+8;
+}
+function twinTowerAt(ix,iz){return TWIN_TOWERS.find(t=>t.ix===ix&&t.iz===iz)||null}
+function getElevatorTarget(){
+  if(playerElevation>0&&elevatorTower)return elevatorTower;
+  if(cur||passengerCar)return null;
+  let best=null,bd=8;
+  for(const t of TWIN_TOWERS){const d=Math.hypot(player.x-t.doorX,player.z-t.doorZ);if(d<bd){best=t;bd=d}}
+  return best;
+}
+function useElevator(){
+  if(cur||passengerCar){say('Saia do veículo antes de usar o elevador');return}
+  const t=playerElevation>0?elevatorTower:getElevatorTarget();
+  if(!t){say('Aproxime-se da entrada de uma das torres');return}
+  const goingUp=playerElevation<=0;
+  elevatorRide={tower:t,goingUp,time:.72};
+  const fx=$('elevatorFx');if(fx){fx.textContent=goingUp?'ELEVADOR · SUBINDO':'ELEVADOR · DESCENDO';fx.style.display='flex'}
+  sfx.door();
+}
+function finishElevatorRide(){
+  if(!elevatorRide)return;
+  const {tower,goingUp}=elevatorRide;
+  if(goingUp){elevatorTower=tower;playerElevation=tower.height;player.x=tower.x;player.z=tower.z;player.yaw=PI;}
+  else{playerElevation=0;elevatorTower=null;player.x=tower.doorX;player.z=tower.doorZ+2.2;player.yaw=PI;}
+  elevatorRide=null;camPitch=.04;
+  const fx=$('elevatorFx');if(fx)fx.style.display='none';
+  syncControls();say(goingUp?'Você chegou ao terraço. Aprecie a vista!':'Você voltou ao térreo.');
 }
 
 function getTreePos(ix,iz,q,zn){
@@ -551,6 +591,8 @@ function syncControls(){
   box.classList.toggle('car-mode',inside);
   document.querySelectorAll('[data-foot]').forEach(b=>b.style.display=inside?'none':'');
   document.querySelectorAll('[data-vehicle]').forEach(b=>{const a=b.getAttribute('data');b.style.display=inside?(passengerCar&&(a==='accelerate'||a==='brake')?'none':''):'none';if(a==='car')b.textContent=passengerCar?'SAIR PASSAGEIRO':'SAIR'});
+  const elevatorButton=document.querySelector('[data="elevator"]');
+  if(elevatorButton){elevatorButton.style.display=(!inside&&(playerElevation>0||getElevatorTarget()))?'':'none';elevatorButton.textContent=playerElevation>0?'DESCER':'ELEVADOR';}
   const passBtn=document.querySelector('[data="passenger"]');if(passBtn){const candidate=getPassengerTarget();passBtn.style.display=(!inside&&candidate)?'':'none'}
   held.up=false;held.brake=false;held.run=false;held.fire=false;
   document.querySelectorAll('.b').forEach(b=>b.classList.remove('active'));
@@ -593,7 +635,7 @@ function enterCar(){
 }
 
 function jump(){if(cur||jy>0)return;crouch=false;jv=7;jy=.001}
-function swap(){if(cur){say('Saia do carro primeiro');return}chars[chr]={...player};chr=(chr+1)%3;player={...chars[chr]};crouch=prone=false;say('Controlando '+names[chr])}
+function swap(){if(cur||playerElevation>0){say('Desça pelo elevador antes de trocar de personagem');return}chars[chr]={...player};chr=(chr+1)%3;player={...chars[chr]};crouch=prone=false;say('Controlando '+names[chr])}
 function openWeaponWheel(){if(cur)return;wheelOpen=true;wheelHover=WHEEL_ITEMS.findIndex(it=>it.id===weapon);held.fire=false}
 function closeWeaponWheel(){
   if(!wheelOpen)return;
@@ -612,6 +654,7 @@ function action(a){
   else if(a==='brake')held.brake=true;
   else if(a==='car')enterCar();
   else if(a==='passenger')enterPassenger();
+  else if(a==='elevator')useElevator();
   else if(a==='swap')swap();
   else if(a==='weapon'){if(wheelOpen)closeWeaponWheel();else openWeaponWheel()}
   else if(a==='crouch'){crouch=!crouch;prone=false}
@@ -674,6 +717,7 @@ let playerStepDist=0,wasAirborne=false;
 
 function update(dt){
   if(paused)return;
+  if(elevatorRide){elevatorRide.time-=dt;if(elevatorRide.time<=0)finishElevatorRide();return}
   if(wheelOpen)dt*=0.18;
   anim+=dt;
   myBubbleT=Math.max(0,myBubbleT-dt);
@@ -687,7 +731,7 @@ function update(dt){
   if(hp[chr]<=0){
     money=Math.max(0,money-300);hp[chr]=200;wanted=0;
     if(cur){cur.driverId=null;cur.spd=0;cur.altitude=0;cur.pitch=0}
-    cur=null;passengerCar=null;sfx.engine(0,0,false);sink=0;syncControls();
+    cur=null;passengerCar=null;playerElevation=0;elevatorTower=null;elevatorRide=null;sfx.engine(0,0,false);sink=0;syncControls();
     player.x=32;player.z=32;say('Você foi derrotado! -$300');
   }
 
@@ -718,15 +762,20 @@ function update(dt){
     let v=Math.hypot(vx,vz);
     if(v>.04){
       let nx=player.x+vx*dt,nz=player.z+vz*dt;
-      if(!psolid(nx,player.z))player.x=nx;
-      if(!psolid(player.x,nz))player.z=nz;
+      if(playerElevation>0&&elevatorTower){
+        player.x=cl(nx,elevatorTower.x-10.8,elevatorTower.x+10.8);
+        player.z=cl(nz,elevatorTower.z-10.8,elevatorTower.z+10.8);
+      }else{
+        if(!psolid(nx,player.z))player.x=nx;
+        if(!psolid(player.x,nz))player.z=nz;
+      }
       let safeX=player.x,safeZ=player.z,carCol=resolveCarCircleCollision(player.x,player.z,0.62,null);
       if(carCol.hit){if(!psolid(carCol.x,carCol.z)){player.x=carCol.x;player.z=carCol.z}else{player.x=safeX;player.z=safeZ}}
       if(on){
         let ty=Math.atan2(mx,mz),dy=Math.atan2(sin(ty-player.yaw),cos(ty-player.yaw));
         player.yaw+=dy*Math.min(1,18*dt);
       }
-    }else{
+    }else if(playerElevation<=0){
       let carCol=resolveCarCircleCollision(player.x,player.z,0.62,null);
       if(carCol.hit){player.x=carCol.x;player.z=carCol.z}
     }
@@ -764,6 +813,8 @@ function update(dt){
   if((hudT+=dt)<.12)return;hudT=0;
   const passengerButton=document.querySelector('[data="passenger"]');
   if(passengerButton&&!cur&&!passengerCar)passengerButton.style.display=getPassengerTarget()?'':'none';
+  const elevatorButton=document.querySelector('[data="elevator"]');
+  if(elevatorButton&&!cur&&!passengerCar){const available=playerElevation>0||getElevatorTarget();elevatorButton.style.display=available?'':'none';elevatorButton.textContent=playerElevation>0?'DESCER':'ELEVADOR'}
   $('cash').textContent='$'+Math.floor(money);
   $('name').textContent=(window.getMpNick&&window.getMpNick())||names[chr];
   $('weapon').textContent=weapon<0?'Desarmado (Punhos)':(wn[weapon]+' '+ammo[weapon]+'/'+maxAmmo[weapon]);
@@ -856,6 +907,36 @@ function box(x,z,hw,hl,y0,y1,ang,col,win,outlineW){
   if(cy>y1)polygon3(wx.map((x,i)=>pt(x,y1,wz[i])),color(col,glow?1:dayL),ow);
 }
 
+function drawTwinTower(t){
+  const X=t.x,Z=t.z,Ht=t.height;
+  box(X,Z,13,13,0,Ht,0,t.color,false,1.9);
+  box(X,Z,13.45,13.45,0,4.2,0,0xff303943,false,1.35);
+  for(let y=20;y<Ht-12;y+=24)box(X,Z,13.35,13.35,y,y+.30,0,0xffb9d9df,false,.55);
+  box(X,Z,12.7,12.7,Ht,Ht+1.1,0,0xff8ad7e3,false,1.1);
+  box(X,Z,7.5,7.5,Ht+1.1,Ht+8,0,0xff354c61,false,1);
+  bone(X-9,0,Z+13.1,X-9,Ht-4,Z+13.1,.32,0xffb8f1fa,true);
+  bone(X+9,0,Z+13.1,X+9,Ht-4,Z+13.1,.32,0xffb8f1fa,true);
+  bone(X,Ht+8,Z,X,Ht+26,Z,.42,0xffc7d9e8,true);
+  // Porta e letreiro térreo do elevador: desenho simples, opaco e estático.
+  box(X,Z+13.18,1.55,.14,0,3.25,0,0xff36c7d7,false,.8);
+  const sign=project(X,4.15,Z+13.25);
+  if(sign&&sign[0]>-30&&sign[0]<W+30&&sign[1]>-25&&sign[1]<H+25){g.save();g.font='bold 9px Arial';g.textAlign='center';g.fillStyle='#d9fbff';g.fillText('ELEVADOR',sign[0],sign[1]);g.restore()}
+}
+function drawHill(hill){
+  const n=8,outer=[],inner=[],seed=hill.seed;
+  for(let i=0;i<n;i++){
+    const a=i*PI*2/n,rv=.88+(((seed+i*37)%19)/100),iv=.42+(((seed+i*19)%13)/100);
+    outer.push([hill.x+cos(a)*hill.r*rv,0,hill.z+sin(a)*hill.r*rv]);
+    inner.push([hill.x+cos(a)*hill.r*iv,hill.height*(.48+((seed+i*23)%17)/100),hill.z+sin(a)*hill.r*iv]);
+  }
+  const capY=hill.height*(.72+(seed%13)/100),cap=[hill.x+hill.r*.06,capY,hill.z-hill.r*.04];
+  for(let i=0;i<n;i++){
+    const j=(i+1)%n,shade=[0xff68765c,0xff748269,0xff5e6e59,0xff80866e][(seed+i*3)%4];
+    polygon3([pt(...outer[i]),pt(...outer[j]),pt(...inner[j]),pt(...inner[i])],color(shade,dayL),.7);
+    polygon3([pt(...inner[i]),pt(...inner[j]),pt(...cap)],color(shade,dayL*1.12),.7);
+  }
+}
+
 function bld(ix,iz){
   let hh=h(ix,iz),ht=10+(hh>>4)%38,X=ix*P,Z=iz*P,col=PAL[(hh>>9)%PAL.length];
   if(ht<18){
@@ -903,6 +984,15 @@ function post(x,z){
   bone(x,0,z,x,6.4,z,.26,0xff55595f,true);
   bone(x,6.4,z,x+1.3,6.55,z,.3,0xff55595f,true);
   bone(x+1.3,6.55,z,x+1.31,6.55,z,.8,night?0xfffff1b0:0xffd8dde2,true);
+  if(night){
+    const p=project(x+1.3,6.55,z);
+    if(p&&p[0]>-28&&p[0]<W+28&&p[1]>-28&&p[1]<H+28){
+      const r=cl(210/p[2],3,22),gr=g.createRadialGradient(p[0],p[1],0,p[0],p[1],r);
+      gr.addColorStop(0,'rgba(255,238,166,.70)');gr.addColorStop(.22,'rgba(255,210,102,.30)');gr.addColorStop(1,'rgba(255,190,70,0)');
+      g.fillStyle=gr;g.beginPath();g.arc(p[0],p[1],r,0,PI*2);g.fill();
+      g.fillStyle='#fff0a8';g.beginPath();g.arc(p[0],p[1],cl(18/p[2],.8,2.8),0,PI*2);g.fill();
+    }
+  }
 }
 
 function tree(x,z,hh,zn){
@@ -928,7 +1018,7 @@ function sg(ax,y1,z1,bx,y2,z2,w,col){
   let s=SG[SN++];
   let X1=ox+(ax*ofc+z1*ofs)*os,Z1=oz+(-ax*ofs+z1*ofc)*os;
   let X2=ox+(bx*ofc+z2*ofs)*os,Z2=oz+(-bx*ofs+z2*ofc)*os;
-  let Y1=y1*os,Y2=y2*os;
+  let Y1=(y1+renderGroundY)*os,Y2=(y2+renderGroundY)*os;
   let mx=(X1+X2)/2-cx,my=(Y1+Y2)/2-cy,mz=(Z1+Z2)/2-cz;
   s.a=X1;s.b=Y1;s.c=Z1;s.d=X2;s.e=Y2;s.f=Z2;s.w=w*os;s.col=col;s.k=mx*sn+mz*cs;
 }
@@ -983,12 +1073,13 @@ function drawWeaponModel(wp,x0,y0,z0,x1,y1,z1){
   }
 }
 
-function person(x,z,yaw,tc,sk,seed,height,pose,wp,ph,amp,r,aim,ci,jy,jv,role,punch){
-  let q=pt(x,0,z);if(q[2]<1.2)return;let k=f/q[2],sx=W/2+q[0]*k;if(sx<-300||sx>W+300)return;
+function person(x,z,yaw,tc,sk,seed,height,pose,wp,ph,amp,r,aim,ci,jy,jv,role,punch,groundY=0){
+  renderGroundY=groundY;
+  let q=pt(x,groundY,z);if(q[2]<1.2){renderGroundY=0;return}let k=f/q[2],sx=W/2+q[0]*k;if(sx<-300||sx>W+300){renderGroundY=0;return}
   ox=x;oz=z;ofs=sin(yaw);ofc=cos(yaw);os=height/1.8;
   let pc=PANT[seed%5],hc=HAIR[Math.floor(seed/5)%5],sh=0xff1b1b1b,gl=wp>=0?GL[wp]:0;
   let shadowPts=[];
-  for(let si=0;si<16;si++){let a=si*PI*2/16,sp=project(x+cos(a)*.62,.018,z+sin(a)*.34);if(sp)shadowPts.push([sp[0],sp[1]])}
+  for(let si=0;si<16;si++){let a=si*PI*2/16,sp=project(x+cos(a)*.62,groundY+.018,z+sin(a)*.34);if(sp)shadowPts.push([sp[0],sp[1]])}
   if(shadowPts.length===16){
     g.fillStyle='#00000055';g.beginPath();
     shadowPts.forEach((v,i)=>i?g.lineTo(v[0],v[1]):g.moveTo(v[0],v[1]));
@@ -1038,7 +1129,7 @@ function person(x,z,yaw,tc,sk,seed,height,pose,wp,ph,amp,r,aim,ci,jy,jv,role,pun
       sg(side*.25,sy-.13,zs+.40,side*.28,sy-.08,zs+.67,.09,sk);
     }
   }
-  flush();
+  flush();renderGroundY=0;
 }
 
 function localPoint(q,lx,y,lz){let s=sin(q.yaw||0),c=cos(q.yaw||0);return [q.x+lx*c+lz*s,y,q.z-lx*s+lz*c]}
@@ -1245,10 +1336,10 @@ function drawWeaponWheel(){
 function render(){
   night=sin((tod-.25)*PI*2)<-.15;dayL=night?.55:1;f=H*.95;hor=H*.42;sn=sin(camYaw);cs=cos(camYaw);
   let D=cur?11.5:8.2;
-  let baseCamY=(cur?4.2:3.2)+(cur&&cur.type===8?(cur.altitude||0):cur?0:Math.abs(sin(pph))*pamp*.02+jy*.5);
+  let baseCamY=(cur?4.2:3.2)+(cur&&cur.type===8?(cur.altitude||0):cur?0:playerElevation+Math.abs(sin(pph))*pamp*.02+jy*.5);
   // Não deixe a câmera atravessar a parede quando o jogador encosta no prédio.
   let cameraD=D;
-  if(!(cur&&cur.type===8&&(cur.altitude||0)>8)){
+  if(playerElevation<=0&&!(cur&&cur.type===8&&(cur.altitude||0)>8)){
     for(let step=1;step<=12;step++){
       const t=step/12,x=player.x-sn*D*cos(camPitch)*t,z=player.z-cs*D*cos(camPitch)*t;
       if(solid(x,z)){cameraD=0;break}
@@ -1371,7 +1462,9 @@ function render(){
       let ps=getPostPos(ix,iz);
       items.push({d:(ps.x-cx)**2+(ps.z-cz)**2,depth:cameraDepth(ps.x,ps.z,3.2),fn:()=>post(ps.x,ps.z)});
     }
-    if(zn===0&&!pk){
+    const tower=twinTowerAt(ix,iz);
+    if(zn===0&&tower){items.push({d:dd,depth:cameraDepth(tower.x,tower.z,tower.height*.52),fn:()=>drawTwinTower(tower)});}
+    else if(zn===0&&!pk){
       const seed=h(ix,iz),baseHeight=10+(seed>>4)%38,buildingHeight=baseHeight<18?5+seed%4:baseHeight+(baseHeight>30?6:0);
       items.push({d:dd,depth:cameraDepth(ix*P,iz*P,buildingHeight*.5),fn:()=>bld(ix,iz)});
     }
@@ -1382,13 +1475,17 @@ function render(){
       // Mantemos árvores arredondadas nas praças urbanas para preservar os detalhes da cidade.
     }
   }
+  for(const hill of HILL_LAYOUT){
+    const dx=hill.x-cx,dz=hill.z-cz,d2=dx*dx+dz*dz;
+    if(d2<2500*2500&&cameraDepth(hill.x,hill.z,hill.height*.45)>-500)items.push({d:d2,depth:cameraDepth(hill.x,hill.z,hill.height*.45),fn:()=>drawHill(hill)});
+  }
   cars.forEach(q=>{if((q.x-cx)**2+(q.z-cz)**2<22500)items.push({d:(q.x-cx)**2+(q.z-cz)**2,depth:cameraDepth(q.x,q.z,(q.altitude||0)+.8),fn:()=>car(q)})});
   // O jogador fica fora do sort por centro: desenha-se após o chão/objetos, com oclusão real por estruturas.
   items.sort((a,b)=>b.depth-a.depth).forEach(it=>{fogK=cl((Math.sqrt(Math.max(0,it.d))-45)/190,0,.7);it.fn()});
   fogK=0;
-  if(!cur&&!passengerCar&&hasSceneLineOfSight(player.x,player.z)){
+  if(!cur&&!passengerCar&&(playerElevation>0||hasSceneLineOfSight(player.x,player.z))){
     person(player.x,player.z,player.yaw,shirts[chr],skin[chr],chr*7+1,1.75,0,weapon,pph,pamp,
-      cl((Math.hypot(vx,vz)-3.6)/2.8,0,1),(held.fire||keyFire||shootT>.06)?1:0,ca,jy,jv,'player',punchT);
+      cl((Math.hypot(vx,vz)-3.6)/2.8,0,1),(held.fire||keyFire||shootT>.06)?1:0,ca,jy,jv,'player',punchT,playerElevation);
   }
 
   drawFlyingPlane();
@@ -1422,7 +1519,7 @@ function render(){
     window.mpRemotePlayers.forEach(rp=>{
       if(!hasSceneLineOfSight(rp.x,rp.z))return;
       if(!rp.inCarId){
-        person(rp.x,rp.z,rp.yaw||0,0xff00bcd4,skin[0],11,1.75,0,-1,rp.ph||0,rp.amp||0,0,0,0,0,0,'remote',0);
+        person(rp.x,rp.z,rp.yaw||0,0xff00bcd4,skin[0],11,1.75,0,-1,rp.ph||0,rp.amp||0,0,0,0,0,0,'remote',0,rp.elevation||0);
       }
       drawBubbleAbove(rp.x,rp.inCarId?2.6:2.15,'🌐 '+(rp.name||'Jogador'),rp.bubbleT>0?rp.bubble:'',rp.z);
     });
@@ -1596,6 +1693,7 @@ function frame(t){
       z:nz,
       yaw:Number.isFinite(p.angle)?p.angle:(Number.isFinite(p.yaw)?p.yaw:(prev?prev.yaw:0)),
       inCarId:p.inCarId!==undefined?p.inCarId:(prev?prev.inCarId:null),
+      elevation:Number.isFinite(p.elevation)?cl(p.elevation,0,190):(prev?prev.elevation:0),
       bubble:prev&&prev.bubbleT>0?prev.bubble:'',
       bubbleT:prev?Math.max(0,prev.bubbleT):0,
       ph:prev?(prev.ph+(moved?0.35:0)):0,
@@ -1612,7 +1710,8 @@ function frame(t){
       angle:player.yaw,
       name:mpNick,
       inCarId:cur?cur.id:(passengerCar?passengerCar.id:null),
-      seatRole:passengerCar?'passenger':(cur?'driver':'foot')
+      seatRole:passengerCar?'passenger':(cur?'driver':'foot'),
+      elevation:playerElevation
     });
   }
 
@@ -1850,6 +1949,7 @@ addEventListener('keydown',e=>{
     keysDown.add(k);refreshKeyInput();if(k.startsWith('arrow'))e.preventDefault();
   }
   if(k==='e')enterCar();
+  if(k==='f')useElevator();
   if(k==='j')jump();
   if(k==='q'){if(wheelOpen)closeWeaponWheel();else openWeaponWheel()}
   if(k==='i'||k==='pageup')camPitch=cl(camPitch+0.08,-0.55,1.25);
