@@ -31,9 +31,9 @@ jobs:
           mkdir -p "$RUNNER_TEMP/gtax-www"
 
           rsync -a \
-            --exclude='.git' \
-            --exclude='.github' \
-            --exclude='node_modules' \
+            --exclude='.git/' \
+            --exclude='.github/' \
+            --exclude='node_modules/' \
             --exclude='app/' \
             --exclude='platforms/' \
             --exclude='plugins/' \
@@ -50,22 +50,29 @@ jobs:
         run: |
           mkdir -p app/res
 
-          if [ -f "icon.png" ]; then
-            cp icon.png app/res/icon.png
-          elif [ -f "icone.png" ]; then
-            cp icone.png app/res/icon.png
-          else
-            echo "Ícone não encontrado. Continuando sem ícone personalizado."
-          fi
-
-          if [ -f "app/res/icon.png" ]; then
-            python3 -c '
+          python3 - <<'PY'
           from pathlib import Path
-          p = Path("app/config.xml")
-          s = p.read_text()
-          s = s.replace("</widget>", "    <icon src=\"res/icon.png\" />\n</widget>")
-          p.write_text(s)
-          '
+          import shutil
+
+          candidates = [Path("icon.png"), Path("icone.png")]
+          icon = next((p for p in candidates if p.is_file()), None)
+
+          if icon:
+              shutil.copy2(icon, "app/res/icon.png")
+              config = Path("app/config.xml")
+              content = config.read_text()
+
+              if 'src="res/icon.png"' not in content:
+                  content = content.replace(
+                      "</widget>",
+                      '    <icon src="res/icon.png" />\n</widget>'
+                  )
+
+              config.write_text(content)
+              print("Ícone GTA X configurado!")
+          else:
+              print("Aviso: ícone não encontrado. Continuando sem ícone personalizado.")
+          PY
 
       - name: Instalar plataforma Android
         run: |
