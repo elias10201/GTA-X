@@ -2260,6 +2260,7 @@ function frame(t){
     render();
   }catch(err){showErr(err)}
   requestAnimationFrame(frame);
+}
 
 // ============================================================================
 // CAMADA MULTIPLAYER ONLINE (2 SERVIDORES DE ATÉ 20 JOGADORES CADA)
@@ -2507,8 +2508,6 @@ function frame(t){
 
   updateHudBadges();
 })();
-
-}
 
 // Controles de toque, mouse e teclado
 let joyEl=$('joy'),knob=$('knob'),joyId=null,camId=null,lastX=0,lastY=0;
