@@ -1,5 +1,6 @@
 const express = require("express");
 const http = require("http");
+const fs = require("fs");
 const path = require("path");
 const cors = require("cors");
 const { Server } = require("socket.io");
@@ -7,9 +8,25 @@ const { Server } = require("socket.io");
 const app = express();
 app.use(cors());
 
-// Serve os arquivos do projeto (HTML, JS, CSS, etc.) para abrir no navegador
-app.use(express.static(__dirname));
-app.use(express.static(path.join(__dirname, "..")));
+const dirAtual = __dirname;
+const dirAcima = path.join(__dirname, "..");
+
+app.use(express.static(dirAtual));
+app.use(express.static(dirAcima));
+
+app.get("/", (req, res) => {
+  const candidatos = [
+    path.join(dirAtual, "index.html"),
+    path.join(dirAcima, "index.html")
+  ];
+
+  const htmlEncontrado = candidatos.find((p) => fs.existsSync(p));
+  if (htmlEncontrado) {
+    return res.sendFile(htmlEncontrado);
+  }
+
+  res.status(200).send("Servidor multiplayer rodando! (Nenhum index.html encontrado na pasta)");
+});
 
 const server = http.createServer(app);
 const io = new Server(server, {
