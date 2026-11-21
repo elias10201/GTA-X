@@ -1,161 +1,126 @@
+const path = require('path');
 const express = require('express');
 const http = require('http');
-const fs = require('fs');
-const path = require('path');
 const { Server } = require('socket.io');
 
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
-  cors: { origin: '*' }
+  cors: { origin: '*', methods: ['GET', 'POST'] }
 });
 
 const PORT = process.env.PORT || 3000;
-const MAX_PLAYERS = 20;
-const SERVERS = ['srv-1', 'srv-2'];
-const IDLE_TIMEOUT_MS = 120000;
+const MAX_PLAYERS_PER_SERVER = 20;
 
-const roomsState = {
-  'srv-1': {},
-  'srv-2': {}
+const SERVERS = {
+  'srv-1': { id: 'srv-1', name: 'Servidor Brasil #1 — Centro', maxPlayers: MAX_PLAYERS_PER_SERVER, players: new Map() },
+  'srv-2': { id: 'srv-2', name: 'Servidor Brasil #2 — Aeroporto & Praia', maxPlayers: MAX_PLAYERS_PER_SERVER, players: new Map() }
 };
 
-function findGameHtml() {
-  const candidates = [
-    path.join(__dirname, 'index.html'),
-    path.join(__dirname, 'public', 'index.html'),
-    path.join(__dirname, 'GTAX-CameraLivre-Voz-PTBR-Online-2x20_2.html'),
-    path.join(__dirname, 'public', 'GTAX-CameraLivre-Voz-PTBR-Online-2x20_2.html')
-  ];
-
-  for (const file of candidates) {
-    if (fs.existsSync(file)) return file;
-  }
-
-  const rootFiles = fs.readdirSync(__dirname).filter((f) => f.endsWith('.html'));
-  if (rootFiles.length > 0) return path.join(__dirname, rootFiles[0]);
-
-  const publicDir = path.join(__dirname, 'public');
-  if (fs.existsSync(publicDir)) {
-    const publicFiles = fs.readdirSync(publicDir).filter((f) => f.endsWith('.html'));
-    if (publicFiles.length > 0) return path.join(publicDir, publicFiles[0]);
-  }
-
-  return null;
-}
-
-app.use(express.static(__dirname));
-app.use(express.static(path.join(__dirname, 'public')));
-
-app.get('/health', (req, res) => {
-  res.status(200).json({
-    ok: true,
-    servers: SERVERS.map((id) => ({
-      id,
-      players: Object.keys(roomsState[id]).length,
-      maxPlayers: MAX_PLAYERS
-    }))
-  });
-});
-
-app.get('/', (req, res) => {
-  const htmlPath = findGameHtml();
-  if (!htmlPath) {
-    return res.status(404).send('Arquivo HTML do jogo não encontrado no servidor.');
-  }
-  return res.sendFile(htmlPath);
-});
-
 function getLobbyStats() {
-  return SERVERS.map((id) => ({
-    id,
-    players: Object.keys(roomsState[id]).length,
-    maxPlayers: MAX_PLAYERS
+  return Object.values(SERVERS).map(s => ({
+    id: s.id,
+    name: s.name,
+    players: s.players.size,
+    maxPlayers: s.maxPlayers
   }));
 }
 
-function broadcastLobbyStats() {
+function broadcastLobby() {
   io.emit('lobby_stats', getLobbyStats());
 }
 
-io.on('connection', (socket) => {
-  const rawServerId = String(socket.handshake.query.serverId || 'srv-1');
-  const serverId = SERVERS.includes(rawServerId) ? rawServerId : 'srv-1';
-  const rawNick = String(socket.handshake.query.nick || '').trim();
-  const nick = rawNick.slice(0, 18) || `Jogador_${socket.id.slice(0, 4)}`;
+function broadcastRoomPlayers(serverId) {
+  const srv = SERVERS[serverId];
+  if (!srv) return;
+  io.to(serverId).emit('players_snapshot', Array.from(srv.players.values()));
+}
 
-  const currentCount = Object.keys(roomsState[serverId]).length;
-  if (currentCount >= MAX_PLAYERS) {
-    socket.emit('server_full', { serverId, maxPlayers: MAX_PLAYERS });
+app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static(__dirname));
+
+app.get('/health', (_req, res) => {
+  res.json({ ok: true, servers: getLobbyStats() });
+});
+
+io.on('connection', (socket) => {
+  const qServerId = String((socket.handshake.query && socket.handshake.query.serverId) || 'srv-1');
+  const serverId = SERVERS[qServerId] ? qServerId : 'srv-1';
+  const srv = SERVERS[serverId];
+
+  const rawNick = String((socket.handshake.query && socket.handshake.query.nick) || '').trim();
+  const nick = (rawNick || ('Player_' + socket.id.slice(0, 4))).slice(0, 16);
+
+  if (srv.players.size >= srv.maxPlayers) {
+    socket.emit('server_full', {
+      serverId,
+      maxPlayers: srv.maxPlayers,
+      message: `O ${srv.name} atingiu o limite de ${srv.maxPlayers} jogadores.`
+    });
     socket.disconnect(true);
     return;
   }
 
   socket.join(serverId);
-  roomsState[serverId][socket.id] = {
+  srv.players.set(socket.id, {
     id: socket.id,
-    serverId,
     name: nick,
-    x: 0,
-    z: 0,
+    x: 32,
+    z: 32,
     yaw: 0,
-    hp: 100,
-    weapon: 'fists',
+    hp: 200,
+    weapon: 0,
     inCar: false,
-    lastSeen: Date.now()
-  };
+    updatedAt: Date.now()
+  });
 
   socket.emit('lobby_stats', getLobbyStats());
-  broadcastLobbyStats();
+  broadcastLobby();
+  broadcastRoomPlayers(serverId);
 
-  socket.on('player_state', (data = {}) => {
-    const player = roomsState[serverId]?.[socket.id];
-    if (!player) return;
+  socket.on('player_state', (data) => {
+    if (!data || typeof data !== 'object') return;
+    const current = srv.players.get(socket.id);
+    if (!current) return;
 
-    player.name = typeof data.name === 'string' && data.name.trim()
-      ? data.name.trim().slice(0, 18)
-      : player.name;
-    player.x = Number.isFinite(data.x) ? data.x : player.x;
-    player.z = Number.isFinite(data.z) ? data.z : player.z;
-    player.yaw = Number.isFinite(data.yaw) ? data.yaw : player.yaw;
-    player.hp = Number.isFinite(data.hp) ? Math.max(0, Math.min(100, data.hp)) : player.hp;
-    player.weapon = typeof data.weapon === 'string' ? data.weapon.slice(0, 24) : player.weapon;
-    player.inCar = Boolean(data.inCar);
-    player.lastSeen = Date.now();
+    const cleanName = String(data.name || current.name || nick).trim().slice(0, 16);
+    current.name = cleanName || current.name;
+    if (Number.isFinite(Number(data.x))) current.x = Number(data.x);
+    if (Number.isFinite(Number(data.z))) current.z = Number(data.z);
+    if (Number.isFinite(Number(data.yaw))) current.yaw = Number(data.yaw);
+    if (Number.isFinite(Number(data.hp))) current.hp = Math.max(0, Math.min(200, Number(data.hp)));
+    if (Number.isFinite(Number(data.weapon))) current.weapon = Number(data.weapon);
+    current.inCar = Boolean(data.inCar);
+    current.updatedAt = Date.now();
+  });
 
-    const others = {};
-    for (const [id, p] of Object.entries(roomsState[serverId])) {
-      if (id !== socket.id) {
-        others[id] = p;
-      }
-    }
-    socket.to(serverId).emit('players_snapshot', roomsState[serverId]);
-    socket.emit('players_snapshot', others);
+  socket.on('chat_message', (msg) => {
+    if (!msg || typeof msg !== 'object') return;
+    const text = String(msg.text || '').trim().slice(0, 120);
+    if (!text) return;
+    const playerInfo = srv.players.get(socket.id);
+    const senderName = String((playerInfo && playerInfo.name) || msg.name || nick).trim().slice(0, 16) || 'Player';
+    io.to(serverId).emit('chat_message', {
+      id: socket.id,
+      serverId,
+      name: senderName,
+      text,
+      ts: Date.now()
+    });
   });
 
   socket.on('disconnect', () => {
-    if (roomsState[serverId]?.[socket.id]) {
-      delete roomsState[serverId][socket.id];
-      socket.to(serverId).emit('player_left', { id: socket.id, serverId });
-      broadcastLobbyStats();
-    }
+    srv.players.delete(socket.id);
+    io.to(serverId).emit('player_left', socket.id);
+    broadcastLobby();
+    broadcastRoomPlayers(serverId);
   });
 });
 
 setInterval(() => {
-  const now = Date.now();
-  for (const serverId of SERVERS) {
-    for (const [id, p] of Object.entries(roomsState[serverId])) {
-      if (now - p.lastSeen > IDLE_TIMEOUT_MS) {
-        delete roomsState[serverId][id];
-        io.to(serverId).emit('player_left', { id, serverId });
-        io.sockets.sockets.get(id)?.disconnect(true);
-      }
-    }
-  }
-  broadcastLobbyStats();
-}, 10000);
+  Object.keys(SERVERS).forEach(broadcastRoomPlayers);
+}, 100);
 
 server.listen(PORT, () => {
-  console.log(`GTA-X Multiplayer rodando na porta ${PORT}`);
+  console.log(`GTA X Multiplayer Server rodando na porta ${PORT}`);
 });
