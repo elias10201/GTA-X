@@ -326,6 +326,21 @@ function psolid(x,z){
   return solid(x,z);
 }
 
+// Colisão vertical do avião com prédios: considera a altura real da construção.
+function planeBuildingCollision(x,z,altitude){
+  const ix0=Math.round(x/P),iz0=Math.round(z/P),planeRadius=2.6;
+  for(let di=-1;di<=1;di++)for(let dz=-1;dz<=1;dz++){
+    const ix=ix0+di,iz=iz0+dz;
+    if(zone(ix,iz)!==0||h(ix,iz)%6===0)continue;
+    const seed=h(ix,iz),base=10+(seed>>4)%38;
+    const height=base<18?5+seed%4:base+(base>30?6:0);
+    if(Math.abs(x-ix*P)<15.6+planeRadius&&Math.abs(z-iz*P)<15.6+planeRadius&&altitude<height+1.5&&altitude+1.1>0){
+      return {hit:true,x:ix*P,z:iz*P,height};
+    }
+  }
+  return {hit:false};
+}
+
 function waterDepth(){return 0}
 
 function resolveCarCircleCollision(x,z,rad,ignoreCar){
@@ -627,7 +642,7 @@ function drive(dt){
   // Em avião, joystick para cima também fornece potência; no solo isso permite iniciar a corrida de decolagem.
   let th=(held.up||held.run||keyUp||keyRun||(isPlane&&joy.y<-.16))?1:0,st=joy.x;
   if(held.brake){
-    // Freio progressivo: primeiro para o veículo; mantendo pressionado, engata a marcha ré.
+    // Freia até parar; mantendo pressionado, engata a marcha ré progressivamente.
     if(cur.spd>0.8)cur.spd=Math.max(0,cur.spd-38*dt);
     else cur.spd=Math.max(-9,cur.spd-14*dt);
   }
@@ -657,8 +672,10 @@ function drive(dt){
   cur.yaw+=steer*Math.min(1,Math.abs(cur.spd)/6)*turnRate*dt*(cur.spd>=0?1:-1);
   let nx=cur.x+sin(cur.yaw)*cur.spd*dt,nz=cur.z+cos(cur.yaw)*cur.spd*dt;
   let airborne=isPlane&&(cur.altitude||0)>1.2;
+  const planeCrash=isPlane?planeBuildingCollision(nx,nz,cur.altitude||0):{hit:false};
   let carCrash=airborne?{hit:false}:resolveCarCircleCollision(nx,nz,(CT[cur.type]?CT[cur.type][0]:1.0)+0.45,cur);
-  if(!airborne&&(solid(nx,nz)||carCrash.hit)){
+  if((isPlane&&planeCrash.hit)||(!airborne&&(solid(nx,nz)||carCrash.hit))){
+    if(isPlane){cur.altitude=Math.max(0,(cur.altitude||0)-Math.max(3,Math.abs(cur.spd)*.22));cur.pitch=-.18;cur.spd*=.48}
     if(isPlane&&cur.altitude<1.2)cur.altitude=0;
     if(Math.abs(cur.spd)>3)sfx.crash(0,Math.min(1,Math.abs(cur.spd)/16));
     if(Math.abs(cur.spd)>7)hurt(Math.abs(cur.spd)*.4);
@@ -753,7 +770,7 @@ function update(dt){
       playerStepDist=0;
     }
 
-    // A câmera acompanha a orientação do personagem quando não está sendo controlada pelo jogador.
+    // Ao terminar de olhar livremente, a câmera volta suavemente para trás do personagem.
     if(camManualT<=0&&v>.12){
       let followDelta=Math.atan2(sin(player.yaw-camYaw),cos(player.yaw-camYaw));
       camYaw+=followDelta*Math.min(1,2.4*dt);
@@ -1125,9 +1142,19 @@ function car(q){
   if(q.type===8){drawPilotPlane(q);return}
   if(sp){let rx=(t[0]+Math.abs(sin((q.yaw||0)-camYaw))*(t[1]-t[0]))*1.15*sp[3];g.fillStyle='#00000066';g.beginPath();g.ellipse(sp[0],sp[1],rx,rx*.24,0,0,7);g.fill()}
   for(let sx of [-1,1])for(let sz of [-1,1]){let lx=sx*(t[0]+.05),lz=sz*t[1]*.62;box(q.x+lx*c+lz*s,q.z-lx*s+lz*c,.16,.5,0,.62,q.yaw||0,0xff15171a,false,1.2)}
-  ellipseBody(q,t[0],t[1],.3,t[2],q.col||CC[0]);
-  box(q.x+s*t[5],q.z+c*t[5],t[3],t[4],t[2],t[6],q.yaw||0,0xff5d7f92,false,1.5);
+  // Carroceria em volumes facetados, com capô, porta-malas e cabine separados.
+  ellipseBody(q,t[0],t[1],.28,t[2],q.col||CC[0]);
+  box(q.x,q.z,.91,t[1]*.91,.30,.56,q.yaw||0,q.col||CC[0],false,1.25);
+  box(q.x-s*.0-s*.0+sin(q.yaw||0)*t[5],q.z+cos(q.yaw||0)*t[5],t[3],t[4],t[2],t[6],q.yaw||0,0xff526b7b,false,1.5);
+  // Para-choques dianteiro/traseiro e faixas laterais dão mais leitura de carro real.
+  box(q.x+sin(q.yaw||0)*(t[1]+.06),q.z+cos(q.yaw||0)*(t[1]+.06),t[0]*.88,.10,.34,.58,q.yaw||0,0xffaeb6bb,false,.8);
+  box(q.x-sin(q.yaw||0)*(t[1]+.06),q.z-cos(q.yaw||0)*(t[1]+.06),t[0]*.88,.10,.34,.58,q.yaw||0,0xff687078,false,.8);
   let cameraSide=(cx-q.x)*s+(cz-q.z)*c;
+  // Janelas laterais e para-brisa em painéis escuros, mantendo o estilo 2D/3D do jogo.
+  for(let side of [-1,1]){
+    const wx=q.x+side*(t[0]+.012)*c+sin(q.yaw||0)*t[5],wz=q.z-side*(t[0]+.012)*s+cos(q.yaw||0)*t[5];
+    box(wx,wz,.035,t[4]*.72,t[2]+.10,t[6]-.08,q.yaw||0,0xff263b4a,false,.55);
+  }
   function lamp(lx,lz,y0,y1,col){let x1=q.x+lx*c+lz*s,z1=q.z-lx*s+lz*c,x2=q.x+(lx+.34)*c+lz*s,z2=q.z-(lx+.34)*s+lz*c;polygon3([pt(x1,y0,z1),pt(x2,y0,z2),pt(x2,y1,z2),pt(x1,y1,z1)],color(col,glow?1:dayL),1.1)}
   glow=true;
   for(let i of [-1,1]){let lx=i*(t[0]*.7-.17);if(cameraSide>=0)lamp(lx,t[1]+.012,.52,.78,night?0xfffff4b0:0xffeeeeee);else lamp(lx,-t[1]-.012,.52,.78,0xffd32f2f)}
@@ -1334,7 +1361,7 @@ function render(){
 
   let bx=Math.round(cx/P),bz=Math.round(cz/P);
   for(let i=-3;i<=3;i++)for(let j=-3;j<=3;j++){
-    let X=(bx+i)*P,Z=(bz+j)*P;if((X-cx)*sn+(Z-cz)*cs<-30)continue;
+    let X=(bx+i)*P,Z=(bz+j)*P;
     fogK=cl((Math.hypot(X-cx,Z-cz)-50)/190,0,.7);
     let zn=zone(bx+i,bz+j);
     if(zn){polygon3([pt(X-32,0,Z-32),pt(X+32,0,Z-32),pt(X+32,0,Z+32),pt(X-32,0,Z+32)],color(0xffe0cc92,dayL),0);continue}
@@ -1367,7 +1394,7 @@ function render(){
   // Profundidade real na câmera: inclui a altura do objeto, indispensável ao olhar de cima.
   const cameraDepth=(x,z,y=0)=>(x-cx)*sn*cos(camPitch)+(z-cz)*cs*cos(camPitch)+(y-cy)*sin(camPitch);
   for(let i=-3;i<=3;i++)for(let j=-3;j<=3;j++){
-    let ix=bx+i,iz=bz+j;if((ix*P-cx)*sn+(iz*P-cz)*cs<=-25)continue;
+    let ix=bx+i,iz=bz+j;
     let zn=zone(ix,iz),dd=(ix*P-cx)**2+(iz*P-cz)**2,pk=h(ix,iz)%6===0;
     if(zn===0){
       let ps=getPostPos(ix,iz);
@@ -1389,7 +1416,7 @@ function render(){
   const aerialView=!!(cur&&cur.type===8&&(cur.altitude||0)>6);
   items.sort((a,b)=>b.depth-a.depth).forEach(it=>{const dist=Math.sqrt(Math.max(0,it.d));fogK=aerialView?cl((dist-95)/430,0,.24):cl((dist-45)/190,0,.7);it.fn()});
   fogK=0;
-  if(!cur&&!passengerCar&&hasSceneLineOfSight(player.x,player.z)){
+  if(!cur&&!passengerCar){
     person(player.x,player.z,player.yaw,shirts[chr],skin[chr],chr*7+1,1.75,0,weapon,pph,pamp,
       cl((Math.hypot(vx,vz)-3.6)/2.8,0,1),(held.fire||keyFire||shootT>.06)?1:0,ca,jy,jv,'player',punchT);
   }
@@ -1423,7 +1450,6 @@ function render(){
   // Jogadores remotos: se estiverem em carro (inCarId), só o carro é desenhado e o nome fica sobre o carro
   if(window.mpRemotePlayers&&window.mpRemotePlayers.size){
     window.mpRemotePlayers.forEach(rp=>{
-      if(!hasSceneLineOfSight(rp.x,rp.z))return;
       if(!rp.inCarId){
         person(rp.x,rp.z,rp.yaw||0,0xff00bcd4,skin[0],11,1.75,0,-1,rp.ph||0,rp.amp||0,0,0,0,0,0,'remote',0);
       }
