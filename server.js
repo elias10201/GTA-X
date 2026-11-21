@@ -1,10 +1,15 @@
 const express = require("express");
 const http = require("http");
+const path = require("path");
 const cors = require("cors");
 const { Server } = require("socket.io");
 
 const app = express();
 app.use(cors());
+
+// Serve os arquivos do projeto (HTML, JS, CSS, etc.) para abrir no navegador
+app.use(express.static(__dirname));
+app.use(express.static(path.join(__dirname, "..")));
 
 const server = http.createServer(app);
 const io = new Server(server, {
@@ -12,10 +17,6 @@ const io = new Server(server, {
     origin: "*",
     methods: ["GET", "POST"]
   }
-});
-
-app.get("/", (req, res) => {
-  res.status(200).send("Servidor multiplayer a correr!");
 });
 
 // Sem NPCs: apenas jogadores e carros estacionados
@@ -110,5 +111,5 @@ io.on("connection", (socket) => {
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
-  console.log("Servidor a correr na porta " + PORT);
+  console.log("Servidor rodando na porta " + PORT);
 });
