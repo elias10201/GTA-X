@@ -8,24 +8,38 @@ const { Server } = require("socket.io");
 const app = express();
 app.use(cors());
 
-const dirAtual = __dirname;
-const dirAcima = path.join(__dirname, "..");
+const dirs = [
+  __dirname,
+  path.join(__dirname, ".."),
+  path.join(__dirname, "public"),
+  path.join(__dirname, "client"),
+  path.join(__dirname, "www")
+];
 
-app.use(express.static(dirAtual));
-app.use(express.static(dirAcima));
+for (const d of dirs) {
+  if (fs.existsSync(d)) {
+    app.use(express.static(d));
+  }
+}
+
+function encontrarHtml() {
+  for (const d of dirs) {
+    if (!fs.existsSync(d)) continue;
+    const files = fs.readdirSync(d);
+    const indexExato = files.find((f) => f.toLowerCase() === "index.html");
+    if (indexExato) return path.join(d, indexExato);
+    const qualquerHtml = files.find((f) => f.toLowerCase().endsWith(".html"));
+    if (qualquerHtml) return path.join(d, qualquerHtml);
+  }
+  return null;
+}
 
 app.get("/", (req, res) => {
-  const candidatos = [
-    path.join(dirAtual, "index.html"),
-    path.join(dirAcima, "index.html")
-  ];
-
-  const htmlEncontrado = candidatos.find((p) => fs.existsSync(p));
-  if (htmlEncontrado) {
-    return res.sendFile(htmlEncontrado);
+  const htmlFile = encontrarHtml();
+  if (htmlFile) {
+    return res.sendFile(htmlFile);
   }
-
-  res.status(200).send("Servidor multiplayer rodando! (Nenhum index.html encontrado na pasta)");
+  res.status(200).send("Servidor multiplayer rodando! Nenhum arquivo .html encontrado.");
 });
 
 const server = http.createServer(app);
