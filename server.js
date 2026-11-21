@@ -1,157 +1,89 @@
-const fs = require('fs');
-const path = require('path');
-const http = require('http');
-const express = require('express');
-const { Server } = require('socket.io');
+// Sem NPCs: apenas jogadores e carros estacionados
+const players = {};
 
-const app = express();
-const server = http.createServer(app);
-const io = new Server(server, {
-  cors: { origin: '*', methods: ['GET', 'POST'] }
-});
-
-const PORT = process.env.PORT || 3000;
-const MAX_PLAYERS_PER_SERVER = 20;
-
-const SERVERS = {
-  'srv-1': {
-    id: 'srv-1',
-    name: 'Servidor Brasil #1 — Centro',
-    maxPlayers: MAX_PLAYERS_PER_SERVER,
-    players: new Map()
-  },
-  'srv-2': {
-    id: 'srv-2',
-    name: 'Servidor Brasil #2 — Aeroporto & Praia',
-    maxPlayers: MAX_PLAYERS_PER_SERVER,
-    players: new Map()
-  }
+const cars = {
+  carro_1: { id: "carro_1", x: 260, y: 180, angle: 0, speed: 0, driverId: null },
+  carro_2: { id: "carro_2", x: 540, y: 220, angle: 1.57, speed: 0, driverId: null },
+  carro_3: { id: "carro_3", x: 380, y: 460, angle: 3.14, speed: 0, driverId: null }
 };
 
-function findIndexFile() {
-  const dirs = [__dirname, path.join(__dirname, 'public'), path.join(__dirname, '..')];
-  const names = ['index.html', 'Index.html', 'GTAX-CameraLivre-Voz-PTBR-Online-2x20.html'];
-  for (const dir of dirs) {
-    for (const name of names) {
-      const full = path.join(dir, name);
-      try {
-        if (fs.existsSync(full) && fs.statSync(full).isFile()) return full;
-      } catch (_) {}
-    }
-  }
-  return null;
-}
-
-app.use(express.static(__dirname));
-app.use(express.static(path.join(__dirname, 'public')));
-
-app.get('/', (_req, res) => {
-  const filePath = findIndexFile();
-  if (filePath) {
-    return res.sendFile(filePath, (err) => {
-      if (err && !res.headersSent) {
-        res.status(500).send('Erro ao enviar o index.html.');
-      }
-    });
-  }
-  res.status(404).send('index.html nao encontrado na raiz do projeto.');
-});
-
-app.get('/health', (_req, res) => {
-  res.json({
-    ok: true,
-    servers: Object.values(SERVERS).map(s => ({
-      id: s.id,
-      name: s.name,
-      players: s.players.size,
-      maxPlayers: s.maxPlayers
-    }))
-  });
-});
-
-function broadcastLobbyStats() {
-  const stats = Object.values(SERVERS).map(s => ({
-    id: s.id,
-    name: s.name,
-    players: s.players.size,
-    maxPlayers: s.maxPlayers
-  }));
-  io.emit('lobby_stats', stats);
-}
-
-function broadcastSnapshot(serverId) {
-  const srv = SERVERS[serverId];
-  if (!srv) return;
-  io.to(serverId).emit('players_snapshot', Array.from(srv.players.values()));
-}
-
-io.on('connection', (socket) => {
-  const reqServerId = String((socket.handshake.query && socket.handshake.query.serverId) || 'srv-1');
-  const serverId = SERVERS[reqServerId] ? reqServerId : 'srv-1';
-  const srv = SERVERS[serverId];
-  const rawNick = String((socket.handshake.query && socket.handshake.query.nick) || '').trim().slice(0, 16);
-  const nick = rawNick || ('Player_' + socket.id.slice(0, 4));
-
-  if (srv.players.size >= MAX_PLAYERS_PER_SERVER) {
-    socket.emit('server_full', {
-      serverId,
-      maxPlayers: MAX_PLAYERS_PER_SERVER,
-      message: `O ${srv.name} está cheio (${MAX_PLAYERS_PER_SERVER}/${MAX_PLAYERS_PER_SERVER} jogadores).`
-    });
-    broadcastLobbyStats();
-    socket.disconnect(true);
-    return;
-  }
-
-  socket.join(serverId);
-  srv.players.set(socket.id, {
+io.on("connection", (socket) => {
+  players[socket.id] = {
     id: socket.id,
-    serverId,
-    name: nick,
-    x: 32,
-    z: 32,
-    yaw: 0,
-    hp: 200,
-    weapon: 0,
-    inCar: false,
-    updatedAt: Date.now()
+    x: 150,
+    y: 150,
+    angle: 0,
+    inCarId: null
+  };
+
+  socket.emit("init", { myId: socket.id, players, cars });
+  socket.broadcast.emit("player:join", players[socket.id]);
+
+  socket.on("player:move", (data) => {
+    const p = players[socket.id];
+    if (!p || p.inCarId) return;
+    p.x = data.x;
+    p.y = data.y;
+    p.angle = data.angle;
+    socket.broadcast.emit("player:move", p);
   });
 
-  broadcastLobbyStats();
-  broadcastSnapshot(serverId);
+  socket.on("car:toggle", () => {
+    const p = players[socket.id];
+    if (!p) return;
 
-  socket.on('player_state', (data) => {
-    if (!data || typeof data !== 'object') return;
-    const targetSrvId = SERVERS[data.serverId] ? data.serverId : serverId;
-    if (targetSrvId !== serverId) return;
-    const current = srv.players.get(socket.id);
-    if (!current) return;
+    if (p.inCarId) {
+      const car = cars[p.inCarId];
+      if (car && car.driverId === socket.id) {
+        car.driverId = null;
+        car.speed = 0;
+        p.x = car.x + 32;
+        p.y = car.y;
+        p.inCarId = null;
+        io.emit("car:update", car);
+        io.emit("player:update", p);
+      }
+      return;
+    }
 
-    const cleanName = String(data.name || current.name || 'Jogador').trim().slice(0, 16);
-    current.name = cleanName || current.name;
-    current.x = Number.isFinite(Number(data.x)) ? Number(data.x) : current.x;
-    current.z = Number.isFinite(Number(data.z)) ? Number(data.z) : current.z;
-    current.yaw = Number.isFinite(Number(data.yaw)) ? Number(data.yaw) : current.yaw;
-    current.hp = Number.isFinite(Number(data.hp)) ? Number(data.hp) : current.hp;
-    current.weapon = Number.isFinite(Number(data.weapon)) ? Number(data.weapon) : current.weapon;
-    current.inCar = Boolean(data.inCar);
-    current.updatedAt = Date.now();
-  });
+    const freeCar = Object.values(cars).find(
+      (c) => c.driverId === null && Math.hypot(c.x - p.x, c.y - p.y) < 60
+    );
 
-  socket.on('disconnect', () => {
-    if (srv.players.has(socket.id)) {
-      srv.players.delete(socket.id);
-      io.to(serverId).emit('player_left', socket.id);
-      broadcastLobbyStats();
-      broadcastSnapshot(serverId);
+    if (freeCar) {
+      freeCar.driverId = socket.id;
+      p.inCarId = freeCar.id;
+      p.x = freeCar.x;
+      p.y = freeCar.y;
+      io.emit("car:update", freeCar);
+      io.emit("player:update", p);
     }
   });
-});
 
-setInterval(() => {
-  Object.keys(SERVERS).forEach(broadcastSnapshot);
-}, 100);
+  socket.on("car:drive", (data) => {
+    const p = players[socket.id];
+    const car = p && p.inCarId ? cars[p.inCarId] : null;
+    if (!car || car.driverId !== socket.id) return;
 
-server.listen(PORT, () => {
-  console.log(`GTA X Online (2 servidores x 20 players) rodando na porta ${PORT}`);
+    car.x = data.x;
+    car.y = data.y;
+    car.angle = data.angle;
+    car.speed = data.speed;
+    p.x = data.x;
+    p.y = data.y;
+    p.angle = data.angle;
+
+    socket.broadcast.emit("car:drive", car);
+  });
+
+  socket.on("disconnect", () => {
+    const p = players[socket.id];
+    if (p && p.inCarId && cars[p.inCarId] && cars[p.inCarId].driverId === socket.id) {
+      cars[p.inCarId].driverId = null;
+      cars[p.inCarId].speed = 0;
+      io.emit("car:update", cars[p.inCarId]);
+    }
+    delete players[socket.id];
+    socket.broadcast.emit("player:leave", socket.id);
+  });
 });
