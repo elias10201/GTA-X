@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <meta name="theme-color" content="#10151a">
-<title>GTA X — Multiplayer</title>
+<title>GTA X — Câmera Livre</title>
 <style>
 *{box-sizing:border-box}
 html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#161b20;color:#fff;font-family:Arial,sans-serif;touch-action:none;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
@@ -52,8 +52,8 @@ canvas{display:block;width:100vw;height:100vh}
 
 <div id="ui">
   <div id="stats">GTA X<br><span id="cash">$500</span> · <span id="name">Rafa</span><br><span id="weapon">Pistola 12/12</span></div>
-  <div id="mission">MULTIPLAYER LIVRE (SEM NPCs)</div>
-  <div id="clock">06:30</div>
+  <div id="mission">MISSÃO: Primeiro Assalto</div>
+  <div id="clock">16:28</div>
   <div id="stars">☆☆☆☆☆</div>
   <div id="msg"></div>
   <div id="tip">Arraste o controle esquerdo para andar · Arraste a direita para girar a câmera</div>
@@ -159,6 +159,19 @@ const CT=[
   [.98,2.25,.95,.84,1.15,-.18,1.58]
 ];
 
+const MT=['Primeiro Assalto','Fuga Noturna','Guerra de Gangues','O Grande Golpe','Caçada Final','Entrega Perigosa','Rei da Cidade'];
+const MO=['Vá até o ponto amarelo','Roube um carro','Elimine a gangue','Escape da polícia','Leve o carro até o ponto'];
+const MR=[500,1000,1500,2500,5000,3500,8000];
+const MS=[
+  [[0,2,0,0],[1,0,0,0],[0,-3,2,0]],
+  [[2,3,3,1],[3,0,0,0],[0,0,-3,0]],
+  [[0,-4,-2,0],[2,5,-4,-2],[1,0,0,0],[0,3,3,0]],
+  [[0,4,4,0],[2,6,4,5],[3,0,0,0],[1,0,0,0],[0,-4,3,0]],
+  [[2,8,-3,-3],[3,0,0,0],[0,0,0,0]],
+  [[1,0,0,0],[4,-5,-2,0],[2,4,-5,-5],[4,0,0,0]],
+  [[2,5,5,5],[3,0,0,0],[2,6,-4,4],[3,0,0,0],[0,0,0,0]]
+];
+
 const wn=['Pistola','SMG','Escopeta','Fuzil','Sniper'];
 const ammo=[12,30,6,30,5],maxAmmo=[12,30,6,30,5];
 const rate=[.35,.09,.8,.13,1.2],dmg=[26,11,18,22,120],range=[45,38,22,60,110];
@@ -175,14 +188,14 @@ const OUTLINE_COL='#0b0e13';
 
 let player={x:32,z:32,yaw:0};
 let chars=[{x:32,z:32,yaw:0},{x:96,z:32,yaw:0},{x:-32,z:96,yaw:0}];
-let hp=[200,200,200],chr=0,weapon=0,money=500,wanted=0;
+let hp=[200,200,200],chr=0,weapon=0,money=500,wanted=0,mi=0,ms=0,tx=0,tz=0,hasT=false;
 let cur=null,camYaw=0,camPitch=0.05,crouch=false,prone=false,paused=false;
 let joy={x:0,y:0},held={},msg='',msgT=0,shootT=0,punchT=0,anim=0,pph=0,pamp=0;
-let tod=.27,weather=0,wTime=30,flash=0,steer=0,dayL=1,night=false;
+let tod=.68,weather=0,wTime=30,flash=0,steer=0,dayL=1,night=false;
 let vx=0,vz=0,hudT=0,jy=0,jv=0,landT=0,ca=0,sink=0;
 let wheelOpen=false,wheelHover=-1,wheelPointerId=null;
 
-// Sem NPCs: ents fica vazio e os carros começam estacionados
+// Sem NPCs: ents fica vazio; carros têm IDs fixos para sincronizar entre jogadores
 let ents=[];
 let cars=[
   {id:'carro_1',x:24,z:50,yaw:0,spd:0,col:CC[0],type:0,driverId:null},
@@ -396,6 +409,28 @@ const sfx={
 function say(t){msg=t;msgT=3.5}
 function hurt(v){hp[chr]-=cur?v*.5:v;sfx.hurt()}
 
+function stage(){
+  let s=MS[mi][ms];hasT=false;
+  if(s[0]===0||s[0]===4){tx=s[1]*P+32;tz=s[2]*P+32;hasT=true}
+  else if(s[0]===2){tx=s[2]*P+32;tz=s[3]*P+32;hasT=true}
+}
+
+function mission(){
+  let s=MS[mi][ms],ok=false;
+  if(s[0]===0)ok=(tx-player.x)**2+(tz-player.z)**2<81;
+  else if(s[0]===1)ok=!!cur;
+  else if(s[0]===4)ok=!!cur&&(tx-player.x)**2+(tz-player.z)**2<100;
+  else if(s[0]===2)ok=true;
+  else ok=wanted===0;
+  if(!ok)return;
+  ms++;
+  if(ms>=MS[mi].length){
+    money+=MR[mi];hp[chr]=200;
+    let t='Missão cumprida! +$'+MR[mi];
+    mi=(mi+1)%7;ms=0;stage();syncControls();say(t);
+  }else stage();
+}
+
 function shoot(){
   if(shootT>0)return;
   if(weapon<0){
@@ -428,8 +463,12 @@ function enterCar(){
     return;
   }
   let best=null,bd=18;
-  for(let c of cars){let d=Math.hypot(c.x-player.x,c.z-player.z);if(d<bd){bd=d;best=c}}
-  if(!best){say('Nenhum carro perto');return}
+  for(let c of cars){
+    if(c.driverId&&window.mpSocket&&c.driverId!==window.mpSocket.id)continue;
+    let d=Math.hypot(c.x-player.x,c.z-player.z);
+    if(d<bd){bd=d;best=c}
+  }
+  if(!best){say('Nenhum carro livre perto');return}
   cur=best;cur.driverId=window.mpSocket?window.mpSocket.id:'local';syncControls();sfx.door();say(CN[best.type]);
   if(window.mpSocket&&window.mpSocket.connected)window.mpSocket.emit('car:toggle');
 }
@@ -571,6 +610,7 @@ function update(dt){
 
   for(let p of particles){p.life-=dt;p.x+=p.vx*dt;p.z+=p.vz*dt;p.y+=p.vy*dt;p.vy-=12*dt;if(p.y<.02){p.y=.02;p.vy=0;p.vx*=.7;p.vz*=.7}}
   particles=particles.filter(p=>p.life>0);
+  mission();
 
   if((hudT+=dt)<.12)return;hudT=0;
   $('cash').textContent='$'+Math.floor(money);
@@ -580,6 +620,7 @@ function update(dt){
   let hr=tod*24;
   $('clock').textContent=String(Math.floor(hr)).padStart(2,'0')+':'+String(Math.floor(hr%1*60)).padStart(2,'0');
   $('hp').style.width=cl(hp[chr]/200*100,0,100)+'%';
+  $('mission').textContent='MISSÃO: '+MT[mi]+' — '+MO[MS[mi][ms][0]];
   $('msg').textContent=msgT>0?msg:'';
 }
 
@@ -869,6 +910,20 @@ function drawAirportGround(){
   const x=AIRPORT_X,z=AIRPORT_Z;
   const corners=[[x-155,0.04,z-18],[x+155,0.04,z-18],[x+155,0.04,z+18],[x-155,0.04,z+18]].map(v=>pt(v[0],v[1],v[2]));
   polygon3(corners,'#30353a',2);
+  g.save();g.strokeStyle='#f5f1d5';g.lineWidth=2;g.setLineDash([12,10]);
+  const a=project(x-135,.06,z),b=project(x+135,.06,z);
+  if(a&&b){g.beginPath();g.moveTo(a[0],a[1]);g.lineTo(b[0],b[1]);g.stroke()}
+  g.setLineDash([]);g.lineWidth=3;
+  for(const end of [-1,1]){const q1=project(x+end*143,.06,z-12),q2=project(x+end*143,.06,z+12);if(q1&&q2){g.beginPath();g.moveTo(q1[0],q1[1]);g.lineTo(q2[0],q2[1]);g.stroke()}}
+  g.restore();
+}
+
+function drawFlyingPlane(){
+  const t=anim*.025,px=AIRPORT_X+Math.sin(t)*430,pz=AIRPORT_Z+Math.cos(t)*340,alt=48+Math.sin(t*2)*3;
+  const p=project(px,alt,pz);if(!p||p[0]<-80||p[0]>W+80||p[1]<-80||p[1]>H+80)return;
+  const size=cl(210/p[2],3,17),yaw=Math.atan2(Math.cos(t),-Math.sin(t))-camYaw;
+  g.save();g.translate(p[0],p[1]);g.rotate(yaw);g.fillStyle='#e6edf4';g.strokeStyle='#111820';g.lineWidth=Math.max(1,size*.12);
+  g.beginPath();g.moveTo(0,-size*.95);g.lineTo(size*.16,-size*.12);g.lineTo(size*.88,size*.42);g.lineTo(size*.86,size*.58);g.lineTo(size*.14,size*.32);g.lineTo(size*.1,size*.82);g.lineTo(size*.34,size*.98);g.lineTo(size*.32,size*1.08);g.lineTo(0,size*.96);g.lineTo(-size*.32,size*1.08);g.lineTo(-size*.34,size*.98);g.lineTo(-size*.1,size*.82);g.lineTo(-size*.14,size*.32);g.lineTo(-size*.86,size*.58);g.lineTo(-size*.88,size*.42);g.lineTo(-size*.16,-size*.12);g.closePath();g.fill();g.stroke();g.restore();
 }
 
 function drawWeaponWheel(){
@@ -892,6 +947,12 @@ function drawWeaponWheel(){
     g.fillText(sub,txw,tyw+9);
   }
   g.beginPath();g.arc(cxw,cyw,rIn-4,0,PI*2);g.fillStyle='rgba(15,20,28,0.92)';g.fill();
+  g.lineWidth=2;g.strokeStyle='#ffd600';g.stroke();
+  let active=wheelHover>=0?WHEEL_ITEMS[wheelHover]:WHEEL_ITEMS.find(it=>it.id===weapon)||WHEEL_ITEMS[0];
+  g.fillStyle='#ffd600';g.font='bold 13px Arial';g.textAlign='center';
+  g.fillText(active.name.toUpperCase(),cxw,cyw-5);
+  g.fillStyle='#cfd8dc';g.font='11px Arial';
+  g.fillText('Solte ou toque para equipar',cxw,cyw+12);
   g.restore();
 }
 
@@ -928,16 +989,59 @@ function render(){
       sgl.addColorStop(0,warm>.35?'rgba(255,190,95,.72)':'rgba(255,235,165,.58)');
       sgl.addColorStop(1,'rgba(255,180,90,0)');
       g.fillStyle=sgl;g.beginPath();g.arc(sp[0],sp[1],glowR,0,PI*2);g.fill();
+      let sr=Math.max(14,H*.024);
+      g.fillStyle=warm>.35?'#ffd27d':'#fff4b8';
+      g.strokeStyle=OUTLINE_COL;g.lineWidth=2;
+      g.beginPath();g.arc(sp[0],sp[1],sr,0,PI*2);g.fill();g.stroke();
       g.restore();
     }
+  }
+  if(!night&&weather!==2){
+    g.save();g.globalAlpha=.24;
+    for(let ci=0;ci<6;ci++){
+      let ca2=ci*1.05+anim*.012,cp=projectSkyDir(cos(ca2),0.26+(ci%3)*.09,sin(ca2));
+      if(!cp)continue;
+      g.fillStyle='#fff';g.strokeStyle=OUTLINE_COL;g.lineWidth=1.5;
+      g.beginPath();g.ellipse(cp[0],cp[1],38,10,0,0,PI*2);g.fill();g.stroke();
+    }
+    g.restore();
+  }
+  let moonY=-sunY;
+  if(moonY>-0.1){
+    let mp=projectSkyDir(-sunX,moonY,-sunZ);
+    if(mp){
+      g.save();
+      let mr=Math.max(11,H*.019);
+      g.fillStyle='#e7edff';g.strokeStyle=OUTLINE_COL;g.lineWidth=1.8;
+      g.beginPath();g.arc(mp[0],mp[1],mr,0,PI*2);g.fill();g.stroke();
+      g.restore();
+    }
+  }
+  if(night){
+    g.save();g.fillStyle='#ffffff';g.globalAlpha=.75;
+    for(let si=0;si<45;si++){
+      let sa=si*2.399,sy=0.14+((si*37)%70)/100,sr2=Math.sqrt(Math.max(0,1-sy*sy));
+      let stp=projectSkyDir(cos(sa)*sr2,sy,sin(sa)*sr2);
+      if(stp)g.fillRect(stp[0],stp[1],1.8,1.8);
+    }
+    g.restore();
   }
 
   if(horizonY<H){
     g.fillStyle=night?'#25272d':weather===2?'#4a4e55':'#4b4e56';
     g.fillRect(0,Math.max(0,horizonY),W,H-Math.max(0,horizonY));
+    let fgd=g.createLinearGradient(0,horizonY,0,horizonY+H*.3),fc=(FR|0)+','+(FG|0)+','+(FB|0);
+    fgd.addColorStop(0,'rgba('+fc+',.9)');fgd.addColorStop(1,'rgba('+fc+',0)');
+    g.fillStyle=fgd;g.fillRect(0,horizonY,W,H*.3);
   }
 
   let bx=Math.round(cx/P),bz=Math.round(cz/P);
+  let fzn=zone(Math.round((cx+sn*230)/P),Math.round((cz+cs*230)/P));
+  if(fzn&&horizonY<H){
+    g.fillStyle=color(fzn===2?(weather===2?0xff4a6f8f:0xff2a7fc0):0xffe0cc92,dayL);
+    g.fillRect(0,Math.max(0,horizonY),W,Math.max(4,H*.06));
+  }
+
   for(let i=-3;i<=3;i++)for(let j=-3;j<=3;j++){
     let X=(bx+i)*P,Z=(bz+j)*P;if((X-cx)*sn+(Z-cz)*cs<-30)continue;
     fogK=cl((Math.hypot(X-cx,Z-cz)-50)/190,0,.7);
@@ -946,8 +1050,24 @@ function render(){
     let c=h(bx+i,bz+j)%6===0?(weather===2?0xeff3f6:0x3e8e41):(weather===2?0xd9dee3:0xb4b4ba);
     polygon3([pt(X-20.9,0,Z-20.9),pt(X+20.9,0,Z-20.9),pt(X+20.9,0,Z+20.9),pt(X-20.9,0,Z+20.9)],color(0xff66666c,dayL),1);
     polygon3([pt(X-20,0,Z-20),pt(X+20,0,Z-20),pt(X+20,0,Z+20),pt(X-20,0,Z+20)],color(c,dayL),0);
+    if(i*i<5&&j*j<5){
+      let dc=color(0xffe8d27a,dayL);
+      for(let k=0;k<3;k++){
+        let a=-12+k*10;
+        polygon3([pt(X+a,.02,Z+31.5),pt(X+a+6,.02,Z+31.5),pt(X+a+6,.02,Z+32.5),pt(X+a,.02,Z+32.5)],dc,0);
+        polygon3([pt(X+31.5,.02,Z+a),pt(X+32.5,.02,Z+a),pt(X+32.5,.02,Z+a+6),pt(X+31.5,.02,Z+a+6)],dc,0);
+      }
+    }
   }
   fogK=0;
+
+  if(sunY>0.03&&weather!==2)for(let i=-3;i<=3;i++)for(let j=-3;j<=3;j++){
+    let ix=bx+i,iz=bz+j;if(zone(ix,iz)||h(ix,iz)%6===0)continue;
+    let X=ix*P,Z=iz*P;if((X-cx)*sn+(Z-cz)*cs<-35)continue;
+    let hh=h(ix,iz),h0=10+(hh>>4)%38,ht=h0<18?5+hh%4:h0,Ls=Math.min(42,ht/Math.max(0.28,sunY)),ox2=-sunX*Ls,oz2=-sunZ*Ls,pp=[];
+    for(let a of [-15,15])for(let b of [-15,15]){pp.push([X+a,Z+b]);pp.push([X+a+ox2,Z+b+oz2])}
+    polygon3(hull(pp).map(q=>pt(q[0],.03,q[1])),'rgba(0,0,0,.3)',0);
+  }
 
   let items=[];
   for(let i=-3;i<=3;i++)for(let j=-3;j<=3;j++){
@@ -964,6 +1084,17 @@ function render(){
   fogK=0;
 
   drawAirportGround();
+  drawFlyingPlane();
+
+  let hz=g.createLinearGradient(0,hor-H*.22,0,hor+H*.08),hc=night?'20,28,48':weather===2?'160,168,174':'190,222,240';
+  hz.addColorStop(0,'rgba('+hc+',0)');hz.addColorStop(.6,'rgba('+hc+',.35)');hz.addColorStop(1,'rgba('+hc+',0)');
+  g.fillStyle=hz;g.fillRect(0,hor-H*.22,W,H*.3);
+  if(flash>0&&!cur&&weapon>=0){
+    let p=project(player.x+sin(player.yaw),1.35,player.z+cos(player.yaw));
+    if(p){let r=p[3]*.35,gr=g.createRadialGradient(p[0],p[1],0,p[0],p[1],r);gr.addColorStop(0,'rgba(255,240,160,.95)');gr.addColorStop(1,'rgba(255,160,40,0)');g.fillStyle=gr;g.fillRect(p[0]-r,p[1]-r,r*2,r*2)}
+  }
+  if(hasT){let p=project(tx,0,tz);if(p){g.fillStyle='#ffd600aa';g.fillRect(p[0]-3,0,6,hor+cy*f/p[2])}}
+  particles.forEach(a=>{let p=project(a.x,a.y,a.z);if(p){g.fillStyle='#b71c1c';g.beginPath();g.arc(p[0],p[1],Math.max(1,a.life*2),0,7);g.fill()}});
   bullets.forEach(b=>{let p=project(b.x,1.35,b.z);if(p){g.fillStyle='#ffee58';g.beginPath();g.arc(p[0],p[1],3,0,7);g.fill()}});
 
   // Jogadores remotos conectados via Socket.io
@@ -983,6 +1114,12 @@ function render(){
     });
   }
 
+  if(weather){g.fillStyle='#22101820';g.fillRect(0,0,W,H);if(weather===1){g.strokeStyle='#99b0c4de';for(let i=0;i<80;i++){let x=(i*97+anim*40)%W,y=(i*61+anim*500)%H;g.beginPath();g.moveTo(x,y);g.lineTo(x-5,y+28);g.stroke()}}}
+  if(!night){g.fillStyle='rgba(255,176,96,'+(.05+.16*warm)+')'}else g.fillStyle='rgba(20,40,110,.12)';
+  g.fillRect(0,0,W,H);
+  let vg=g.createRadialGradient(W/2,H*.5,H*.35,W/2,H*.5,Math.max(W,H)*.75);
+  vg.addColorStop(0,'rgba(0,0,0,0)');vg.addColorStop(1,'rgba(0,0,0,.38)');
+  g.fillStyle=vg;g.fillRect(0,0,W,H);
   drawWeaponWheel();
   drawMap();
 }
@@ -998,6 +1135,11 @@ function drawMap(){
     m.fillStyle=pk?'#2f7a3a':'#8a9099';m.fillRect(bx-20*k,by-20*k,40*k,40*k);
     if(!pk){m.fillStyle='#5d636c';m.fillRect(bx-15*k,by-15*k,30*k,30*k)}
   }
+  cars.forEach(q=>{
+    let dx=(q.x-player.x)*k,dy=-(q.z-player.z)*k;
+    if(dx*dx+dy*dy>R*R)return;
+    m.fillStyle='#ffb74d';m.fillRect(dx-3,dy-3,6,6);
+  });
   if(window.mpRemotePlayers){
     window.mpRemotePlayers.forEach(rp=>{
       let dx=(rp.x-player.x)*k,dy=-(rp.z-player.z)*k;
@@ -1005,9 +1147,15 @@ function drawMap(){
       m.fillStyle='#00e5ff';m.beginPath();m.arc(dx,dy,4.5,0,7);m.fill();
     });
   }
-  m.restore();m.save();m.translate(90,90);
-  m.rotate(player.yaw-camYaw);m.fillStyle='#fff';m.strokeStyle='#000';m.lineWidth=1;
-  m.beginPath();m.moveTo(0,-10);m.lineTo(7,9);m.lineTo(0,4);m.lineTo(-7,9);m.closePath();m.fill();m.stroke();m.restore();
+  if(hasT){
+    let dx=(tx-player.x)*k,dy=-(tz-player.z)*k,L=Math.hypot(dx,dy),ed=R-10;m.fillStyle='#ffd600';m.strokeStyle='#000';m.lineWidth=1.5;m.beginPath();
+    if(L>ed){let a=Math.atan2(dy,dx);m.save();m.translate(Math.cos(a)*ed,Math.sin(a)*ed);m.rotate(a+PI/2);m.moveTo(0,-9);m.lineTo(7,6);m.lineTo(-7,6);m.closePath();m.fill();m.stroke();m.restore()}
+    else{m.arc(dx,dy,6,0,7);m.fill();m.stroke()}
+  }
+  m.restore();m.save();m.translate(90,90);m.fillStyle='#ffffff26';m.beginPath();m.moveTo(0,0);m.lineTo(-42,-80);m.lineTo(42,-80);m.fill();
+  m.rotate(player.yaw-camYaw);m.fillStyle='#fff';m.strokeStyle='#000';m.lineWidth=1;m.beginPath();m.moveTo(0,-10);m.lineTo(7,9);m.lineTo(0,4);m.lineTo(-7,9);m.closePath();m.fill();m.stroke();m.restore();
+  let na=-camYaw;m.fillStyle='#fff';m.font='bold 14px Arial';m.textAlign='center';m.textBaseline='middle';m.fillText('N',90+Math.sin(na)*(R-10),90-Math.cos(na)*(R-10));
+  if(hasT){m.fillStyle='#ffd600';m.fillText(Math.round(Math.hypot(tx-player.x,tz-player.z))+'m',90,166)}
 }
 
 function pause(){paused=!paused;$('modal').style.display=paused?'flex':'none'}
@@ -1024,7 +1172,7 @@ function frame(t){
 }
 
 // ============================================================================
-// MULTIPLAYER CONECTADO AO SERVER.JS (INIT, PLAYER:JOIN/MOVE/LEAVE, CARROS)
+// MULTIPLAYER CONECTADO AO SERVER.JS (JOGADORES + CARROS SINCRONIZADOS)
 // ============================================================================
 (()=>{
   const remotePlayers=new Map();
@@ -1046,6 +1194,31 @@ function frame(t){
       mpOpenBtn.className='mp-pill '+(mpConnected?'active':'warn');
     }
     if(mpCountBadge)mpCountBadge.textContent=total+(total===1?' PLAYER':' PLAYERS');
+  }
+
+  function applyServerCars(serverCars){
+    if(!serverCars)return;
+    const list=Array.isArray(serverCars)?serverCars:Object.keys(serverCars).map(k=>({id:k,...serverCars[k]}));
+    list.forEach((sc,idx)=>{
+      if(!sc)return;
+      const sid=sc.id||('carro_'+(idx+1));
+      let lc=cars.find(c=>c.id===sid)||cars[idx];
+      if(!lc){
+        lc={id:sid,x:24+idx*16,z:50,yaw:0,spd:0,col:CC[idx%CC.length],type:idx%4,driverId:null};
+        cars.push(lc);
+      }
+      lc.id=sid;
+      if(typeof sc.x==='number')lc.x=sc.x;
+      if(typeof sc.y==='number')lc.z=sc.y;
+      else if(typeof sc.z==='number')lc.z=sc.z;
+      if(typeof sc.angle==='number')lc.yaw=sc.angle;
+      else if(typeof sc.yaw==='number')lc.yaw=sc.yaw;
+      if(typeof sc.speed==='number')lc.spd=sc.speed;
+      lc.driverId=sc.driverId||null;
+      if(cur&&cur.id===lc.id&&lc.driverId&&window.mpSocket&&lc.driverId!==window.mpSocket.id){
+        cur=null;syncControls();
+      }
+    });
   }
 
   function upsertRemote(p){
@@ -1101,7 +1274,7 @@ function frame(t){
         mpConnected=true;
         updateBadge();
         setMpStatus('Conectado como '+mpNick+'!');
-        say('Multiplayer conectado! Você e seu amigo já podem se ver.');
+        say('Multiplayer conectado! Carros e jogadores sincronizados.');
       });
 
       sock.on('init',(data)=>{
@@ -1110,20 +1283,7 @@ function frame(t){
             if(id!==sock.id)upsertRemote({...data.players[id],id});
           });
         }
-        if(data&&data.cars){
-          Object.keys(data.cars).forEach((k,idx)=>{
-            const sc=data.cars[k];
-            const lc=cars.find(c=>c.id===sc.id)||cars[idx];
-            if(lc){
-              lc.id=sc.id||lc.id;
-              lc.x=Number(sc.x);
-              lc.z=Number(sc.y);
-              lc.yaw=Number(sc.angle)||0;
-              lc.spd=Number(sc.speed)||0;
-              lc.driverId=sc.driverId||null;
-            }
-          });
-        }
+        if(data&&data.cars)applyServerCars(data.cars);
         updateBadge();
       });
 
@@ -1134,18 +1294,20 @@ function frame(t){
 
       sock.on('car:update',(sc)=>{
         if(!sc)return;
-        const lc=cars.find(c=>c.id===sc.id);
-        if(lc){
-          lc.x=Number(sc.x);lc.z=Number(sc.y);lc.yaw=Number(sc.angle)||0;lc.spd=Number(sc.speed)||0;lc.driverId=sc.driverId||null;
-          if(cur&&cur.id===lc.id&&lc.driverId!==sock.id){cur=null;syncControls()}
-        }
+        applyServerCars([sc]);
       });
 
       sock.on('car:drive',(sc)=>{
         if(!sc)return;
-        const lc=cars.find(c=>c.id===sc.id);
+        const sid=sc.id;
+        const lc=sid?cars.find(c=>c.id===sid):null;
         if(lc&&(!cur||cur.id!==lc.id)){
-          lc.x=Number(sc.x);lc.z=Number(sc.y);lc.yaw=Number(sc.angle)||0;lc.spd=Number(sc.speed)||0;
+          if(typeof sc.x==='number')lc.x=sc.x;
+          if(typeof sc.y==='number')lc.z=sc.y;
+          else if(typeof sc.z==='number')lc.z=sc.z;
+          if(typeof sc.angle==='number')lc.yaw=sc.angle;
+          else if(typeof sc.yaw==='number')lc.yaw=sc.yaw;
+          if(typeof sc.speed==='number')lc.spd=sc.speed;
         }
       });
 
@@ -1173,7 +1335,6 @@ function frame(t){
   $('mpCloseBtn').onclick=()=>{mpModal.style.display='none'};
   $('mpConnectBtn').onclick=connectNow;
 
-  // Conecta automaticamente ao abrir o site
   connectNow();
 })();
 
@@ -1265,8 +1426,9 @@ addEventListener('keyup',e=>{
   if(e.key===' ')held.fire=false;
 });
 
+stage();
 syncControls();
-say('Bem-vindo ao GTA X Multiplayer!');
+say('Bem-vindo ao GTA X!');
 requestAnimationFrame(frame);
 })();
 </script>
