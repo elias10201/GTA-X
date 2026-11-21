@@ -899,20 +899,22 @@ function face(ax,az,bx,bz,y0,y1,col,outlineW){
 function box(x,z,hw,hl,y0,y1,ang,col,win,outlineW){
   let s=sin(ang),c=cos(ang),sx=[-1,1,1,-1],sz=[-1,-1,1,1],ow=outlineW||0;
   for(let i=0;i<4;i++){wx[i]=x+sx[i]*hw*c+sz[i]*hl*s;wz[i]=z-sx[i]*hw*s+sz[i]*hl*c}
+  const cameraInside=win&&cx>x-hw&&cx<x+hw&&cz>z-hl&&cz<z+hl&&cy>y0-.2&&cy<y1+.2;
   for(let i=0;i<4;i++){
     let j=(i+1)&3,ex=wx[j]-wx[i],ez=wz[j]-wz[i],nx=ez,nz=-ex,mx=(wx[i]+wx[j])/2,mz=(wz[i]+wz[j])/2;
-    if(nx*(cx-mx)+nz*(cz-mz)<=0)continue;
+    if(!cameraInside&&nx*(cx-mx)+nz*(cz-mz)<=0)continue;
     let ln=Math.hypot(nx,nz),b=.5+.5*(.5+.5*(nx/ln*.5+nz/ln*.85));
-    face(wx[i],wz[i],wx[j],wz[j],y0,y1,color(col,glow?1:b*dayL),ow);
-    if(win&&fg<.25){
+    const wallColor=cameraInside?0xff252a31:col;
+    face(wx[i],wz[i],wx[j],wz[j],y0,y1,color(wallColor,glow||cameraInside?1:b*dayL),ow);
+    if(win&&!cameraInside&&fg<.25){
       let nr=(x-cx)**2+(z-cz)**2<9000,nw=nr?Math.max(1,Math.round(Math.hypot(ex,ez)/4.4)):1,fl=0;
       for(let y=y0+3;y+2<y1;y+=4,fl++)for(let k=0;k<nw;k++){
         let t0=.1+.8*k/nw,t1=t0+.8/nw*(nr?.62:1),hs=((i*7+k*13+fl*29+(x|0))*2654435761>>>0)%9,lit=night?hs<4:hs<7;
-        face(wx[i]+ex*t0,wz[i]+ez*t0,wx[i]+ex*t1,wz[i]+ez*t1,y,y+(nr?2:1.8),color(night?(lit?0xffe9c86a:0xff2a3140):(hs%2?0xff8fa9b8:0xffa7bfcb),night&&lit?1:b*dayL),nr?1:0);
+        face(wx[i]+ex*t0,wz[i]+ez*t0,wx[i]+ex*t1,wz[i]+ez*t1,y,y+(nr?2:1.8),color(night?(lit?0xffa47b3b:0xff202a35):(hs%2?0xff586f7a:0xff647985),night&&lit?.92:b*dayL),1.05);
       }
     }
   }
-  if(cy>y1)polygon3(wx.map((x,i)=>pt(x,y1,wz[i])),color(col,glow?1:dayL),ow);
+  if(cy>y1||(win&&cameraInside))polygon3(wx.map((x,i)=>pt(x,y1,wz[i])),color(cameraInside?0xff20252c:col,cameraInside||glow?1:dayL),ow);
 }
 
 function drawTwinTower(t){
@@ -958,12 +960,9 @@ function bld(ix,iz){
     box(X,Z,15,15,0,ht,0,col,true,1.7);
     box(X,Z,15.3,15.3,0,3.4,0,0xff3b3f46,false,1.4);
     box(X,Z,15.4,15.4,ht-.9,ht,0,0xff2f343b,false,1.3);
-    // Beiral e platibanda opacos, para dar leitura de volume sem revelar o interior.
-    if(fg<.25)box(X,Z,14.4,14.4,ht,ht+.55,0,0xff69727b,false,.8);
-    if(ht>30){
-      box(X,Z,9,9,ht,ht+6,0,PAL[(hh>>12)%PAL.length],false,1.5);
-      bone(X,ht+6,Z,X,ht+14,Z,.4,0xff999999,true);
-    }
+    // Topo liso e fechado: removido o volume quadrado que parecia uma abertura.
+    if(cy>ht)polygon3([pt(X-15,ht,Z-15),pt(X+15,ht,Z-15),pt(X+15,ht,Z+15),pt(X-15,ht,Z+15)],color(0xff69727b,dayL),1.1);
+    else if(fg<.25)box(X,Z,14.4,14.4,ht,ht+.55,0,0xff69727b,false,.8);
   }
 }
 
@@ -1376,15 +1375,19 @@ function drawWeaponWheel(){
 }
 
 function render(){
+  g.globalAlpha=1;g.globalCompositeOperation='source-over';
   night=sin((tod-.25)*PI*2)<-.15;dayL=night?.55:1;f=H*.95;hor=H*.42;sn=sin(camYaw);cs=cos(camYaw);
   let D=cur?11.5:playerElevation>0?26:8.2;
   let baseCamY=(cur?4.2:3.2)+(cur&&cur.type===8?(cur.altitude||0):cur?0:playerElevation+Math.abs(sin(pph))*pamp*.02+jy*.5);
   // Não deixe a câmera atravessar a parede quando o jogador encosta no prédio.
   let cameraD=D;
   if(playerElevation<=0&&!(cur&&cur.type===8&&(cur.altitude||0)>8)){
-    for(let step=1;step<=12;step++){
-      const t=step/12,x=player.x-sn*D*cos(camPitch)*t,z=player.z-cs*D*cos(camPitch)*t;
-      if(solid(x,z)){cameraD=0;break}
+    // Interrompe a órbita antes do primeiro volume sólido, preservando o último ponto livre.
+    let lastSafe=0;
+    for(let step=1;step<=32;step++){
+      const t=step/32,x=player.x-sn*D*cos(camPitch)*t,z=player.z-cs*D*cos(camPitch)*t;
+      if(solid(x,z)){cameraD=D*Math.max(0,lastSafe-.025);break}
+      lastSafe=t;
     }
   }
   cx=player.x-sn*cameraD*cos(camPitch);
