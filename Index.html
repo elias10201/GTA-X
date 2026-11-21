@@ -1339,25 +1339,27 @@ function render(){
   }
 
   let items=[];
-  const cameraDepth=(x,z)=>(x-cx)*sn+(z-cz)*cs;
+  // Profundidade real na câmera: inclui a altura do objeto, indispensável ao olhar de cima.
+  const cameraDepth=(x,z,y=0)=>(x-cx)*sn*cos(camPitch)+(z-cz)*cs*cos(camPitch)+(y-cy)*sin(camPitch);
   for(let i=-3;i<=3;i++)for(let j=-3;j<=3;j++){
     let ix=bx+i,iz=bz+j;if((ix*P-cx)*sn+(iz*P-cz)*cs<=-25)continue;
     let zn=zone(ix,iz),dd=(ix*P-cx)**2+(iz*P-cz)**2,pk=h(ix,iz)%6===0;
     if(zn===0){
       let ps=getPostPos(ix,iz);
-      items.push({d:(ps.x-cx)**2+(ps.z-cz)**2,depth:cameraDepth(ps.x,ps.z),fn:()=>post(ps.x,ps.z)});
+      items.push({d:(ps.x-cx)**2+(ps.z-cz)**2,depth:cameraDepth(ps.x,ps.z,3.2),fn:()=>post(ps.x,ps.z)});
     }
-    if(zn===0&&!pk)items.push({d:dd,depth:cameraDepth(ix*P,iz*P),fn:()=>bld(ix,iz)});
-    else if(zn===0&&pk&&isPlazaLot(ix,iz))items.push({d:dd,depth:cameraDepth(ix*P,iz*P),fn:()=>drawPlaza(ix,iz)});
+    if(zn===0&&!pk){
+      const seed=h(ix,iz),baseHeight=10+(seed>>4)%38,buildingHeight=baseHeight<18?5+seed%4:baseHeight+(baseHeight>30?6:0);
+      items.push({d:dd,depth:cameraDepth(ix*P,iz*P,buildingHeight*.5),fn:()=>bld(ix,iz)});
+    }
+    else if(zn===0&&pk&&isPlazaLot(ix,iz))items.push({d:dd,depth:cameraDepth(ix*P,iz*P,1),fn:()=>drawPlaza(ix,iz)});
     else if(zn===1){
-      if(isHouseLot(ix,iz))items.push({d:dd,depth:cameraDepth(ix*P,iz*P),fn:()=>drawHouse(ix,iz)});
-      for(let q=0;q<3;q++){
-      let tp=getTreePos(ix,iz,q,zn);
-      items.push({d:dd+q,depth:cameraDepth(tp.x,tp.z),fn:()=>tree(tp.x,tp.z,tp.hh,zn)});
-      }
+      if(isHouseLot(ix,iz))items.push({d:dd,depth:cameraDepth(ix*P,iz*P,4),fn:()=>drawHouse(ix,iz)});
+      // Removidas as árvores altas com silhueta de coqueiro das áreas abertas.
+      // Mantemos árvores arredondadas nas praças urbanas para preservar os detalhes da cidade.
     }
   }
-  cars.forEach(q=>{if((q.x-cx)**2+(q.z-cz)**2<22500)items.push({d:(q.x-cx)**2+(q.z-cz)**2,depth:cameraDepth(q.x,q.z),fn:()=>car(q)})});
+  cars.forEach(q=>{if((q.x-cx)**2+(q.z-cz)**2<22500)items.push({d:(q.x-cx)**2+(q.z-cz)**2,depth:cameraDepth(q.x,q.z,(q.altitude||0)+.8),fn:()=>car(q)})});
   // O jogador fica fora do sort por centro: desenha-se após o chão/objetos, com oclusão real por estruturas.
   items.sort((a,b)=>b.depth-a.depth).forEach(it=>{fogK=cl((Math.sqrt(Math.max(0,it.d))-45)/190,0,.7);it.fn()});
   fogK=0;
