@@ -201,13 +201,13 @@ const PANT=[0xff37474f,0xff1a237e,0xff3e2723,0xff212121,0xff4e5d6a];
 const CN=['Velox Sedan','Torro GT','Atlas SUV','Rhino Picape','Cargo Van','Viatura Polícia','Fusca Clássico','Moto Urbana','Avião leve'];
 const CSP=[30,42,28,26,22,36,25,34,72];
 const CT=[
-  [.95,2.2,.95,.82,1.1,-.2,1.55],
-  [1,2.15,.75,.85,.9,-.1,1.3],
-  [1.05,2.3,1.15,.95,1.5,-.3,1.9],
-  [1,2.5,1,.9,.8,.6,1.75],
-  [1.05,2.6,1.2,1,2.3,-.1,2.2],
-  [.98,2.25,.95,.84,1.15,-.18,1.58],
-  [.9,1.62,.82,.72,.82,-.42,1.38],
+  [.98,2.25,.98,.84,1.12,-.18,1.62],
+  [1.02,2.2,.8,.86,.92,-.1,1.38],
+  [1.08,2.35,1.18,.96,1.52,-.28,1.98],
+  [1.02,2.55,1.02,.9,.82,.58,1.82],
+  [1.08,2.65,1.22,1.02,2.32,-.1,2.28],
+  [1.0,2.3,.98,.86,1.18,-.16,1.66],
+  [.94,1.68,.84,.74,.84,-.4,1.44],
   [.48,1.2,.72,.34,.48,-.1,1.02],
   [1.15,3.7,1.15,1.1,1.6,-.65,2.15]
 ];
@@ -249,13 +249,12 @@ let vx=0,vz=0,hudT=0,jy=0,jv=0,landT=0,ca=0,sink=0;
 let wheelOpen=false,wheelHover=-1,wheelPointerId=null;
 let myBubbleText='',myBubbleT=0;
 
-// Sem NPCs: ents fica vazio; carros têm IDs fixos para sincronizar entre jogadores
 let ents=[];
 let cars=[
-  {id:'carro_1',x:24,z:50,yaw:0,spd:0,col:CC[0],type:0,driverId:null},
-  {id:'carro_2',x:40,z:10,yaw:PI,spd:0,col:CC[1],type:1,driverId:null},
-  {id:'carro_3',x:74,z:38,yaw:PI/2,spd:0,col:CC[2],type:2,driverId:null},
-  {id:'carro_4',x:-8,z:38,yaw:-PI/2,spd:0,col:CC[3],type:3,driverId:null},
+  {id:'carro_1',x:24,z:50,yaw:0,spd:0,col:CC[0],type:0,driverId:null,wheelRot:0},
+  {id:'carro_2',x:40,z:10,yaw:PI,spd:0,col:CC[1],type:1,driverId:null,wheelRot:0},
+  {id:'carro_3',x:74,z:38,yaw:PI/2,spd:0,col:CC[2],type:2,driverId:null,wheelRot:0},
+  {id:'carro_4',x:-8,z:38,yaw:-PI/2,spd:0,col:CC[3],type:3,driverId:null,wheelRot:0},
   {id:'carro_fusca',x:12,z:32,yaw:0,spd:0,col:0xffe0b52e,type:6,driverId:null,wheelRot:0},
   {id:'moto_1',x:50,z:34,yaw:PI/2,spd:0,col:0xffc62828,type:7,driverId:null,wheelRot:0},
   {id:'aviao_aeroporto',x:14*P+32-76,z:13*P+32,yaw:PI/2,spd:0,col:0xffe8edf2,type:8,driverId:null,altitude:0,prop:0}
@@ -272,7 +271,6 @@ const h=(a,b)=>{
 const ZC=new Map(),vn=(a,b)=>(h(a,b)%1000)/1000;
 const AIRPORT_X=14*P+32,AIRPORT_Z=13*P+32;
 
-// Sem mar: apenas área urbana (0) e parque/aeródromo (1)
 function zone(ix,iz){
   if(Math.abs(ix-14)<=3&&Math.abs(iz-13)<=2)return 1;
   if(ix*ix+iz*iz<144)return 0;
@@ -291,6 +289,12 @@ function isAirportLot(ix,iz){return Math.abs(ix-14)<=3&&Math.abs(iz-13)<=2}
 function isPlazaLot(ix,iz){return zone(ix,iz)===0&&h(ix,iz)%6===0&&ix>=-5&&ix<=5&&iz>=-5&&iz<=5}
 function isHouseLot(ix,iz){return zone(ix,iz)===1&&!isAirportLot(ix,iz)&&h(ix+83,iz-47)%100<38}
 
+function getBuildingHeight(ix,iz){
+  let hh=h(ix,iz),h0=10+(hh>>4)%38;
+  if(h0<18)return 5+hh%4+3;
+  return h0+(h0>30?14:0);
+}
+
 function getTreePos(ix,iz,q,zn){
   let r=zn?28:18,hh=h(ix*7+q,iz*5+q);
   return {x:ix*P+(hh%(2*r))-r,z:iz*P+((hh>>8)%(2*r))-r,hh,zn};
@@ -300,19 +304,22 @@ function getPostPos(ix,iz){
   return {x:ix*P+17.5,z:iz*P+17.5};
 }
 
-// Colisão com prédios, postes e árvores
-function solid(x,z){
-  if(Math.abs(x-AIRPORT_X)<158&&Math.abs(z-AIRPORT_Z)<18)return false;
+function solid(x,z,alt=0){
+  if(Math.abs(x-AIRPORT_X)<158&&Math.abs(z-AIRPORT_Z)<18&&alt<2)return false;
   let ix0=Math.round(x/P),iz0=Math.round(z/P);
   for(let di=-1;di<=1;di++)for(let dz=-1;dz<=1;dz++){
     let ix=ix0+di,iz=iz0+dz,zn=zone(ix,iz);
-    if(zn===0&&h(ix,iz)%6!==0&&Math.abs(x-ix*P)<15.6&&Math.abs(z-iz*P)<15.6)return true;
-    if(zn===0){
+    if(zn===0&&h(ix,iz)%6!==0&&Math.abs(x-ix*P)<15.8&&Math.abs(z-iz*P)<15.8){
+      if(alt<=getBuildingHeight(ix,iz)+2.2)return true;
+    }
+    if(zn===0&&alt<7.5){
       let ps=getPostPos(ix,iz);
       if(Math.hypot(x-ps.x,z-ps.z)<0.95)return true;
     }
-    if(zn===1&&isHouseLot(ix,iz)&&Math.abs(x-ix*P)<11.2&&Math.abs(z-iz*P)<10.2)return true;
-    if(zn===1){
+    if(zn===1&&isHouseLot(ix,iz)&&Math.abs(x-ix*P)<11.4&&Math.abs(z-iz*P)<10.4){
+      if(alt<=8.5)return true;
+    }
+    if(zn===1&&alt<8.5){
       for(let q=0;q<3;q++){
         let tp=getTreePos(ix,iz,q,zn);
         if(Math.hypot(x-tp.x,z-tp.z)<1.25)return true;
@@ -323,22 +330,7 @@ function solid(x,z){
 }
 
 function psolid(x,z){
-  return solid(x,z);
-}
-
-// Colisão vertical do avião com prédios: considera a altura real da construção.
-function planeBuildingCollision(x,z,altitude){
-  const ix0=Math.round(x/P),iz0=Math.round(z/P),planeRadius=2.6;
-  for(let di=-1;di<=1;di++)for(let dz=-1;dz<=1;dz++){
-    const ix=ix0+di,iz=iz0+dz;
-    if(zone(ix,iz)!==0||h(ix,iz)%6===0)continue;
-    const seed=h(ix,iz),base=10+(seed>>4)%38;
-    const height=base<18?5+seed%4:base+(base>30?6:0);
-    if(Math.abs(x-ix*P)<15.6+planeRadius&&Math.abs(z-iz*P)<15.6+planeRadius&&altitude<height+1.5&&altitude+1.1>0){
-      return {hit:true,x:ix*P,z:iz*P,height};
-    }
-  }
-  return {hit:false};
+  return solid(x,z,0);
 }
 
 function waterDepth(){return 0}
@@ -639,10 +631,8 @@ function drive(dt){
   vx=vz=0;
   const isPlane=cur.type===8;
   sfx.engine(cur.type,cur.spd,true);
-  // Em avião, joystick para cima também fornece potência; no solo isso permite iniciar a corrida de decolagem.
   let th=(held.up||held.run||keyUp||keyRun||(isPlane&&joy.y<-.16))?1:0,st=joy.x;
   if(held.brake){
-    // Freia até parar; mantendo pressionado, engata a marcha ré progressivamente.
     if(cur.spd>0.8)cur.spd=Math.max(0,cur.spd-38*dt);
     else cur.spd=Math.max(-9,cur.spd-14*dt);
   }
@@ -654,7 +644,6 @@ function drive(dt){
   cur.wheelRot=(cur.wheelRot||0)+cur.spd*dt/.43;
   if(isPlane){
     const airspeed=cl((cur.spd-27)/18,0,1);
-    // Analógico para trás (baixo, joy.y positivo) levanta o nariz; para frente (cima) força descida mesmo rápido.
     const pull=cl(joy.y,0,1),push=cl(-joy.y,0,1);
     const autoLift=cur.spd>37?cl((cur.spd-37)/15,0,1)*1.35:0;
     const lift=autoLift+airspeed*pull*7.2;
@@ -671,16 +660,19 @@ function drive(dt){
   const turnRate=isPlane?(cur.altitude>1?.62:.95):1.7;
   cur.yaw+=steer*Math.min(1,Math.abs(cur.spd)/6)*turnRate*dt*(cur.spd>=0?1:-1);
   let nx=cur.x+sin(cur.yaw)*cur.spd*dt,nz=cur.z+cos(cur.yaw)*cur.spd*dt;
-  let airborne=isPlane&&(cur.altitude||0)>1.2;
-  const planeCrash=isPlane?planeBuildingCollision(nx,nz,cur.altitude||0):{hit:false};
-  let carCrash=airborne?{hit:false}:resolveCarCircleCollision(nx,nz,(CT[cur.type]?CT[cur.type][0]:1.0)+0.45,cur);
-  if((isPlane&&planeCrash.hit)||(!airborne&&(solid(nx,nz)||carCrash.hit))){
-    if(isPlane){cur.altitude=Math.max(0,(cur.altitude||0)-Math.max(3,Math.abs(cur.spd)*.22));cur.pitch=-.18;cur.spd*=.48}
+  let planeAlt=isPlane?(cur.altitude||0):0;
+  let hitBldOrObj=solid(nx,nz,planeAlt);
+  let carCrash=resolveCarCircleCollision(nx,nz,(CT[cur.type]?CT[cur.type][0]:1.0)+0.45,cur);
+  if(hitBldOrObj||carCrash.hit){
     if(isPlane&&cur.altitude<1.2)cur.altitude=0;
     if(Math.abs(cur.spd)>3)sfx.crash(0,Math.min(1,Math.abs(cur.spd)/16));
-    if(Math.abs(cur.spd)>7)hurt(Math.abs(cur.spd)*.4);
-    cur.spd=-cur.spd*.3;
+    if(Math.abs(cur.spd)>5)hurt(Math.abs(cur.spd)*(isPlane?.55:.4));
+    cur.spd=-cur.spd*(isPlane?.22:.3);
     if(carCrash.hit){cur.x=carCrash.x;cur.z=carCrash.z}
+    else if(isPlane&&planeAlt>1.5){
+      cur.x-=sin(cur.yaw)*Math.max(1.2,Math.abs(cur.spd)*dt*1.5);
+      cur.z-=cos(cur.yaw)*Math.max(1.2,Math.abs(cur.spd)*dt*1.5);
+    }
   }else{
     cur.x=nx;cur.z=nz;
   }
@@ -770,7 +762,6 @@ function update(dt){
       playerStepDist=0;
     }
 
-    // Ao terminar de olhar livremente, a câmera volta suavemente para trás do personagem.
     if(camManualT<=0&&v>.12){
       let followDelta=Math.atan2(sin(player.yaw-camYaw),cos(player.yaw-camYaw));
       camYaw+=followDelta*Math.min(1,2.4*dt);
@@ -875,8 +866,8 @@ function box(x,z,hw,hl,y0,y1,ang,col,win,outlineW){
     if(nx*(cx-mx)+nz*(cz-mz)<=0)continue;
     let ln=Math.hypot(nx,nz),b=.5+.5*(.5+.5*(nx/ln*.5+nz/ln*.85));
     face(wx[i],wz[i],wx[j],wz[j],y0,y1,color(col,glow?1:b*dayL),ow);
-    if(win&&fg<.25){
-      let nr=(x-cx)**2+(z-cz)**2<9000,nw=nr?Math.max(1,Math.round(Math.hypot(ex,ez)/4.4)):1,fl=0;
+    if(win&&fg<.35){
+      let nr=(x-cx)**2+(z-cz)**2<12000,nw=nr?Math.max(1,Math.round(Math.hypot(ex,ez)/4.4)):1,fl=0;
       for(let y=y0+3;y+2<y1;y+=4,fl++)for(let k=0;k<nw;k++){
         let t0=.1+.8*k/nw,t1=t0+.8/nw*(nr?.62:1),hs=((i*7+k*13+fl*29+(x|0))*2654435761>>>0)%9,lit=night?hs<4:hs<7;
         face(wx[i]+ex*t0,wz[i]+ez*t0,wx[i]+ex*t1,wz[i]+ez*t1,y,y+(nr?2:1.8),color(night?(lit?0xffe9c86a:0xff2a3140):(hs%2?0xff8fa9b8:0xffa7bfcb),night&&lit?1:b*dayL),nr?1:0);
@@ -887,19 +878,19 @@ function box(x,z,hw,hl,y0,y1,ang,col,win,outlineW){
 }
 
 function bld(ix,iz){
-  let hh=h(ix,iz),ht=10+(hh>>4)%38,X=ix*P,Z=iz*P,col=PAL[(hh>>9)%PAL.length];
-  if(ht<18){
-    let b=5+hh%4;
-    box(X,Z,15,15,0,b,0,col,true,2.0);
+  let hh=h(ix,iz),h0=10+(hh>>4)%38,ht=h0<18?5+hh%4:h0,X=ix*P,Z=iz*P,col=PAL[(hh>>9)%PAL.length];
+  if(h0<18){
+    box(X,Z,15,15,0,ht,0,col,true,2.0);
     box(X,Z,15.3,15.3,0,2.4,0,0xff3b3f46,false,1.3);
-    box(X,Z,8,8,b,b+3,0,0xff8d3b2f,false,1.4);
+    box(X,Z,8.5,8.5,ht,ht+3,0,0xff8d3b2f,false,1.4);
   }else{
     box(X,Z,15,15,0,ht,0,col,true,2.15);
     box(X,Z,15.3,15.3,0,3.4,0,0xff3b3f46,false,1.4);
     box(X,Z,15.4,15.4,ht-.9,ht,0,0xff2f343b,false,1.3);
-    if(ht>30){
-      box(X,Z,9,9,ht,ht+6,0,PAL[(hh>>12)%PAL.length],false,1.5);
-      bone(X,ht+6,Z,X,ht+14,Z,.4,0xff999999,true);
+    if(h0>30){
+      box(X,Z,9.5,9.5,ht,ht+7,0,PAL[(hh>>12)%PAL.length],false,1.5);
+      box(X,Z,5.5,5.5,ht+7,ht+11,0,0xff59626b,false,1.3);
+      bone(X,ht+11,Z,X,ht+16,Z,.4,0xff999999,true);
     }
   }
 }
@@ -968,7 +959,6 @@ function flush(){
     SG[j+1]=s;
   }
   g.lineCap='round';
-  // Cada membro é preenchido logo após o contorno; os segmentos próximos à câmera cobrem os distantes.
   for(let i=0;i<SN;i++){
     let s=SG[i],a=pt(s.a,s.b,s.c),b=pt(s.d,s.e,s.f);
     if(a[2]<near||b[2]<near)continue;
@@ -1058,7 +1048,6 @@ function person(x,z,yaw,tc,sk,seed,height,pose,wp,ph,amp,r,aim,ci,jy,jv,role,pun
     swing(-1,u0);swing(1,u0+.5);
   }
   if(role==='riding'){
-    // Pernas dobradas sobre o tanque e braços estendidos até o guidão.
     for(let side of [-1,1]){
       sg(side*.11,hy,0,side*.25,.34,.22,.17,pc);
       sg(side*.25,.34,.22,side*.27,.16,.62,.14,pc);
@@ -1077,28 +1066,27 @@ function ellipseBody(q,rx,rz,y0,y1,col){
     let p0=localPoint(q,Math.cos(a)*rx,y0,Math.sin(a)*rz),p1=localPoint(q,Math.cos(b)*rx,y0,Math.sin(b)*rz);
     let p2=localPoint(q,Math.cos(b)*rx,y1,Math.sin(b)*rz),p3=localPoint(q,Math.cos(a)*rx,y1,Math.sin(a)*rz);
     let ex=p1[0]-p0[0],ez=p1[2]-p0[2],mx=(p0[0]+p1[0])/2,mz=(p0[2]+p1[2])/2;
-    if(ez*(cx-mx)-ex*(cz-mz)>0)polygon3([pt(...p0),pt(...p1),pt(...p2),pt(...p3)],color(col,glow?1:dayL),1.1);
+    if(ez*(cx-mx)-ex*(cz-mz)>0)polygon3([pt(...p0),pt(...p1),pt(...p2),pt(...p3)],color(col,glow?1:dayL),1.25);
   }
-  if(cy>y1)polygon3(ring(y1,.96),color(col,glow?1:dayL),1.1);
+  if(cy>y1)polygon3(ring(y1,.96),color(col,glow?1:dayL),1.25);
 }
 function wheel(q,lx,lz,r,rotation){
   const pts=[];for(let i=0;i<16;i++){let a=i*PI/8,p=localPoint(q,lx,r+Math.cos(a)*r,lz+Math.sin(a)*r);pts.push(pt(p[0],p[1],p[2]))}
-  polygon3(pts,'#16191d',1.2);
+  polygon3(pts,'#16191d',1.35);
   const hub=localPoint(q,lx,r,lz),hp=project(hub[0],hub[1],hub[2]);
-  if(hp){g.fillStyle='#9aa3aa';g.beginPath();g.arc(hp[0],hp[1],Math.max(1.4,r*hp[3]*.23),0,PI*2);g.fill();
-    for(let j=0;j<4;j++){let a=rotation+j*PI/2,p1=localPoint(q,lx,r+Math.cos(a)*r*.18,lz+Math.sin(a)*r*.18),p2=localPoint(q,lx,r+Math.cos(a)*r*.78,lz+Math.sin(a)*r*.78),s1=project(...p1),s2=project(...p2);if(s1&&s2){g.strokeStyle='#d1d6d9';g.lineWidth=Math.max(1,r*hp[3]*.09);g.beginPath();g.moveTo(s1[0],s1[1]);g.lineTo(s2[0],s2[1]);g.stroke()}}}
+  if(hp){g.fillStyle='#9aa3aa';g.beginPath();g.arc(hp[0],hp[1],Math.max(1.5,r*hp[3]*.25),0,PI*2);g.fill();
+    for(let j=0;j<4;j++){let a=rotation+j*PI/2,p1=localPoint(q,lx,r+Math.cos(a)*r*.18,lz+Math.sin(a)*r*.18),p2=localPoint(q,lx,r+Math.cos(a)*r*.78,lz+Math.sin(a)*r*.78),s1=project(...p1),s2=project(...p2);if(s1&&s2){g.strokeStyle='#d1d6d9';g.lineWidth=Math.max(1,r*hp[3]*.1);g.beginPath();g.moveTo(s1[0],s1[1]);g.lineTo(s2[0],s2[1]);g.stroke()}}}
 }
 function drawBeetle(q,t){
   const rot=q.wheelRot||0,yellow=q.col||0xffe0b52e;
-  // Quatro pneus e carroceria oval simples: evita peças flutuantes no topo.
-  for(let side of [-1,1])for(let end of [-1,1])wheel(q,side*.82,end*1.02,.30,rot);
-  ellipseBody(q,.80,1.48,.30,.79,yellow);
-  // Cabine curta e escura, baixa o bastante para manter a silhueta do Fusca.
-  box(q.x,q.z,.43,.57,.72,1.03,q.yaw,0xff344b56,false,.9);
-  const nose=localPoint(q,0,.55,1.34),tail=localPoint(q,0,.53,-1.34);
+  for(let side of [-1,1])for(let end of [-1,1])wheel(q,side*.84,end*1.04,.32,rot);
+  ellipseBody(q,.84,1.54,.30,.84,yellow);
+  box(q.x,q.z,.52,.66,.78,1.10,q.yaw,0xff344b56,false,1.1);
+  box(q.x,q.z,.48,.56,1.08,1.16,q.yaw,yellow,false,1.0);
+  const nose=localPoint(q,0,.55,1.42),tail=localPoint(q,0,.53,-1.42);
   for(const p of [nose,tail]){
     const sp=project(p[0],p[1],p[2]);
-    if(sp){g.fillStyle=p===nose?'#fff2ad':'#d52c26';g.beginPath();g.ellipse(sp[0],sp[1],Math.max(1.5,.10*sp[3]),Math.max(1,.055*sp[3]),0,0,PI*2);g.fill()}
+    if(sp){g.fillStyle=p===nose?'#fff2ad':'#d52c26';g.beginPath();g.ellipse(sp[0],sp[1],Math.max(1.6,.11*sp[3]),Math.max(1.1,.065*sp[3]),0,0,PI*2);g.fill()}
   }
 }
 
@@ -1116,7 +1104,6 @@ function drawMotorcycle(q,t){
 function drawPlazaGround(ix,iz){
   const x=ix*P,z=iz*P;
   polygon3([pt(x-20,.018,z-20),pt(x+20,.018,z-20),pt(x+20,.018,z+20),pt(x-20,.018,z+20)],color(0xff9b9b91,dayL),0);
-  // Piso decorativo no mesmo plano do chão e desenhado antes do personagem.
   polygon3([pt(x-3,.022,z-3),pt(x+3,.022,z-3),pt(x+3,.022,z+3),pt(x-3,.022,z+3)],color(0xff6bb3c0,dayL),0);
 }
 function drawPlaza(ix,iz){
@@ -1140,21 +1127,20 @@ function car(q){
   if(q.type===6){drawBeetle(q,t);return}
   if(q.type===7){drawMotorcycle(q,t);return}
   if(q.type===8){drawPilotPlane(q);return}
+  let rot=q.wheelRot||0,bodyCol=q.col||CC[0];
   if(sp){let rx=(t[0]+Math.abs(sin((q.yaw||0)-camYaw))*(t[1]-t[0]))*1.15*sp[3];g.fillStyle='#00000066';g.beginPath();g.ellipse(sp[0],sp[1],rx,rx*.24,0,0,7);g.fill()}
-  for(let sx of [-1,1])for(let sz of [-1,1]){let lx=sx*(t[0]+.05),lz=sz*t[1]*.62;box(q.x+lx*c+lz*s,q.z-lx*s+lz*c,.16,.5,0,.62,q.yaw||0,0xff15171a,false,1.2)}
-  // Carroceria em volumes facetados, com capô, porta-malas e cabine separados.
-  ellipseBody(q,t[0],t[1],.28,t[2],q.col||CC[0]);
-  box(q.x,q.z,.91,t[1]*.91,.30,.56,q.yaw||0,q.col||CC[0],false,1.25);
-  box(q.x-s*.0-s*.0+sin(q.yaw||0)*t[5],q.z+cos(q.yaw||0)*t[5],t[3],t[4],t[2],t[6],q.yaw||0,0xff526b7b,false,1.5);
-  // Para-choques dianteiro/traseiro e faixas laterais dão mais leitura de carro real.
-  box(q.x+sin(q.yaw||0)*(t[1]+.06),q.z+cos(q.yaw||0)*(t[1]+.06),t[0]*.88,.10,.34,.58,q.yaw||0,0xffaeb6bb,false,.8);
-  box(q.x-sin(q.yaw||0)*(t[1]+.06),q.z-cos(q.yaw||0)*(t[1]+.06),t[0]*.88,.10,.34,.58,q.yaw||0,0xff687078,false,.8);
-  let cameraSide=(cx-q.x)*s+(cz-q.z)*c;
-  // Janelas laterais e para-brisa em painéis escuros, mantendo o estilo 2D/3D do jogo.
-  for(let side of [-1,1]){
-    const wx=q.x+side*(t[0]+.012)*c+sin(q.yaw||0)*t[5],wz=q.z-side*(t[0]+.012)*s+cos(q.yaw||0)*t[5];
-    box(wx,wz,.035,t[4]*.72,t[2]+.10,t[6]-.08,q.yaw||0,0xff263b4a,false,.55);
+  for(let sx of [-1,1])for(let sz of [-1,1]){
+    let lx=sx*(t[0]+.04),lz=sz*t[1]*.64;
+    let wp=localPoint(q,lx,0,lz);
+    wheel({x:wp[0],z:wp[2],yaw:q.yaw||0},0,0,.34,rot);
   }
+  box(q.x+s*(t[1]+.06),q.z+c*(t[1]+.06),t[0]*.92,.14,.22,.48,q.yaw||0,0xff23272d,false,1.1);
+  box(q.x-s*(t[1]+.06),q.z-c*(t[1]+.06),t[0]*.92,.14,.22,.48,q.yaw||0,0xff23272d,false,1.1);
+  ellipseBody(q,t[0],t[1],.28,t[2],bodyCol);
+  let cabX=q.x+s*t[5],cabZ=q.z+c*t[5],cabH=t[6];
+  box(cabX,cabZ,t[3],t[4],t[2],cabH,q.yaw||0,0xff47677a,false,1.45);
+  box(cabX,cabZ,t[3]*.94,t[4]*.92,cabH-.06,cabH+.11,q.yaw||0,bodyCol,false,1.25);
+  let cameraSide=(cx-q.x)*s+(cz-q.z)*c;
   function lamp(lx,lz,y0,y1,col){let x1=q.x+lx*c+lz*s,z1=q.z-lx*s+lz*c,x2=q.x+(lx+.34)*c+lz*s,z2=q.z-(lx+.34)*s+lz*c;polygon3([pt(x1,y0,z1),pt(x2,y0,z2),pt(x2,y1,z2),pt(x1,y1,z1)],color(col,glow?1:dayL),1.1)}
   glow=true;
   for(let i of [-1,1]){let lx=i*(t[0]*.7-.17);if(cameraSide>=0)lamp(lx,t[1]+.012,.52,.78,night?0xfffff4b0:0xffeeeeee);else lamp(lx,-t[1]-.012,.52,.78,0xffd32f2f)}
@@ -1165,14 +1151,12 @@ function drawPilotPlane(q){
   const a=q.altitude||0,yaw=q.yaw||0,s=sin(yaw),c=cos(yaw),X=q.x,Z=q.z;
   const anchor=project(X,a+.7,Z);g.save();
   if(anchor){g.translate(anchor[0],anchor[1]);g.rotate(-(q.bank||0)*.95);g.rotate(-(q.pitch||0)*.9);g.translate(-anchor[0],-anchor[1])}
-  // Fuselagem, asas e cauda: volumes compactos, sem texturas ou assets pesados.
   box(X,Z,.43,3.05,a+.38,a+1.10,yaw,0xffe8edf2,false,1.2);
   box(X,Z,3.45,.48,a+.68,a+.88,yaw,0xffdce5ea,false,1.1);
   box(X-s*2.25,Z-c*2.25,.85,.16,a+.64,a+.80,yaw,0xffcbd5dc,false,.8);
   box(X+s*2.25,Z+c*2.25,.85,.16,a+.64,a+.80,yaw,0xffcbd5dc,false,.8);
   box(X-s*.11,Z-c*.11,.78,.40,a+1.08,a+1.50,yaw,0xff7fb0c5,false,1.0);
   box(X,Z,1.12,.20,a+.48,a+.72,yaw,0xffd6e0e6,false,.8);
-  // Hélice giratória no nariz.
   const hx=X+s*3.08,hz=Z+c*3.08,ang=(q.prop||anim*3)*2.8;
   for(let j=0;j<2;j++){let r=ang+j*PI/2,dx=Math.cos(r)*.85,dy=Math.sin(r)*.85;bone(hx-dx*s,a+.74-dy,hz-dx*c,hx+dx*s,a+.74+dy,hz+dx*c,.12,0xff30383e,true)}
   if(a<.5){wheel(q,0,-2.35,.20,0);wheel(q,-.8,1.9,.23,0);wheel(q,.8,1.9,.23,0)}
@@ -1189,7 +1173,6 @@ function drawAirportGround(){
   g.setLineDash([]);g.lineWidth=3;
   for(const end of [-1,1]){const q1=project(x+end*143,.06,z-12),q2=project(x+end*143,.06,z+12);if(q1&&q2){g.beginPath();g.moveTo(q1[0],q1[1]);g.lineTo(q2[0],q2[1]);g.stroke()}}
   g.restore();
-  // Luzes simples de borda para destacar a pista ao entardecer e à noite.
   g.save();
   for(let i=-5;i<=5;i++)for(const side of [-1,1]){
     const p=project(x+i*25,.10,z+side*15);if(!p||p[0]<-8||p[0]>W+8||p[1]<-8||p[1]>H+8)continue;
@@ -1208,21 +1191,19 @@ function drawFlyingPlane(){
   g.beginPath();g.moveTo(0,-size*.95);g.lineTo(size*.16,-size*.12);g.lineTo(size*.88,size*.42);g.lineTo(size*.86,size*.58);g.lineTo(size*.14,size*.32);g.lineTo(size*.1,size*.82);g.lineTo(size*.34,size*.98);g.lineTo(size*.32,size*1.08);g.lineTo(0,size*.96);g.lineTo(-size*.32,size*1.08);g.lineTo(-size*.34,size*.98);g.lineTo(-size*.1,size*.82);g.lineTo(-size*.14,size*.32);g.lineTo(-size*.86,size*.58);g.lineTo(-size*.88,size*.42);g.lineTo(-size*.16,-size*.12);g.closePath();g.fill();g.stroke();g.restore();
 }
 
-function hasSceneLineOfSight(x,z){
-  const dx=x-cx,dz=z-cz,dist=Math.hypot(dx,dz);
-  if(dist<5)return true;
-  const steps=Math.min(48,Math.ceil(dist/3.5));
-  for(let i=1;i<steps-1;i++){
+function hasSceneLineOfSight(x,z,y=1.2){
+  const dx=x-cx,dz=z-cz,dy=y-cy,dist=Math.hypot(dx,dz);
+  if(dist<2)return true;
+  const steps=Math.min(64,Math.ceil(dist/2));
+  for(let i=1;i<steps;i++){
     const t=i/steps;
-    if(solid(cx+dx*t,cz+dz*t))return false;
+    if(solid(cx+dx*t,cz+dz*t,cy+dy*t))return false;
   }
   return true;
 }
 
 function drawBubbleAbove(x,yTop,label,bubble){
-  const p=project(x,yTop,player.z);
   const p3=project(x,yTop,arguments[4]!==undefined?arguments[4]:0);
-  void p;
   if(!p3)return;
   g.save();
   g.font='bold 12px Arial';
@@ -1360,9 +1341,9 @@ function render(){
   }
 
   let bx=Math.round(cx/P),bz=Math.round(cz/P);
-  for(let i=-3;i<=3;i++)for(let j=-3;j<=3;j++){
-    let X=(bx+i)*P,Z=(bz+j)*P;
-    fogK=cl((Math.hypot(X-cx,Z-cz)-50)/190,0,.7);
+  for(let i=-5;i<=5;i++)for(let j=-5;j<=5;j++){
+    let X=(bx+i)*P,Z=(bz+j)*P;if((X-cx)*sn+(Z-cz)*cs<-55)continue;
+    fogK=cl((Math.hypot(X-cx,Z-cz)-95)/260,0,.55);
     let zn=zone(bx+i,bz+j);
     if(zn){polygon3([pt(X-32,0,Z-32),pt(X+32,0,Z-32),pt(X+32,0,Z+32),pt(X-32,0,Z+32)],color(0xffe0cc92,dayL),0);continue}
     let c=h(bx+i,bz+j)%6===0?(weather===2?0xeff3f6:0x3e8e41):(weather===2?0xd9dee3:0xb4b4ba);
@@ -1377,54 +1358,76 @@ function render(){
       }
     }
   }
-  // Solos especiais antes da cena: objetos e personagens serão desenhados por cima.
   drawAirportGround();
-  for(let i=-3;i<=3;i++)for(let j=-3;j<=3;j++){let ix=bx+i,iz=bz+j;if(isPlazaLot(ix,iz))drawPlazaGround(ix,iz)}
+  for(let i=-5;i<=5;i++)for(let j=-5;j<=5;j++){let ix=bx+i,iz=bz+j;if(isPlazaLot(ix,iz))drawPlazaGround(ix,iz)}
   fogK=0;
 
-  if(sunY>0.03&&weather!==2)for(let i=-3;i<=3;i++)for(let j=-3;j<=3;j++){
+  if(sunY>0.03&&weather!==2)for(let i=-4;i<=4;i++)for(let j=-4;j<=4;j++){
     let ix=bx+i,iz=bz+j;if(zone(ix,iz)||h(ix,iz)%6===0)continue;
-    let X=ix*P,Z=iz*P;if((X-cx)*sn+(Z-cz)*cs<-35)continue;
+    let X=ix*P,Z=iz*P;if((X-cx)*sn+(Z-cz)*cs<-45)continue;
     let hh=h(ix,iz),h0=10+(hh>>4)%38,ht=h0<18?5+hh%4:h0,Ls=Math.min(42,ht/Math.max(0.28,sunY)),ox2=-sunX*Ls,oz2=-sunZ*Ls,pp=[];
     for(let a of [-15,15])for(let b of [-15,15]){pp.push([X+a,Z+b]);pp.push([X+a+ox2,Z+b+oz2])}
     polygon3(hull(pp).map(q=>pt(q[0],.03,q[1])),'rgba(0,0,0,.3)',0);
   }
 
   let items=[];
-  // Profundidade real na câmera: inclui a altura do objeto, indispensável ao olhar de cima.
   const cameraDepth=(x,z,y=0)=>(x-cx)*sn*cos(camPitch)+(z-cz)*cs*cos(camPitch)+(y-cy)*sin(camPitch);
-  for(let i=-3;i<=3;i++)for(let j=-3;j<=3;j++){
-    let ix=bx+i,iz=bz+j;
+  // Distância até a caixa mais próxima do prédio para oclusão realista
+  const boxCameraDepth=(x,z,hw,hl,yMid)=>{
+    let ncx=cl(cx,x-hw,x+hw),ncz=cl(cz,z-hl,z+hl);
+    return cameraDepth(ncx,ncz,yMid);
+  };
+  for(let i=-5;i<=5;i++)for(let j=-5;j<=5;j++){
+    let ix=bx+i,iz=bz+j;if((ix*P-cx)*sn+(iz*P-cz)*cs<=-50)continue;
     let zn=zone(ix,iz),dd=(ix*P-cx)**2+(iz*P-cz)**2,pk=h(ix,iz)%6===0;
     if(zn===0){
       let ps=getPostPos(ix,iz);
       items.push({d:(ps.x-cx)**2+(ps.z-cz)**2,depth:cameraDepth(ps.x,ps.z,3.2),fn:()=>post(ps.x,ps.z)});
     }
     if(zn===0&&!pk){
-      const seed=h(ix,iz),baseHeight=10+(seed>>4)%38,buildingHeight=baseHeight<18?5+seed%4:baseHeight+(baseHeight>30?6:0);
-      items.push({d:dd,depth:cameraDepth(ix*P,iz*P,buildingHeight*.5),fn:()=>bld(ix,iz)});
+      const bHt=getBuildingHeight(ix,iz);
+      items.push({d:dd,depth:boxCameraDepth(ix*P,iz*P,15.4,15.4,Math.min(cy,bHt*.5)),fn:()=>bld(ix,iz)});
     }
     else if(zn===0&&pk&&isPlazaLot(ix,iz))items.push({d:dd,depth:cameraDepth(ix*P,iz*P,1),fn:()=>drawPlaza(ix,iz)});
     else if(zn===1){
-      if(isHouseLot(ix,iz))items.push({d:dd,depth:cameraDepth(ix*P,iz*P,4),fn:()=>drawHouse(ix,iz)});
-      // Removidas as árvores altas com silhueta de coqueiro das áreas abertas.
-      // Mantemos árvores arredondadas nas praças urbanas para preservar os detalhes da cidade.
+      if(isHouseLot(ix,iz))items.push({d:dd,depth:boxCameraDepth(ix*P,iz*P,9.8,8.8,2.2),fn:()=>drawHouse(ix,iz)});
     }
   }
-  cars.forEach(q=>{if((q.x-cx)**2+(q.z-cz)**2<22500)items.push({d:(q.x-cx)**2+(q.z-cz)**2,depth:cameraDepth(q.x,q.z,(q.altitude||0)+.8),fn:()=>car(q)})});
-  // O jogador fica fora do sort por centro: desenha-se após o chão/objetos, com oclusão real por estruturas.
-  const aerialView=!!(cur&&cur.type===8&&(cur.altitude||0)>6);
-  items.sort((a,b)=>b.depth-a.depth).forEach(it=>{const dist=Math.sqrt(Math.max(0,it.d));fogK=aerialView?cl((dist-95)/430,0,.24):cl((dist-45)/190,0,.7);it.fn()});
-  fogK=0;
+  cars.forEach(q=>{if((q.x-cx)**2+(q.z-cz)**2<42000)items.push({d:(q.x-cx)**2+(q.z-cz)**2,depth:cameraDepth(q.x,q.z,(q.altitude||0)+.8),fn:()=>car(q)})});
+  // Jogador local e jogadores remotos entram na mesma ordenação de profundidade dos prédios:
+  // quem estiver atrás da parede é desenhado ANTES do prédio e fica oculto atrás dele.
   if(!cur&&!passengerCar){
-    person(player.x,player.z,player.yaw,shirts[chr],skin[chr],chr*7+1,1.75,0,weapon,pph,pamp,
-      cl((Math.hypot(vx,vz)-3.6)/2.8,0,1),(held.fire||keyFire||shootT>.06)?1:0,ca,jy,jv,'player',punchT);
+    items.push({
+      d:(player.x-cx)**2+(player.z-cz)**2,
+      depth:cameraDepth(player.x,player.z,0.9+jy),
+      fn:()=>person(player.x,player.z,player.yaw,shirts[chr],skin[chr],chr*7+1,1.75,0,weapon,pph,pamp,
+        cl((Math.hypot(vx,vz)-3.6)/2.8,0,1),(held.fire||keyFire||shootT>.06)?1:0,ca,jy,jv,'player',punchT)
+    });
   }
+  if(window.mpRemotePlayers&&window.mpRemotePlayers.size){
+    window.mpRemotePlayers.forEach(rp=>{
+      items.push({
+        d:(rp.x-cx)**2+(rp.z-cz)**2,
+        depth:cameraDepth(rp.x,rp.z,0.9),
+        fn:()=>{
+          if(!rp.inCarId){
+            person(rp.x,rp.z,rp.yaw||0,0xff00bcd4,skin[0],11,1.75,0,-1,rp.ph||0,rp.amp||0,0,0,0,0,0,'remote',0);
+          }
+          if(hasSceneLineOfSight(rp.x,rp.z,rp.inCarId?2.2:1.6)){
+            drawBubbleAbove(rp.x,rp.inCarId?2.6:2.15,'🌐 '+(rp.name||'Jogador'),rp.bubbleT>0?rp.bubble:'',rp.z);
+          }
+        }
+      });
+    });
+  }
+
+  const aerialView=!!(cur&&cur.type===8&&(cur.altitude||0)>6);
+  items.sort((a,b)=>b.depth-a.depth).forEach(it=>{const dist=Math.sqrt(Math.max(0,it.d));fogK=aerialView?cl((dist-120)/460,0,.2):cl((dist-90)/260,0,.55);it.fn()});
+  fogK=0;
 
   drawFlyingPlane();
 
-  // Balão da própria mensagem acima do jogador ou carro
-  if(myBubbleT>0&&myBubbleText){
+  if(myBubbleT>0&&myBubbleText&&hasSceneLineOfSight(player.x,player.z,(cur||passengerCar)?2.2:1.6)){
     drawBubbleAbove(player.x,(cur||passengerCar)?2.6:2.25,'',myBubbleText,player.z);
   }
 
@@ -1437,7 +1440,7 @@ function render(){
   }
   if(hasT){
     const p=project(tx,.35+Math.sin(anim*.09)*.12,tz);
-    if(p&&p[0]>-30&&p[0]<W+30&&p[1]>-40&&p[1]<H+30&&hasSceneLineOfSight(tx,tz)){
+    if(p&&p[0]>-30&&p[0]<W+30&&p[1]>-40&&p[1]<H+30&&hasSceneLineOfSight(tx,tz,1.0)){
       g.save();g.strokeStyle='#ffda28';g.fillStyle='rgba(255,214,0,.22)';g.lineWidth=3;
       g.beginPath();g.moveTo(p[0],p[1]+20);g.lineTo(p[0],p[1]+5);g.stroke();
       g.beginPath();g.arc(p[0],p[1],9,0,PI*2);g.fill();g.stroke();
@@ -1446,16 +1449,6 @@ function render(){
   }
   particles.forEach(a=>{let p=project(a.x,a.y,a.z);if(p){g.fillStyle='#b71c1c';g.beginPath();g.arc(p[0],p[1],Math.max(1,a.life*2),0,7);g.fill()}});
   bullets.forEach(b=>{let p=project(b.x,1.35,b.z);if(p){g.fillStyle='#ffee58';g.beginPath();g.arc(p[0],p[1],3,0,7);g.fill()}});
-
-  // Jogadores remotos: se estiverem em carro (inCarId), só o carro é desenhado e o nome fica sobre o carro
-  if(window.mpRemotePlayers&&window.mpRemotePlayers.size){
-    window.mpRemotePlayers.forEach(rp=>{
-      if(!rp.inCarId){
-        person(rp.x,rp.z,rp.yaw||0,0xff00bcd4,skin[0],11,1.75,0,-1,rp.ph||0,rp.amp||0,0,0,0,0,0,'remote',0);
-      }
-      drawBubbleAbove(rp.x,rp.inCarId?2.6:2.15,'🌐 '+(rp.name||'Jogador'),rp.bubbleT>0?rp.bubble:'',rp.z);
-    });
-  }
 
   if(weather){g.fillStyle='#22101820';g.fillRect(0,0,W,H);if(weather===1){g.strokeStyle='#99b0c4de';for(let i=0;i<80;i++){let x=(i*97+anim*40)%W,y=(i*61+anim*500)%H;g.beginPath();g.moveTo(x,y);g.lineTo(x-5,y+28);g.stroke()}}}
   if(!night){g.fillStyle='rgba(255,176,96,'+(.05+.16*warm)+')'}else g.fillStyle='rgba(20,40,110,.12)';
