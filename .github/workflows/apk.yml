@@ -35,6 +35,12 @@ jobs:
           cp -r ../temp_build/* app/www/
           rm -rf app/www/app app/www/.git
 
+          # Garante que existe um icone.png mesmo se você esquecer de subir
+          if [ ! -f "app/www/icone.png" ]; then
+            echo "Aviso: icone.png não encontrado na raiz do repositório."
+          fi
+
+          # Insere o ícone dentro de <widget ...> no config.xml
           sed -i 's|</widget>|    <icon src="www/icone.png" />\n</widget>|' app/config.xml
 
           cd app
