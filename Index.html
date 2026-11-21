@@ -6,34 +6,34 @@
 <title>GTA X — Câmera Livre &amp; Online (2x20)</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; user-select: none; }
-  html, body { width: 100%; height: 100%; overflow: hidden; background: #090c10; font-family: Arial, Helvetica, sans-serif; color: #f4f6f8; }
+  html, body { width: 100%; height: 100%; overflow: hidden; background: #070a0f; font-family: Arial, Helvetica, sans-serif; color: #f4f6f8; }
   canvas { display: block; width: 100vw; height: 100vh; touch-action: none; }
 
   #hud { position: fixed; inset: 0; pointer-events: none; z-index: 10; }
   .hud-top { position: absolute; top: 10px; left: 10px; right: 10px; display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
-  .pill { pointer-events: auto; background: rgba(12, 16, 23, 0.82); border: 1px solid rgba(255,255,255,0.14); border-radius: 10px; padding: 7px 11px; font-size: 12px; font-weight: bold; backdrop-filter: blur(6px); }
+  .pill { pointer-events: auto; background: rgba(11, 15, 22, 0.85); border: 1px solid rgba(255,255,255,0.16); border-radius: 10px; padding: 7px 11px; font-size: 12px; font-weight: bold; backdrop-filter: blur(6px); box-shadow: 0 4px 14px rgba(0,0,0,0.35); }
   .mp-pill { cursor: pointer; transition: transform .12s ease, border-color .15s ease, background .15s ease; }
   .mp-pill:active { transform: scale(0.96); }
   .mp-pill.warn { border-color: #ff6b6b; color: #ff9c9c; }
-  .mp-pill.active { border-color: #66bb6a; color: #a5d6a7; background: rgba(20, 48, 26, 0.88); }
+  .mp-pill.active { border-color: #66bb6a; color: #a5d6a7; background: rgba(20, 48, 26, 0.9); }
 
   .top-left { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
   .top-right { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; justify-content: flex-end; }
 
-  #msgBox { position: fixed; top: 56px; left: 50%; transform: translateX(-50%); background: rgba(14,18,26,0.88); border: 1px solid rgba(224,163,35,0.55); color: #ffe082; padding: 6px 14px; border-radius: 999px; font-size: 12px; font-weight: bold; z-index: 15; opacity: 0; transition: opacity .2s ease; pointer-events: none; white-space: nowrap; }
+  #msgBox { position: fixed; top: 58px; left: 50%; transform: translateX(-50%); background: rgba(14,18,26,0.92); border: 1px solid rgba(224,163,35,0.65); color: #ffe082; padding: 6px 14px; border-radius: 999px; font-size: 12px; font-weight: bold; z-index: 15; opacity: 0; transition: opacity .2s ease; pointer-events: none; white-space: nowrap; }
   #msgBox.show { opacity: 1; }
 
-  #joyZone { position: fixed; left: 18px; bottom: 18px; width: 128px; height: 128px; border-radius: 50%; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.16); z-index: 12; pointer-events: auto; touch-action: none; }
-  #joyKnob { position: absolute; left: 50%; top: 50%; width: 52px; height: 52px; margin-left: -26px; margin-top: -26px; border-radius: 50%; background: rgba(224,163,35,0.85); border: 2px solid #fff3c4; box-shadow: 0 4px 12px rgba(0,0,0,0.45); pointer-events: none; }
+  #joyZone { position: fixed; left: 18px; bottom: 18px; width: 132px; height: 132px; border-radius: 50%; background: rgba(255,255,255,0.06); border: 2px solid rgba(255,255,255,0.18); z-index: 12; pointer-events: auto; touch-action: none; }
+  #joyKnob { position: absolute; left: 50%; top: 50%; width: 54px; height: 54px; margin-left: -27px; margin-top: -27px; border-radius: 50%; background: radial-gradient(circle at 35% 35%, #ffd54f, #e0a323); border: 2px solid #fff8e1; box-shadow: 0 5px 15px rgba(0,0,0,0.55); pointer-events: none; }
 
-  .action-pad { position: fixed; right: 16px; bottom: 18px; display: grid; grid-template-columns: repeat(3, 56px); gap: 8px; z-index: 12; pointer-events: auto; }
-  .act-btn { height: 52px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.18); background: rgba(16, 21, 30, 0.85); color: #fff; font-weight: bold; font-size: 11px; cursor: pointer; display: flex; align-items: center; justify-content: center; text-align: center; padding: 4px; }
-  .act-btn:active { transform: scale(0.94); background: rgba(224,163,35,0.35); }
-  .act-btn.fire { background: rgba(198, 40, 40, 0.88); border-color: #ff8a80; }
-  .act-btn.car { background: rgba(21, 101, 192, 0.88); border-color: #82b1ff; }
+  .action-pad { position: fixed; right: 16px; bottom: 18px; display: grid; grid-template-columns: repeat(3, 58px); gap: 8px; z-index: 12; pointer-events: auto; }
+  .act-btn { height: 54px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.2); background: rgba(15, 20, 29, 0.88); color: #fff; font-weight: bold; font-size: 11px; cursor: pointer; display: flex; align-items: center; justify-content: center; text-align: center; padding: 4px; box-shadow: 0 4px 12px rgba(0,0,0,0.4); }
+  .act-btn:active { transform: scale(0.94); background: rgba(224,163,35,0.38); }
+  .act-btn.fire { background: rgba(198, 40, 40, 0.9); border-color: #ff8a80; }
+  .act-btn.car { background: rgba(21, 101, 192, 0.9); border-color: #82b1ff; }
 
-  #mpModal { position: fixed; inset: 0; background: rgba(0,0,0,0.72); z-index: 30; display: none; align-items: center; justify-content: center; padding: 14px; }
-  .mp-card { width: 100%; max-width: 440px; background: #121721; border: 1px solid rgba(255,255,255,0.16); border-radius: 14px; padding: 16px; box-shadow: 0 18px 40px rgba(0,0,0,0.65); }
+  #mpModal { position: fixed; inset: 0; background: rgba(0,0,0,0.75); z-index: 30; display: none; align-items: center; justify-content: center; padding: 14px; }
+  .mp-card { width: 100%; max-width: 440px; background: #121721; border: 1px solid rgba(255,255,255,0.18); border-radius: 14px; padding: 16px; box-shadow: 0 18px 40px rgba(0,0,0,0.7); }
   .mp-card h3 { font-size: 16px; margin-bottom: 10px; color: #ffca28; }
   .mp-field { margin-bottom: 10px; }
   .mp-field label { display: block; font-size: 11px; color: #b0bec5; margin-bottom: 4px; }
@@ -46,7 +46,7 @@
   .mp-btn.danger { background: #8e2424; color: #fff; }
   #mpStatusText { margin-top: 10px; font-size: 12px; color: #90caf9; min-height: 18px; word-break: break-word; }
 
-  #errBanner { position: fixed; left: 10px; right: 10px; bottom: 156px; background: rgba(140, 20, 20, 0.92); color: #fff; padding: 8px 12px; border-radius: 8px; font-size: 11px; z-index: 40; display: none; }
+  #errBanner { position: fixed; left: 10px; right: 10px; bottom: 160px; background: rgba(140, 20, 20, 0.92); color: #fff; padding: 8px 12px; border-radius: 8px; font-size: 11px; z-index: 40; display: none; }
 </style>
 </head>
 <body>
@@ -75,7 +75,7 @@
 <div class="action-pad">
   <button type="button" class="act-btn" id="btnRun">🏃 CORRER</button>
   <button type="button" class="act-btn" id="btnJump">🦘 PULAR</button>
-  <button type="button" class="act-btn car" id="btnEnter">🏍️ ENTRAR</button>
+  <button type="button" class="act-btn car" id="btnEnter">🚗 PEGAR</button>
   <button type="button" class="act-btn" id="btnCamLeft">↺ GIRAR</button>
   <button type="button" class="act-btn" id="btnCamRight">↻ GIRAR</button>
   <button type="button" class="act-btn fire" id="btnFire">🔫 ATIRAR</button>
@@ -136,33 +136,76 @@
   window.addEventListener('resize', resize);
   resize();
 
+  const PI = Math.PI;
+  const BLOCK = 48;
+
+  // Estacionamentos fixos onde ficam os carros e motos para os players pegarem
   const PARKING_LOTS = [
-    { name: 'Estacionamento Praça', x: 24, z: 46, w: 18, d: 14, color: '#263238' },
-    { name: 'Estacionamento Centro', x: 64, z: 24, w: 20, d: 16, color: '#263238' },
-    { name: 'Estacionamento Sul', x: -24, z: 34, w: 18, d: 14, color: '#263238' }
+    { name: 'Estacionamento Praça', x: 24, z: 48, w: 24, d: 16 },
+    { name: 'Estacionamento Centro', x: 72, z: 24, w: 26, d: 18 },
+    { name: 'Estacionamento Sul', x: -24, z: 48, w: 24, d: 16 }
   ];
 
+  // Quarteirões e prédios 3D ao redor das ruas (preservando os estacionamentos livres)
+  const BUILDINGS = [];
+  const paletteWalls = ['#2c3e50', '#37474f', '#455a64', '#263238', '#3e2723', '#1b3a4b', '#3b3561'];
+  const paletteRoofs = ['#1c252c', '#263238', '#2f3e46', '#1a202c'];
+
+  for (let gx = -3; gx <= 3; gx++) {
+    for (let gz = -3; gz <= 3; gz++) {
+      const cx = gx * BLOCK;
+      const cz = gz * BLOCK;
+      const nearLot = PARKING_LOTS.some(l => Math.hypot(l.x - cx, l.z - cz) < 22);
+      const nearSpawn = Math.hypot(24 - cx, 56 - cz) < 18;
+      if (nearLot || nearSpawn) continue;
+
+      const seed = Math.abs(gx * 31 + gz * 17);
+      const w = 16 + (seed % 8);
+      const d = 16 + ((seed * 3) % 8);
+      const h = 10 + ((seed * 7) % 22);
+      BUILDINGS.push({
+        x: cx,
+        z: cz,
+        w,
+        d,
+        h,
+        wall: paletteWalls[seed % paletteWalls.length],
+        roof: paletteRoofs[seed % paletteRoofs.length]
+      });
+    }
+  }
+
+  // Veículos estacionados nas vagas (carros e motos prontos para os jogadores pegarem)
   const vehicles = [
-    { id: 'v1', name: 'Sedan Preto', isMoto: false, x: 20, z: 45, yaw: 0, spd: 0, steer: 0, lean: 0, topSpd: 34, accel: 22, color: '#263238', accent: '#90a4ae', lot: 'Estacionamento Praça' },
-    { id: 'v2', name: 'Esportivo Vermelho', isMoto: false, x: 26, z: 45, yaw: 0, spd: 0, steer: 0, lean: 0, topSpd: 42, accel: 28, color: '#c62828', accent: '#ff8a80', lot: 'Estacionamento Praça' },
-    { id: 'm1', name: 'Moto Naked 600', isMoto: true, x: 30.5, z: 45, yaw: 0.12, spd: 0, steer: 0, lean: 0, topSpd: 48, accel: 34, color: '#ef6c00', accent: '#ffe082', lot: 'Estacionamento Praça' },
+    // Estacionamento Praça
+    { id: 'v1', name: 'Sedan Preto', isMoto: false, x: 16.5, z: 47.5, yaw: 0, spd: 0, steer: 0, lean: 0, pitch: 0, topSpd: 36, accel: 24, color: '#263238', roofCol: '#37474f', accent: '#90a4ae' },
+    { id: 'v2', name: 'Esportivo GT', isMoto: false, x: 22.0, z: 47.5, yaw: 0, spd: 0, steer: 0, lean: 0, pitch: 0, topSpd: 46, accel: 32, color: '#c62828', roofCol: '#8e0000', accent: '#ff8a80' },
+    { id: 'v3', name: 'Muscle Branco', isMoto: false, x: 27.5, z: 47.5, yaw: 0, spd: 0, steer: 0, lean: 0, pitch: 0, topSpd: 44, accel: 30, color: '#eceff1', roofCol: '#cfd8dc', accent: '#80cbc4' },
+    { id: 'm1', name: 'Moto Naked 600', isMoto: true, motoStyle: 'naked', x: 32.5, z: 47.5, yaw: 0.08, spd: 0, steer: 0, lean: 0, pitch: 0, topSpd: 50, accel: 36, color: '#ef6c00', accent: '#ffe082' },
 
-    { id: 'v3', name: 'SUV Azul', isMoto: false, x: 60, z: 24, yaw: Math.PI / 2, spd: 0, steer: 0, lean: 0, topSpd: 32, accel: 20, color: '#1565c0', accent: '#90caf9', lot: 'Estacionamento Centro' },
-    { id: 'm2', name: 'Moto Esportiva 1000', isMoto: true, x: 65, z: 20, yaw: Math.PI / 2, spd: 0, steer: 0, lean: 0, topSpd: 54, accel: 38, color: '#d32f2f', accent: '#ffccbc', lot: 'Estacionamento Centro' },
-    { id: 'm3', name: 'Moto Trail', isMoto: true, x: 65, z: 28, yaw: Math.PI / 2, spd: 0, steer: 0, lean: 0, topSpd: 45, accel: 32, color: '#2e7d32', accent: '#a5d6a7', lot: 'Estacionamento Centro' },
+    // Estacionamento Centro
+    { id: 'v4', name: 'SUV Urbana', isMoto: false, x: 66.5, z: 24.0, yaw: PI / 2, spd: 0, steer: 0, lean: 0, pitch: 0, topSpd: 34, accel: 22, color: '#1565c0', roofCol: '#0d47a1', accent: '#90caf9' },
+    { id: 'v5', name: 'Pickup Prata', isMoto: false, x: 72.0, z: 24.0, yaw: PI / 2, spd: 0, steer: 0, lean: 0, pitch: 0, topSpd: 38, accel: 25, color: '#78909c', roofCol: '#546e7a', accent: '#cfd8dc' },
+    { id: 'm2', name: 'Moto Esportiva 1000', isMoto: true, motoStyle: 'sport', x: 77.5, z: 19.5, yaw: PI / 2, spd: 0, steer: 0, lean: 0, pitch: 0, topSpd: 58, accel: 42, color: '#d32f2f', accent: '#ffccbc' },
+    { id: 'm3', name: 'Moto Trail 800', isMoto: true, motoStyle: 'trail', x: 77.5, z: 28.5, yaw: PI / 2, spd: 0, steer: 0, lean: 0, pitch: 0, topSpd: 47, accel: 34, color: '#2e7d32', accent: '#a5d6a7' },
 
-    { id: 'v4', name: 'Coupe Dourado', isMoto: false, x: -26, z: 34, yaw: -Math.PI / 2, spd: 0, steer: 0, lean: 0, topSpd: 40, accel: 26, color: '#f9a825', accent: '#fff59d', lot: 'Estacionamento Sul' },
-    { id: 'm4', name: 'Moto Street', isMoto: true, x: -21, z: 34, yaw: -Math.PI / 2, spd: 0, steer: 0, lean: 0, topSpd: 46, accel: 33, color: '#6a1b9a', accent: '#ea80fc', lot: 'Estacionamento Sul' }
+    // Estacionamento Sul
+    { id: 'v6', name: 'Coupe Dourado', isMoto: false, x: -29.5, z: 48.0, yaw: -PI / 2, spd: 0, steer: 0, lean: 0, pitch: 0, topSpd: 42, accel: 28, color: '#f9a825', roofCol: '#f57f17', accent: '#fff59d' },
+    { id: 'v7', name: 'Hatch Azul', isMoto: false, x: -24.5, z: 48.0, yaw: -PI / 2, spd: 0, steer: 0, lean: 0, pitch: 0, topSpd: 35, accel: 23, color: '#0277bd', roofCol: '#01579b', accent: '#81d4fa' },
+    { id: 'm4', name: 'Moto Street Custom', isMoto: true, motoStyle: 'custom', x: -19.0, z: 48.0, yaw: -PI / 2, spd: 0, steer: 0, lean: 0, pitch: 0, topSpd: 46, accel: 33, color: '#6a1b9a', accent: '#ea80fc' }
   ];
 
+  // Sem NPCs de rua (nenhum pedestre ou tráfego aleatório)
+  const ents = [];
   const bullets = [];
+  const particles = [];
 
   const player = {
     x: 24,
     y: 0,
-    z: 52,
+    z: 55,
     vy: 0,
-    yaw: Math.PI,
+    yaw: PI,
     hp: 100,
     weapon: 'pistol',
     inVeh: null,
@@ -170,8 +213,8 @@
     fireCd: 0
   };
 
-  let camYaw = Math.PI;
-  let camPitch = 0.42;
+  let camYaw = PI;
+  let camPitch = 0.36;
   let camDist = 11.5;
   let camMode = 0;
 
@@ -180,30 +223,25 @@
 
   function clamp(v, min, max) { return Math.max(min, Math.min(max, v)); }
   function normalizeAngle(a) {
-    while (a > Math.PI) a -= Math.PI * 2;
-    while (a < -Math.PI) a += Math.PI * 2;
+    while (a > PI) a -= PI * 2;
+    while (a < -PI) a += PI * 2;
     return a;
   }
 
-  function project(wx, wy, wz) {
+  function getCamBasis() {
     const cx = player.inVeh ? player.inVeh.x : player.x;
     const cz = player.inVeh ? player.inVeh.z : player.z;
-    const cy = player.inVeh ? 1.2 : player.y + 1.2;
+    const cy = player.inVeh ? (player.inVeh.isMoto ? 1.35 : 1.45) : player.y + 1.4;
 
     const camX = cx - Math.sin(camYaw) * Math.cos(camPitch) * camDist;
-    const camY = cy + Math.sin(camPitch) * camDist + 1.4;
+    const camY = cy + Math.sin(camPitch) * camDist + 1.6;
     const camZ = cz - Math.cos(camYaw) * Math.cos(camPitch) * camDist;
-
-    const dx = wx - camX;
-    const dy = wy - camY;
-    const dz = wz - camZ;
 
     const fx = Math.sin(camYaw) * Math.cos(camPitch);
     const fy = -Math.sin(camPitch);
     const fz = Math.cos(camYaw) * Math.cos(camPitch);
-
-    const fwdLen = Math.hypot(fx, fy, fz) || 1;
-    const fnx = fx / fwdLen, fny = fy / fwdLen, fnz = fz / fwdLen;
+    const fLen = Math.hypot(fx, fy, fz) || 1;
+    const fnx = fx / fLen, fny = fy / fLen, fnz = fz / fLen;
 
     let rnx = Math.cos(camYaw), rny = 0, rnz = -Math.sin(camYaw);
     const rLen = Math.hypot(rnx, rny, rnz) || 1;
@@ -213,14 +251,26 @@
     const uny = rnz * fnx - rnx * fnz;
     const unz = rnx * fny - rny * fnx;
 
-    const camSpaceX = dx * rnx + dy * rny + dz * rnz;
-    const camSpaceY = dx * unx + dy * uny + dz * unz;
-    const camSpaceZ = dx * fnx + dy * fny + dz * fnz;
+    return { camX, camY, camZ, fnx, fny, fnz, rnx, rny, rnz, unx, uny, unz };
+  }
 
-    if (camSpaceZ <= 0.4) return null;
-    const fov = Math.min(W, H) * 0.78;
-    const scale = fov / camSpaceZ;
-    return [W * 0.5 + camSpaceX * scale, H * 0.54 - camSpaceY * scale, camSpaceZ, scale];
+  function projectWithBasis(b, wx, wy, wz) {
+    const dx = wx - b.camX;
+    const dy = wy - b.camY;
+    const dz = wz - b.camZ;
+
+    const sx3 = dx * b.rnx + dy * b.rny + dz * b.rnz;
+    const sy3 = dx * b.unx + dy * b.uny + dz * b.unz;
+    const sz3 = dx * b.fnx + dy * b.fny + dz * b.fnz;
+
+    if (sz3 <= 0.45) return null;
+    const fov = Math.min(W, H) * 0.82;
+    const scale = fov / sz3;
+    return [W * 0.5 + sx3 * scale, H * 0.55 - sy3 * scale, sz3, scale];
+  }
+
+  function project(wx, wy, wz) {
+    return projectWithBasis(getCamBasis(), wx, wy, wz);
   }
 
   function enterOrExitVehicle() {
@@ -229,9 +279,10 @@
       v.spd = 0;
       v.steer = 0;
       v.lean = 0;
-      const sideYaw = v.yaw + Math.PI * 0.5;
-      player.x = v.x + Math.sin(sideYaw) * 1.9;
-      player.z = v.z + Math.cos(sideYaw) * 1.9;
+      v.pitch = 0;
+      const sideYaw = v.yaw + PI * 0.5;
+      player.x = v.x + Math.sin(sideYaw) * 2.0;
+      player.z = v.z + Math.cos(sideYaw) * 2.0;
       player.y = 0;
       player.inVeh = null;
       say('Saiu do ' + v.name);
@@ -240,7 +291,7 @@
     }
 
     let nearest = null;
-    let bestDist = 4.5;
+    let bestDist = 4.8;
     for (const v of vehicles) {
       const d = Math.hypot(v.x - player.x, v.z - player.z);
       if (d < bestDist) {
@@ -254,29 +305,55 @@
       player.x = nearest.x;
       player.z = nearest.z;
       player.y = nearest.isMoto ? 0.85 : 0.65;
-      say((nearest.isMoto ? 'Montou na ' : 'Entrou no ') + nearest.name);
+      say((nearest.isMoto ? 'Montou na ' : 'Pegou o ') + nearest.name);
       updateHud();
     } else {
-      say('Vá até um carro ou moto no estacionamento');
+      say('Vá até um veículo estacionado no estacionamento');
     }
   }
 
   function fireWeapon() {
     if (player.fireCd > 0) return;
-    player.fireCd = 0.22;
+    player.fireCd = 0.2;
     const ox = player.inVeh ? player.inVeh.x : player.x;
     const oz = player.inVeh ? player.inVeh.z : player.z;
     const oy = player.inVeh ? (player.inVeh.isMoto ? 1.45 : 1.35) : player.y + 1.35;
     const ang = player.inVeh ? player.inVeh.yaw : player.yaw;
 
+    const muzzleX = ox + Math.sin(ang) * 1.1;
+    const muzzleZ = oz + Math.cos(ang) * 1.1;
+
     bullets.push({
-      x: ox + Math.sin(ang) * 1.1,
+      x: muzzleX,
       y: oy,
-      z: oz + Math.cos(ang) * 1.1,
-      vx: Math.sin(ang) * 78,
-      vz: Math.cos(ang) * 78,
+      z: muzzleZ,
+      vx: Math.sin(ang) * 82,
+      vz: Math.cos(ang) * 82,
       life: 0.75
     });
+
+    for (let i = 0; i < 4; i++) {
+      particles.push({
+        x: muzzleX,
+        y: oy,
+        z: muzzleZ,
+        vx: (Math.random() - 0.5) * 6,
+        vy: Math.random() * 3,
+        vz: (Math.random() - 0.5) * 6,
+        life: 0.22
+      });
+    }
+  }
+
+  function collidesBuilding(x, z, radius) {
+    for (const b of BUILDINGS) {
+      const halfW = b.w * 0.5 + radius;
+      const halfD = b.d * 0.5 + radius;
+      if (Math.abs(x - b.x) < halfW && Math.abs(z - b.z) < halfD) {
+        return true;
+      }
+    }
+    return false;
   }
 
   function update(dt) {
@@ -285,7 +362,7 @@
 
     const turnInput = (held.turnRight ? 1 : 0) - (held.turnLeft ? 1 : 0);
     if (turnInput !== 0) {
-      camYaw = normalizeAngle(camYaw + turnInput * 2.1 * dt);
+      camYaw = normalizeAngle(camYaw + turnInput * 2.15 * dt);
     }
 
     if (player.inVeh) {
@@ -304,13 +381,22 @@
       v.steer += (steerTarget - v.steer) * Math.min(1, dt * 10);
       const speedFactor = clamp(Math.abs(v.spd) / 6, 0.25, 1);
       const reverseSign = v.spd >= -0.05 ? 1 : -1;
-      v.yaw = normalizeAngle(v.yaw + v.steer * (v.isMoto ? 2.65 : 2.1) * speedFactor * reverseSign * dt);
+      v.yaw = normalizeAngle(v.yaw + v.steer * (v.isMoto ? 2.7 : 2.15) * speedFactor * reverseSign * dt);
 
-      const targetLean = v.isMoto ? -v.steer * clamp(Math.abs(v.spd) / 22, 0.15, 1) * 0.55 : -v.steer * 0.12;
+      const targetLean = v.isMoto ? -v.steer * clamp(Math.abs(v.spd) / 22, 0.15, 1) * 0.58 : -v.steer * 0.12;
+      const targetPitch = v.isMoto ? clamp(v.spd / v.topSpd, -0.15, 1) * 0.28 : 0;
       v.lean += (targetLean - v.lean) * Math.min(1, dt * 10);
+      v.pitch += (targetPitch - v.pitch) * Math.min(1, dt * 9);
 
-      v.x = clamp(v.x + Math.sin(v.yaw) * v.spd * dt, -140, 140);
-      v.z = clamp(v.z + Math.cos(v.yaw) * v.spd * dt, -140, 140);
+      const nextX = clamp(v.x + Math.sin(v.yaw) * v.spd * dt, -155, 155);
+      const nextZ = clamp(v.z + Math.cos(v.yaw) * v.spd * dt, -155, 155);
+
+      if (!collidesBuilding(nextX, nextZ, v.isMoto ? 1.0 : 1.7)) {
+        v.x = nextX;
+        v.z = nextZ;
+      } else {
+        v.spd = -v.spd * 0.25;
+      }
 
       player.x = v.x;
       player.z = v.z;
@@ -332,10 +418,14 @@
 
         const dirX = forwardX * nz + rightX * nx;
         const dirZ = forwardZ * nz + rightZ * nx;
-        const spd = held.run ? 12.5 : 6.8;
+        const spd = held.run ? 13.0 : 7.0;
 
-        player.x = clamp(player.x + dirX * spd * dt, -140, 140);
-        player.z = clamp(player.z + dirZ * spd * dt, -140, 140);
+        const nextX = clamp(player.x + dirX * spd * dt, -155, 155);
+        const nextZ = clamp(player.z + dirZ * spd * dt, -155, 155);
+
+        if (!collidesBuilding(nextX, player.z, 0.7)) player.x = nextX;
+        if (!collidesBuilding(player.x, nextZ, 0.7)) player.z = nextZ;
+
         player.yaw = Math.atan2(dirX, dirZ);
         player.walkPhase += dt * (held.run ? 16 : 10);
       } else {
@@ -357,7 +447,16 @@
       b.x += b.vx * dt;
       b.z += b.vz * dt;
       b.life -= dt;
-      if (b.life <= 0) bullets.splice(i, 1);
+      if (b.life <= 0 || collidesBuilding(b.x, b.z, 0.1)) bullets.splice(i, 1);
+    }
+
+    for (let i = particles.length - 1; i >= 0; i--) {
+      const pt = particles[i];
+      pt.x += pt.vx * dt;
+      pt.y += pt.vy * dt;
+      pt.z += pt.vz * dt;
+      pt.life -= dt;
+      if (pt.life <= 0) particles.splice(i, 1);
     }
 
     updateHud();
@@ -370,42 +469,50 @@
       $('btnEnter').textContent = '🚶 SAIR';
     } else {
       $('vehBadge').textContent = '🚶 A pé';
-      $('btnEnter').textContent = '🏍️ ENTRAR';
+      $('btnEnter').textContent = '🚗 PEGAR';
     }
   }
 
-  function drawGroundAndLots() {
-    const sky = ctx.createLinearGradient(0, 0, 0, H * 0.56);
-    sky.addColorStop(0, '#0f172a');
-    sky.addColorStop(1, '#1e293b');
+  function drawSkyAndGround(b) {
+    const sky = ctx.createLinearGradient(0, 0, 0, H * 0.58);
+    sky.addColorStop(0, '#070c18');
+    sky.addColorStop(0.55, '#132238');
+    sky.addColorStop(1, '#26384e');
     ctx.fillStyle = sky;
-    ctx.fillRect(0, 0, W, H * 0.56);
+    ctx.fillRect(0, 0, W, H * 0.58);
 
-    ctx.fillStyle = '#141920';
-    ctx.fillRect(0, H * 0.56, W, H * 0.44);
+    ctx.fillStyle = '#161b22';
+    ctx.fillRect(0, H * 0.58, W, H * 0.42);
 
-    ctx.strokeStyle = 'rgba(255,255,255,0.06)';
-    ctx.lineWidth = 1;
-    for (let g = -120; g <= 120; g += 20) {
-      const p1 = project(g, 0, -120);
-      const p2 = project(g, 0, 120);
+    ctx.lineWidth = 2;
+    for (let g = -144; g <= 144; g += BLOCK) {
+      const p1 = projectWithBasis(b, g, 0.01, -155);
+      const p2 = projectWithBasis(b, g, 0.01, 155);
       if (p1 && p2) {
+        ctx.strokeStyle = 'rgba(255, 213, 79, 0.22)';
         ctx.beginPath(); ctx.moveTo(p1[0], p1[1]); ctx.lineTo(p2[0], p2[1]); ctx.stroke();
       }
-      const h1 = project(-120, 0, g);
-      const h2 = project(120, 0, g);
+      const h1 = projectWithBasis(b, -155, 0.01, g);
+      const h2 = projectWithBasis(b, 155, 0.01, g);
       if (h1 && h2) {
+        ctx.strokeStyle = 'rgba(255, 213, 79, 0.22)';
         ctx.beginPath(); ctx.moveTo(h1[0], h1[1]); ctx.lineTo(h2[0], h2[1]); ctx.stroke();
       }
     }
 
     for (const lot of PARKING_LOTS) {
-      const c1 = project(lot.x - lot.w * 0.5, 0.02, lot.z - lot.d * 0.5);
-      const c2 = project(lot.x + lot.w * 0.5, 0.02, lot.z - lot.d * 0.5);
-      const c3 = project(lot.x + lot.w * 0.5, 0.02, lot.z + lot.d * 0.5);
-      const c4 = project(lot.x - lot.w * 0.5, 0.02, lot.z + lot.d * 0.5);
+      const x0 = lot.x - lot.w * 0.5;
+      const x1 = lot.x + lot.w * 0.5;
+      const z0 = lot.z - lot.d * 0.5;
+      const z1 = lot.z + lot.d * 0.5;
+
+      const c1 = projectWithBasis(b, x0, 0.02, z0);
+      const c2 = projectWithBasis(b, x1, 0.02, z0);
+      const c3 = projectWithBasis(b, x1, 0.02, z1);
+      const c4 = projectWithBasis(b, x0, 0.02, z1);
+
       if (c1 && c2 && c3 && c4) {
-        ctx.fillStyle = 'rgba(46, 125, 50, 0.16)';
+        ctx.fillStyle = 'rgba(38, 50, 56, 0.85)';
         ctx.strokeStyle = '#ffca28';
         ctx.lineWidth = 2;
         ctx.beginPath();
@@ -417,21 +524,178 @@
         ctx.fill();
         ctx.stroke();
       }
-      const labelPt = project(lot.x, 0.2, lot.z - lot.d * 0.5 - 1.2);
-      if (labelPt) {
-        ctx.fillStyle = '#ffe082';
+
+      ctx.strokeStyle = 'rgba(255,255,255,0.35)';
+      ctx.lineWidth = 1.2;
+      for (let vx = x0 + 4; vx < x1; vx += 4.5) {
+        const lp1 = projectWithBasis(b, vx, 0.03, z0 + 1.2);
+        const lp2 = projectWithBasis(b, vx, 0.03, z1 - 1.2);
+        if (lp1 && lp2) {
+          ctx.beginPath(); ctx.moveTo(lp1[0], lp1[1]); ctx.lineTo(lp2[0], lp2[1]); ctx.stroke();
+        }
+      }
+
+      const tag = projectWithBasis(b, lot.x, 0.3, z0 - 1.4);
+      if (tag) {
         ctx.font = 'bold 11px Arial';
         ctx.textAlign = 'center';
-        ctx.fillText('🅿️ ' + lot.name, labelPt[0], labelPt[1]);
+        ctx.fillStyle = '#ffe082';
+        ctx.fillText('🅿️ ' + lot.name, tag[0], tag[1]);
       }
     }
   }
 
-  function drawCharacter(x, y, z, yaw, options = {}) {
-    const p = project(x, y, z);
+  function draw3DBuilding(b, bld) {
+    const hw = bld.w * 0.5;
+    const hd = bld.d * 0.5;
+    const x0 = bld.x - hw, x1 = bld.x + hw;
+    const z0 = bld.z - hd, z1 = bld.z + hd;
+
+    const g1 = projectWithBasis(b, x0, 0, z0);
+    const g2 = projectWithBasis(b, x1, 0, z0);
+    const g3 = projectWithBasis(b, x1, 0, z1);
+    const g4 = projectWithBasis(b, x0, 0, z1);
+
+    const t1 = projectWithBasis(b, x0, bld.h, z0);
+    const t2 = projectWithBasis(b, x1, bld.h, z0);
+    const t3 = projectWithBasis(b, x1, bld.h, z1);
+    const t4 = projectWithBasis(b, x0, bld.h, z1);
+
+    if (!t1 && !t2 && !t3 && !t4) return;
+
+    const basePts = [g1, g2, g3, g4];
+    const topPts = [t1, t2, t3, t4];
+
+    for (let i = 0; i < 4; i++) {
+      const next = (i + 1) % 4;
+      const a0 = basePts[i], a1 = basePts[next];
+      const b0 = topPts[i], b1 = topPts[next];
+      if (a0 && a1 && b0 && b1) {
+        ctx.fillStyle = i % 2 === 0 ? bld.wall : '#222d38';
+        ctx.strokeStyle = 'rgba(0,0,0,0.45)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(a0[0], a0[1]);
+        ctx.lineTo(a1[0], a1[1]);
+        ctx.lineTo(b1[0], b1[1]);
+        ctx.lineTo(b0[0], b0[1]);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+      }
+    }
+
+    if (t1 && t2 && t3 && t4) {
+      ctx.fillStyle = bld.roof;
+      ctx.strokeStyle = 'rgba(255,255,255,0.12)';
+      ctx.beginPath();
+      ctx.moveTo(t1[0], t1[1]);
+      ctx.lineTo(t2[0], t2[1]);
+      ctx.lineTo(t3[0], t3[1]);
+      ctx.lineTo(t4[0], t4[1]);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+    }
+  }
+
+  function drawVehicle3D(b, v) {
+    const p = projectWithBasis(b, v.x, 0, v.z);
     if (!p) return;
     const [sx, sy, , scale] = p;
-    const k = clamp(scale * 0.045, 0.45, 2.2);
+    const k = clamp(scale * 0.048, 0.4, 2.4);
+
+    ctx.save();
+    ctx.translate(sx, sy);
+    ctx.rotate((v.lean || 0) + (v.pitch || 0) * 0.35);
+
+    ctx.fillStyle = 'rgba(0,0,0,0.45)';
+    ctx.beginPath();
+    ctx.ellipse(0, 1 * k, (v.isMoto ? 14 : 22) * k, (v.isMoto ? 4.5 : 8) * k, 0, 0, PI * 2);
+    ctx.fill();
+
+    if (v.isMoto) {
+      ctx.fillStyle = '#11161d';
+      ctx.beginPath();
+      ctx.arc(-12 * k, -5 * k, 5.8 * k, 0, PI * 2);
+      ctx.arc(12 * k, -5 * k, 5.8 * k, 0, PI * 2);
+      ctx.fill();
+
+      ctx.strokeStyle = '#90a4ae';
+      ctx.lineWidth = 1.4 * k;
+      ctx.beginPath();
+      ctx.arc(-12 * k, -5 * k, 3 * k, 0, PI * 2);
+      ctx.arc(12 * k, -5 * k, 3 * k, 0, PI * 2);
+      ctx.stroke();
+
+      ctx.fillStyle = v.color;
+      ctx.beginPath();
+      if (v.motoStyle === 'sport') {
+        ctx.moveTo(-13 * k, -8 * k);
+        ctx.lineTo(2 * k, -15 * k);
+        ctx.lineTo(15 * k, -11 * k);
+        ctx.lineTo(9 * k, -5 * k);
+        ctx.lineTo(-9 * k, -5 * k);
+      } else if (v.motoStyle === 'trail') {
+        ctx.moveTo(-14 * k, -9 * k);
+        ctx.lineTo(0 * k, -17 * k);
+        ctx.lineTo(13 * k, -14 * k);
+        ctx.lineTo(9 * k, -5 * k);
+        ctx.lineTo(-10 * k, -5 * k);
+      } else if (v.motoStyle === 'custom') {
+        ctx.moveTo(-15 * k, -7 * k);
+        ctx.lineTo(3 * k, -13 * k);
+        ctx.lineTo(14 * k, -9 * k);
+        ctx.lineTo(10 * k, -5 * k);
+        ctx.lineTo(-12 * k, -5 * k);
+      } else {
+        ctx.moveTo(-13 * k, -8 * k);
+        ctx.lineTo(3 * k, -14 * k);
+        ctx.lineTo(14 * k, -10 * k);
+        ctx.lineTo(9 * k, -5 * k);
+        ctx.lineTo(-9 * k, -5 * k);
+      }
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.strokeStyle = v.accent || '#eceff1';
+      ctx.lineWidth = 2.4 * k;
+      ctx.beginPath();
+      ctx.moveTo(8 * k, -17 * k);
+      ctx.lineTo(11 * k, -10 * k);
+      ctx.stroke();
+    } else {
+      ctx.fillStyle = v.color;
+      ctx.beginPath();
+      ctx.roundRect(-21 * k, -15 * k, 42 * k, 12 * k, 4 * k);
+      ctx.fill();
+
+      ctx.fillStyle = v.roofCol || v.color;
+      ctx.beginPath();
+      ctx.roundRect(-11 * k, -22 * k, 21 * k, 8 * k, 3 * k);
+      ctx.fill();
+
+      ctx.fillStyle = v.accent || '#90caf9';
+      ctx.beginPath();
+      ctx.roundRect(-8 * k, -20 * k, 15 * k, 5 * k, 2 * k);
+      ctx.fill();
+
+      ctx.fillStyle = '#0e131a';
+      ctx.beginPath();
+      ctx.arc(-12 * k, -2.5 * k, 5.5 * k, 0, PI * 2);
+      ctx.arc(12 * k, -2.5 * k, 5.5 * k, 0, PI * 2);
+      ctx.fill();
+    }
+
+    ctx.restore();
+  }
+
+  function drawCharacter3D(b, x, y, z, yaw, options = {}) {
+    const p = projectWithBasis(b, x, y, z);
+    if (!p) return;
+    const [sx, sy, , scale] = p;
+    const k = clamp(scale * 0.048, 0.4, 2.4);
+
     const isRidingMoto = !!options.ridingMoto;
     const lean = options.lean || 0;
     const spd = options.spd || 0;
@@ -441,28 +705,29 @@
 
     ctx.save();
     ctx.translate(sx, sy);
+
     if (isRidingMoto) {
-      const pitchForward = clamp(spd / 55, 0, 0.35);
+      const forwardTilt = clamp(spd / 55, 0, 0.36);
       ctx.rotate(lean);
-      ctx.translate(0, -14 * k);
-      ctx.rotate(pitchForward);
+      ctx.translate(2 * k, -13.5 * k);
+      ctx.rotate(forwardTilt);
     } else {
       ctx.translate(0, -18 * k);
     }
 
-    const legSwing = isRidingMoto ? 0.35 : Math.sin(walkPhase) * 0.55;
+    const legSwing = isRidingMoto ? 0.32 : Math.sin(walkPhase) * 0.58;
     ctx.strokeStyle = '#1e88e5';
     ctx.lineWidth = 4.2 * k;
     ctx.lineCap = 'round';
 
     ctx.beginPath();
-    ctx.moveTo(-3 * k, 4 * k);
-    ctx.lineTo((-5 - Math.sin(legSwing) * 4) * k, (isRidingMoto ? 12 : 16) * k);
+    ctx.moveTo(-2.5 * k, 4 * k);
+    ctx.lineTo((-4 - Math.sin(legSwing) * 4) * k, (isRidingMoto ? 11.5 : 16) * k);
     ctx.stroke();
 
     ctx.beginPath();
-    ctx.moveTo(3 * k, 4 * k);
-    ctx.lineTo((5 + Math.sin(legSwing) * 4) * k, (isRidingMoto ? 12 : 16) * k);
+    ctx.moveTo(2.5 * k, 4 * k);
+    ctx.lineTo((4 + Math.sin(legSwing) * 4) * k, (isRidingMoto ? 11.5 : 16) * k);
     ctx.stroke();
 
     ctx.fillStyle = shirtColor;
@@ -474,10 +739,10 @@
     ctx.lineWidth = 3.5 * k;
     ctx.beginPath();
     if (isRidingMoto) {
-      ctx.moveTo(-6 * k, -8 * k);
-      ctx.lineTo(-10 * k, -2 * k);
-      ctx.moveTo(6 * k, -8 * k);
-      ctx.lineTo(10 * k, -2 * k);
+      ctx.moveTo(-4 * k, -8 * k);
+      ctx.lineTo(7 * k, -4 * k);
+      ctx.moveTo(4 * k, -7 * k);
+      ctx.lineTo(9 * k, -3 * k);
     } else {
       ctx.moveTo(-6 * k, -8 * k);
       ctx.lineTo(-8 * k, (2 + Math.cos(walkPhase) * 4) * k);
@@ -488,8 +753,15 @@
 
     ctx.fillStyle = '#ffcc80';
     ctx.beginPath();
-    ctx.arc(0, -16 * k, 5.5 * k, 0, Math.PI * 2);
+    ctx.arc(0, -16 * k, 5.4 * k, 0, PI * 2);
     ctx.fill();
+
+    if (isRidingMoto) {
+      ctx.fillStyle = shirtColor;
+      ctx.beginPath();
+      ctx.arc(0, -17.2 * k, 5.6 * k, PI, PI * 2);
+      ctx.fill();
+    }
 
     ctx.restore();
 
@@ -503,104 +775,72 @@
     }
   }
 
-  function drawVehicle(v) {
-    const p = project(v.x, 0, v.z);
-    if (!p) return;
-    const [sx, sy, , scale] = p;
-    const k = clamp(scale * 0.045, 0.45, 2.2);
-
-    ctx.save();
-    ctx.translate(sx, sy);
-    ctx.rotate(v.lean || 0);
-
-    if (v.isMoto) {
-      ctx.fillStyle = '#111';
-      ctx.beginPath();
-      ctx.arc(-13 * k, -5 * k, 6 * k, 0, Math.PI * 2);
-      ctx.arc(13 * k, -5 * k, 6 * k, 0, Math.PI * 2);
-      ctx.fill();
-
-      ctx.fillStyle = v.color;
-      ctx.beginPath();
-      ctx.moveTo(-14 * k, -8 * k);
-      ctx.lineTo(4 * k, -14 * k);
-      ctx.lineTo(15 * k, -10 * k);
-      ctx.lineTo(10 * k, -5 * k);
-      ctx.lineTo(-10 * k, -5 * k);
-      ctx.closePath();
-      ctx.fill();
-
-      ctx.strokeStyle = v.accent || '#eceff1';
-      ctx.lineWidth = 2.5 * k;
-      ctx.beginPath();
-      ctx.moveTo(8 * k, -17 * k);
-      ctx.lineTo(11 * k, -10 * k);
-      ctx.stroke();
-    } else {
-      ctx.fillStyle = 'rgba(0,0,0,0.45)';
-      ctx.beginPath();
-      ctx.ellipse(0, 0, 22 * k, 8 * k, 0, 0, Math.PI * 2);
-      ctx.fill();
-
-      ctx.fillStyle = v.color;
-      ctx.beginPath();
-      ctx.roundRect(-20 * k, -15 * k, 40 * k, 13 * k, 4 * k);
-      ctx.fill();
-
-      ctx.fillStyle = v.accent || '#b0bec5';
-      ctx.beginPath();
-      ctx.roundRect(-10 * k, -22 * k, 20 * k, 8 * k, 3 * k);
-      ctx.fill();
-
-      ctx.fillStyle = '#111';
-      ctx.beginPath();
-      ctx.arc(-12 * k, -2 * k, 5.5 * k, 0, Math.PI * 2);
-      ctx.arc(12 * k, -2 * k, 5.5 * k, 0, Math.PI * 2);
-      ctx.fill();
-    }
-
-    ctx.restore();
-  }
-
   function render() {
     ctx.save();
     ctx.scale(DPR, DPR);
-    drawGroundAndLots();
+    const b = getCamBasis();
+
+    drawSkyAndGround(b);
+
+    const drawList = [];
+
+    for (const bld of BUILDINGS) {
+      const dist = Math.hypot(bld.x - b.camX, bld.z - b.camZ);
+      drawList.push({ dist, fn: () => draw3DBuilding(b, bld) });
+    }
 
     for (const v of vehicles) {
-      drawVehicle(v);
+      const dist = Math.hypot(v.x - b.camX, v.z - b.camZ);
+      drawList.push({ dist, fn: () => drawVehicle3D(b, v) });
     }
 
     const ridingMoto = !!(player.inVeh && player.inVeh.isMoto);
     const vehSpd = player.inVeh ? player.inVeh.spd : 0;
     const vehLean = player.inVeh ? player.inVeh.lean : 0;
-    drawCharacter(player.x, player.y, player.z, player.yaw, {
-      ridingMoto,
-      spd: vehSpd,
-      lean: vehLean,
-      walkPhase: player.walkPhase,
-      shirtColor: '#ffb300'
+    const pDist = Math.hypot(player.x - b.camX, player.z - b.camZ);
+    drawList.push({
+      dist: pDist,
+      fn: () => drawCharacter3D(b, player.x, player.y, player.z, player.yaw, {
+        ridingMoto,
+        spd: vehSpd,
+        lean: vehLean,
+        walkPhase: player.walkPhase,
+        shirtColor: '#ffb300'
+      })
     });
 
     if (mpConnected && remotePlayers.size > 0) {
       remotePlayers.forEach(rp => {
-        drawCharacter(rp.x, 0, rp.z, rp.yaw, {
-          ridingMoto: !!rp.inMoto,
-          spd: rp.spd || 0,
-          lean: rp.lean || 0,
-          label: '🌐 ' + rp.name,
-          shirtColor: '#29b6f6'
+        const rpDist = Math.hypot(rp.x - b.camX, rp.z - b.camZ);
+        drawList.push({
+          dist: rpDist,
+          fn: () => drawCharacter3D(b, rp.x, 0, rp.z, rp.yaw, {
+            ridingMoto: !!rp.inMoto,
+            spd: rp.spd || 0,
+            lean: rp.lean || 0,
+            label: '🌐 ' + rp.name,
+            shirtColor: '#29b6f6'
+          })
         });
       });
     }
 
+    drawList.sort((a, c) => c.dist - a.dist);
+    for (const item of drawList) item.fn();
+
     ctx.fillStyle = '#fff59d';
-    for (const b of bullets) {
-      const bp = project(b.x, b.y, b.z);
+    for (const bl of bullets) {
+      const bp = projectWithBasis(b, bl.x, bl.y, bl.z);
       if (bp) {
-        ctx.beginPath();
-        ctx.arc(bp[0], bp[1], 3.5, 0, Math.PI * 2);
-        ctx.fill();
+        ctx.beginPath(); ctx.arc(bp[0], bp[1], 3.5, 0, PI * 2); ctx.fill();
+      }
+    }
+
+    ctx.fillStyle = '#ffab40';
+    for (const pt of particles) {
+      const pp = projectWithBasis(b, pt.x, pt.y, pt.z);
+      if (pp) {
+        ctx.beginPath(); ctx.arc(pp[0], pp[1], 2.5, 0, PI * 2); ctx.fill();
       }
     }
 
@@ -675,10 +915,29 @@
 
   $('camBtn').addEventListener('click', () => {
     camMode = (camMode + 1) % 3;
-    if (camMode === 0) { camDist = 11.5; camPitch = 0.42; say('Câmera Livre'); }
-    else if (camMode === 1) { camDist = 6.5; camPitch = 0.25; say('Câmera Próxima'); }
-    else { camDist = 18.0; camPitch = 0.72; say('Câmera Alta'); }
+    if (camMode === 0) { camDist = 11.5; camPitch = 0.36; say('Câmera Livre'); }
+    else if (camMode === 1) { camDist = 6.2; camPitch = 0.22; say('Câmera Próxima'); }
+    else { camDist = 19.5; camPitch = 0.68; say('Câmera Panorâmica'); }
   });
+
+  let dragId = null, lastPx = 0, lastPy = 0;
+  canvas.addEventListener('pointerdown', e => {
+    if (dragId !== null) return;
+    dragId = e.pointerId;
+    lastPx = e.clientX;
+    lastPy = e.clientY;
+  });
+  canvas.addEventListener('pointermove', e => {
+    if (e.pointerId !== dragId) return;
+    const dx = e.clientX - lastPx;
+    const dy = e.clientY - lastPy;
+    lastPx = e.clientX;
+    lastPy = e.clientY;
+    camYaw = normalizeAngle(camYaw - dx * 0.008);
+    camPitch = clamp(camPitch + dy * 0.006, 0.12, 1.15);
+  });
+  canvas.addEventListener('pointerup', e => { if (e.pointerId === dragId) dragId = null; });
+  canvas.addEventListener('pointercancel', e => { if (e.pointerId === dragId) dragId = null; });
 
   window.addEventListener('keydown', e => {
     const k = e.key.toLowerCase();
@@ -959,7 +1218,7 @@
   }
 
   updateHud();
-  say('GTA X Online pronto — Estacionamentos e Motos ativos');
+  say('GTA X Online pronto — Sem NPCs, veículos nos estacionamentos');
   requestAnimationFrame(frame);
 })();
 </script>
