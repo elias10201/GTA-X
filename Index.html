@@ -626,7 +626,11 @@ function drive(dt){
   sfx.engine(cur.type,cur.spd,true);
   // Em avião, joystick para cima também fornece potência; no solo isso permite iniciar a corrida de decolagem.
   let th=(held.up||held.run||keyUp||keyRun||(isPlane&&joy.y<-.16))?1:0,st=joy.x;
-  if(held.brake){cur.spd=Math.sign(cur.spd)*Math.max(0,Math.abs(cur.spd)-38*dt)}
+  if(held.brake){
+    // Freio progressivo: primeiro para o veículo; mantendo pressionado, engata a marcha ré.
+    if(cur.spd>0.8)cur.spd=Math.max(0,cur.spd-38*dt);
+    else cur.spd=Math.max(-9,cur.spd-14*dt);
+  }
   else if(th)cur.spd+=20*dt;
   steer+=(st-steer)*Math.min(1,7*dt);
   const coast=isPlane?.045:.22;
@@ -749,6 +753,11 @@ function update(dt){
       playerStepDist=0;
     }
 
+    // A câmera acompanha a orientação do personagem quando não está sendo controlada pelo jogador.
+    if(camManualT<=0&&v>.12){
+      let followDelta=Math.atan2(sin(player.yaw-camYaw),cos(player.yaw-camYaw));
+      camYaw+=followDelta*Math.min(1,2.4*dt);
+    }
     if((held.fire||keyFire)&&!wheelOpen)shoot();
   }else{
     playerStepDist=0;
@@ -1841,7 +1850,7 @@ C.onpointermove=e=>{
     lastX=e.clientX;lastY=e.clientY;
   }
 };
-function endCam(e){camPointers.delete(e.pointerId);if(e.pointerId===camId)camId=null;if(camPointers.size===1){const a=[...camPointers.entries()][0];camId=a[0];lastX=a[1].x;lastY=a[1].y}if(camPointers.size<2)pinchStart=0}
+function endCam(e){camPointers.delete(e.pointerId);if(e.pointerId===camId)camId=null;if(camPointers.size===1){const a=[...camPointers.entries()][0];camId=a[0];lastX=a[1].x;lastY=a[1].y}if(camPointers.size<2){pinchStart=0;camManualT=2.4}}
 C.onpointerup=endCam;C.onpointercancel=endCam;C.onlostpointercapture=endCam;
 
 addEventListener('keydown',e=>{
