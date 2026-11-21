@@ -973,19 +973,19 @@ function wheel(q,lx,lz,r,rotation){
     for(let j=0;j<4;j++){let a=rotation+j*PI/2,p1=localPoint(q,lx,r+Math.cos(a)*r*.18,lz+Math.sin(a)*r*.18),p2=localPoint(q,lx,r+Math.cos(a)*r*.78,lz+Math.sin(a)*r*.78),s1=project(...p1),s2=project(...p2);if(s1&&s2){g.strokeStyle='#d1d6d9';g.lineWidth=Math.max(1,r*hp[3]*.09);g.beginPath();g.moveTo(s1[0],s1[1]);g.lineTo(s2[0],s2[1]);g.stroke()}}}
 }
 function drawBeetle(q,t){
-  let rot=q.wheelRot||0;for(let side of [-1,1])for(let end of [-1,1])wheel(q,side*(t[0]+.05),end*t[1]*.62,.34,rot);
-  // Fusca estilizado: carroceria baixa, capôs curtos e teto estreito em camadas.
-  box(q.x,q.z,t[0]*.88,t[1]*.92,.27,.72,q.yaw,q.col||0xffe0b52e,false,1.05);
-  box(q.x+sin(q.yaw)*.60,q.z+cos(q.yaw)*.60,.78,.46,.48,.84,q.yaw,q.col||0xffe0b52e,false,.8);
-  box(q.x-sin(q.yaw)*.64,q.z-cos(q.yaw)*.64,.78,.48,.48,.84,q.yaw,q.col||0xffe0b52e,false,.8);
-  box(q.x,q.z,.64,.72,.72,1.27,q.yaw,0xff5d7f92,false,1.0);
-  box(q.x,q.z,.56,.60,1.27,1.32,q.yaw,0xffd7e4e7,false,.6);
-  let s=sin(q.yaw),c=cos(q.yaw);
-  for(let side of [-1,1]){let a=localPoint(q,side*.64,.82,-.02),b=localPoint(q,side*.64,1.18,-.02),u=project(...a),v=project(...b);if(u&&v){g.strokeStyle='#d9eef5';g.lineWidth=Math.max(1,2*u[3]);g.beginPath();g.moveTo(u[0],u[1]);g.lineTo(v[0],v[1]);g.stroke()}}
-  box(q.x,q.z,t[0]*.87,t[1]*.92,.23,.31,q.yaw,0xffc6a84d,false,.8);
-  let front=localPoint(q,0,.58,t[1]*.91),rear=localPoint(q,0,.58,-t[1]*.91);
-  for(let p of [front,rear]){let s1=project(p[0],p[1],p[2]);if(s1){g.fillStyle=p===front?'#fff4bf':'#d42e26';g.beginPath();g.ellipse(s1[0],s1[1],Math.max(1.5,.12*s1[3]),Math.max(1,.07*s1[3]),0,0,PI*2);g.fill()}}
+  const rot=q.wheelRot||0,yellow=q.col||0xffe0b52e;
+  // Quatro pneus e carroceria oval simples: evita peças flutuantes no topo.
+  for(let side of [-1,1])for(let end of [-1,1])wheel(q,side*.82,end*1.02,.30,rot);
+  ellipseBody(q,.80,1.48,.30,.79,yellow);
+  // Cabine curta e escura, baixa o bastante para manter a silhueta do Fusca.
+  box(q.x,q.z,.43,.57,.72,1.03,q.yaw,0xff344b56,false,.9);
+  const nose=localPoint(q,0,.55,1.34),tail=localPoint(q,0,.53,-1.34);
+  for(const p of [nose,tail]){
+    const sp=project(p[0],p[1],p[2]);
+    if(sp){g.fillStyle=p===nose?'#fff2ad':'#d52c26';g.beginPath();g.ellipse(sp[0],sp[1],Math.max(1.5,.10*sp[3]),Math.max(1,.055*sp[3]),0,0,PI*2);g.fill()}
+  }
 }
+
 function drawMotorcycle(q,t){
   let rot=q.wheelRot||0;wheel(q,0,-.82,.43,rot);wheel(q,0,.86,.43,rot);
   let p=(x,y,z)=>localPoint(q,x,y,z);
@@ -999,11 +999,12 @@ function drawMotorcycle(q,t){
 }
 function drawPlazaGround(ix,iz){
   const x=ix*P,z=iz*P;
-  polygon3([pt(x-20,.025,z-20),pt(x+20,.025,z-20),pt(x+20,.025,z+20),pt(x-20,.025,z+20)],color(0xff9b9b91,dayL),1);
+  polygon3([pt(x-20,.018,z-20),pt(x+20,.018,z-20),pt(x+20,.018,z+20),pt(x-20,.018,z+20)],color(0xff9b9b91,dayL),0);
+  // Piso decorativo no mesmo plano do chão e desenhado antes do personagem.
+  polygon3([pt(x-3,.022,z-3),pt(x+3,.022,z-3),pt(x+3,.022,z+3),pt(x-3,.022,z+3)],color(0xff6bb3c0,dayL),0);
 }
 function drawPlaza(ix,iz){
   const x=ix*P,z=iz*P;
-  polygon3([pt(x-3,.08,z-3),pt(x+3,.08,z-3),pt(x+3,.08,z+3),pt(x-3,.08,z+3)],color(0xff6bb3c0,dayL),1);
   for(let a of [-14,14]){box(x+a,z-8,1.8,.6,.35,1.05,0,0xff765438,false,1);box(x+a,z+8,1.8,.6,.35,1.05,0,0xff765438,false,1);}
   for(let a of [-15,15])tree(x+a,z-15,h(ix+a,iz),0);
 }
@@ -1279,7 +1280,15 @@ function render(){
     let p=project(player.x+sin(player.yaw),1.35,player.z+cos(player.yaw));
     if(p){let r=p[3]*.35,gr=g.createRadialGradient(p[0],p[1],0,p[0],p[1],r);gr.addColorStop(0,'rgba(255,240,160,.95)');gr.addColorStop(1,'rgba(255,160,40,0)');g.fillStyle=gr;g.fillRect(p[0]-r,p[1]-r,r*2,r*2)}
   }
-  if(hasT){let p=project(tx,0,tz);if(p){g.fillStyle='#ffd600aa';g.fillRect(p[0]-3,0,6,hor+cy*f/p[2])}}
+  if(hasT){
+    const p=project(tx,.35+Math.sin(anim*.09)*.12,tz);
+    if(p&&p[0]>-30&&p[0]<W+30&&p[1]>-40&&p[1]<H+30){
+      g.save();g.strokeStyle='#ffda28';g.fillStyle='rgba(255,214,0,.22)';g.lineWidth=3;
+      g.beginPath();g.moveTo(p[0],p[1]+20);g.lineTo(p[0],p[1]+5);g.stroke();
+      g.beginPath();g.arc(p[0],p[1],9,0,PI*2);g.fill();g.stroke();
+      g.fillStyle='#fff2a0';g.font='bold 12px Arial';g.textAlign='center';g.fillText('OBJETIVO',p[0],p[1]-16);g.restore();
+    }
+  }
   particles.forEach(a=>{let p=project(a.x,a.y,a.z);if(p){g.fillStyle='#b71c1c';g.beginPath();g.arc(p[0],p[1],Math.max(1,a.life*2),0,7);g.fill()}});
   bullets.forEach(b=>{let p=project(b.x,1.35,b.z);if(p){g.fillStyle='#ffee58';g.beginPath();g.arc(p[0],p[1],3,0,7);g.fill()}});
 
@@ -1319,6 +1328,13 @@ function drawMap(){
     if(dx*dx+dy*dy>R*R)return;
     m.fillStyle='#ffb74d';m.fillRect(dx-3,dy-3,6,6);
   });
+  {
+    const dx=(AIRPORT_X-player.x)*k,dy=-(AIRPORT_Z-player.z)*k,L=Math.hypot(dx,dy),edge=R-15;
+    const ax=L>edge?dx/L*edge:dx,ay=L>edge?dy/L*edge:dy,ang=Math.atan2(ay,ax);
+    m.save();m.translate(ax,ay);m.rotate(ang+PI/2);
+    m.fillStyle='#42e5ff';m.strokeStyle='#08232b';m.lineWidth=1.5;
+    m.beginPath();m.moveTo(0,-9);m.lineTo(7,7);m.lineTo(0,4);m.lineTo(-7,7);m.closePath();m.fill();m.stroke();m.restore();
+  }
   if(window.mpRemotePlayers){
     window.mpRemotePlayers.forEach(rp=>{
       let dx=(rp.x-player.x)*k,dy=-(rp.z-player.z)*k;
@@ -1334,7 +1350,8 @@ function drawMap(){
   m.restore();m.save();m.translate(90,90);m.fillStyle='#ffffff26';m.beginPath();m.moveTo(0,0);m.lineTo(-42,-80);m.lineTo(42,-80);m.fill();
   m.rotate(player.yaw-camYaw);m.fillStyle='#fff';m.strokeStyle='#000';m.lineWidth=1;m.beginPath();m.moveTo(0,-10);m.lineTo(7,9);m.lineTo(0,4);m.lineTo(-7,9);m.closePath();m.fill();m.stroke();m.restore();
   let na=-camYaw;m.fillStyle='#fff';m.font='bold 14px Arial';m.textAlign='center';m.textBaseline='middle';m.fillText('N',90+Math.sin(na)*(R-10),90-Math.cos(na)*(R-10));
-  if(hasT){m.fillStyle='#ffd600';m.fillText(Math.round(Math.hypot(tx-player.x,tz-player.z))+'m',90,166)}
+  m.fillStyle='#55eaff';m.font='bold 10px Arial';m.fillText('AEROPORTO '+Math.round(Math.hypot(AIRPORT_X-player.x,AIRPORT_Z-player.z))+'m',90,153);
+  if(hasT){m.fillStyle='#ffd600';m.font='bold 11px Arial';m.fillText('MISSÃO '+Math.round(Math.hypot(tx-player.x,tz-player.z))+'m',90,168)}
 }
 
 function pause(){paused=!paused;$('modal').style.display=paused?'flex':'none'}
