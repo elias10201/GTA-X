@@ -133,10 +133,10 @@ addEventListener('error',e=>{
   $('error').textContent='Erro: '+(e.error?.message||e.message);
 });
 
-let W=1,H=1,dpr=1,quality=1,frames=0,frameTime=0;
+let W=1,H=1,dpr=1,quality=.82,frames=0,frameTime=0;
 function resize(){
   W=Math.max(1,innerWidth);H=Math.max(1,innerHeight);
-  dpr=Math.min(devicePixelRatio||1,1.5)*quality;
+  dpr=Math.min(devicePixelRatio||1,1.25)*quality;
   canvas.width=Math.round(W*dpr);
   canvas.height=Math.round(H*dpr);
   g.setTransform(dpr,0,0,dpr,0,0);
@@ -154,12 +154,13 @@ const carColors=[0xc62828,0x1565c0,0xf9a825,0xe9ecef,0x2e7d32,0x6a1b9a];
 const shirts=[0xd32f2f,0x8e24aa,0x1e88e5];
 const skins=[0xe0ac69,0x8d5524,0xf1c27d];
 const characterNames=['Rafa','Duda','Kaio'];
-const carNames=['Velox Sedan','Torro GT','Atlas SUV','Rhino Picape'];
+const carNames=['Velox Sedan','Torro GT','Atlas SUV','Rhino Picape','Avião monomotor'];
 const carSpecs=[
   {width:.95,length:2.2,height:1.2,speed:30},
   {width:1.05,length:2.25,height:1.05,speed:42},
   {width:1.1,length:2.4,height:1.5,speed:28},
-  {width:1.05,length:2.5,height:1.3,speed:26}
+  {width:1.05,length:2.5,height:1.3,speed:26},
+  {width:4.5,length:5.5,height:2.4,speed:58}
 ];
 const weapons=['Pistola','SMG','Escopeta','Fuzil','Sniper'];
 const capacities=[12,30,6,30,5];
@@ -189,7 +190,8 @@ const cars=[
   {id:'carro_1',x:24,z:50,yaw:0,speed:0,color:carColors[0],type:0,driverId:null},
   {id:'carro_2',x:40,z:10,yaw:PI,speed:0,color:carColors[1],type:1,driverId:null},
   {id:'carro_3',x:74,z:38,yaw:PI/2,speed:0,color:carColors[2],type:2,driverId:null},
-  {id:'carro_4',x:-8,z:38,yaw:-PI/2,speed:0,color:carColors[3],type:3,driverId:null}
+  {id:'carro_4',x:-8,z:38,yaw:-PI/2,speed:0,color:carColors[3],type:3,driverId:null},
+  {id:'aviao_1',x:14*P+32,z:13*P+32,yaw:0,speed:0,color:0xe9eef2,type:4,driverId:null,altitude:0}
 ];
 
 function zone(ix,iz){
@@ -202,6 +204,8 @@ function treePosition(ix,iz,n){
   return {x:ix*P+a%48-24,z:iz*P+(a>>8)%48-24,seed:a};
 }
 function solid(x,z){
+  const airportX=14*P+32,airportZ=13*P+32;
+  if(Math.abs(x-airportX)<158&&Math.abs(z-airportZ)<20)return false;
   const ix=Math.round(x/P),iz=Math.round(z/P);
   for(let i=-1;i<=1;i++)for(let j=-1;j<=1;j++){
     const bx=ix+i,bz=iz+j,zn=zone(bx,bz);
@@ -216,7 +220,7 @@ function solid(x,z){
 function carCollision(x,z,radius,ignore){
   let outX=x,outZ=z,hit=null;
   for(const c of cars){
-    if(c===ignore)continue;
+    if(c===ignore||c.type===4)continue;
     const spec=carSpecs[c.type]||carSpecs[0];
     const s=sin(c.yaw),co=cos(c.yaw);
     const dx=outX-c.x,dz=outZ-c.z;
@@ -285,7 +289,8 @@ function enterCar(){
   if(!closest){say('Nenhum carro livre perto');return}
   car=closest;
   car.driverId=socket?.connected?socket.id:'local';
-  syncButtons();say(carNames[car.type]||'Veículo');
+  syncButtons();
+  say(car.type===4?'Avião: segure ACELERAR; joystick para os lados vira e para cima sobe.':(carNames[car.type]||'Veículo'));
   if(socket?.connected)socket.emit('car:toggle');
 }
 function switchCharacter(){
@@ -329,6 +334,22 @@ function action(name,down){
 function drive(dt){
   const spec=carSpecs[car.type]||carSpecs[0];
   let throttle=held.accelerate||held.run?1:0;
+  if(car.type===4){
+    if(held.brake)car.speed=Math.max(0,car.speed-24*dt);
+    else car.speed=Math.min(spec.speed,car.speed+(throttle?13:0)*dt);
+    if(!throttle&&!held.brake)car.speed=Math.max(0,car.speed-1.1*dt);
+    car.yaw+=joy.x*Math.min(1,car.speed/12)*1.35*dt;
+    const lift=car.speed>22?clamp((car.speed-22)/24,0,1):0;
+    car.altitude=clamp((car.altitude||0)+(-joy.y*7+lift*1.4)*dt,0,180);
+    const nx=car.x+sin(car.yaw)*car.speed*dt,nz=car.z+cos(car.yaw)*car.speed*dt;
+    if(car.altitude<2&&(solid(nx,nz)||carCollision(nx,nz,spec.width,car).hit)){
+      car.speed=Math.max(0,car.speed-15*dt);
+    }else{car.x=nx;car.z=nz}
+    player.x=car.x;player.z=car.z;player.yaw=car.yaw;
+    camYaw+=Math.atan2(sin(car.yaw-camYaw),cos(car.yaw-camYaw))*Math.min(1,2*dt);
+    if(socket?.connected)socket.emit('car:drive',{x:car.x,y:car.z,angle:car.yaw,speed:car.speed,altitude:car.altitude,type:4});
+    return;
+  }
   if(held.brake){
     if(car.speed>.5)car.speed-=38*dt;
     else throttle=-.6;
@@ -575,7 +596,22 @@ function streetLamp(x,z){
   g.fill();
 }
 
+function drawPlane(c){
+  const y=(c.altitude||0)+.35,s=sin(c.yaw),co=cos(c.yaw);
+  const point=(lx,lz)=>[c.x+lx*co+lz*s,c.z-lx*s+lz*co];
+  const seg=(a,b,w,col)=>{const A=point(a[0],a[1]),B=point(b[0],b[1]);line3(A[0],y+a[2],A[1],B[0],y+b[2],B[1],w,rgb(col,brightness),true)};
+  if((c.altitude||0)<8)shadow(c.x,c.z,4.8,5.5);
+  // Fuselage, broad wings, tailplane and vertical fin; local +z is the nose.
+  seg([[0,-5,0],[0,4,0]],.52,0xe7edf1);
+  seg([[-4.6,.15,.1],[4.6,.15,.1]],.4,0xcbd5dd);
+  seg([[-1.7,-3.2,.05],[1.7,-3.2,.05]],.3,0x8196a5);
+  seg([[0,-3.2,.1],[0,-4.5,1.25]],.24,0xd9e1e7);
+  seg([[0,3.8,.1],[0,4.8,.15]],.12,0x394a59);
+  seg([[-.8,1.2,.32],[.8,1.2,.32]],.18,0x54778a);
+}
+
 function drawCar(c){
+  if(c.type===4){drawPlane(c);return}
   const spec=carSpecs[c.type]||carSpecs[0];
   const s=sin(c.yaw),co=cos(c.yaw);
   function part(lx,lz,w,l,y0,y1,color,edge=1){
@@ -771,33 +807,34 @@ function render(){
 
   const bx=Math.round(cameraX/P),bz=Math.round(cameraZ/P);
   const objects=[];
-  for(let i=-3;i<=3;i++)for(let j=-3;j<=3;j++){
+  const depthAt=(x,z)=>(x-cameraX)*forwardX+(z-cameraZ)*forwardZ;
+  for(let i=-2;i<=2;i++)for(let j=-2;j<=2;j++){
     const ix=bx+i,iz=bz+j,x=ix*P,z=iz*P;
     if((x-cameraX)*forwardX+(z-cameraZ)*forwardZ<-43)continue;
     const d=(x-cameraX)**2+(z-cameraZ)**2;
     const zn=zone(ix,iz),park=!zn&&hash(ix,iz)%6===0;
     if(zn){
-      objects.push({d:d+200,draw:()=>ground(x-32,z-32,x+32,z+32,rgb(0x9caa6d,brightness))});
+      objects.push({d:d+200,depth:depthAt(x,z),draw:()=>ground(x-32,z-32,x+32,z+32,rgb(0x9caa6d,brightness))});
       for(let n=0;n<3;n++){
         const t=treePosition(ix,iz,n);
-        objects.push({d:(t.x-cameraX)**2+(t.z-cameraZ)**2,
+        objects.push({d:(t.x-cameraX)**2+(t.z-cameraZ)**2,depth:depthAt(t.x,t.z),
           draw:()=>tree(t.x,t.z,t.seed)});
       }
     }else{
-      objects.push({d:d+200,draw:()=>{
+      objects.push({d:d+200,depth:depthAt(x,z),draw:()=>{
         ground(x-21,z-21,x+21,z+21,rgb(0x777c82,brightness));
         ground(x-19.5,z-19.5,x+19.5,z+19.5,
           rgb(park?0x63935e:0xb2b6ba,brightness));
       }});
       if(!park){
-        objects.push({d,draw:()=>building(ix,iz)});
+        objects.push({d,depth:depthAt(x,z),draw:()=>building(ix,iz)});
         const px=x+17.5,pz=z+17.5;
-        objects.push({d:(px-cameraX)**2+(pz-cameraZ)**2,
+        objects.push({d:(px-cameraX)**2+(pz-cameraZ)**2,depth:depthAt(px,pz),
           draw:()=>streetLamp(px,pz)});
       }
-      if(Math.abs(i)<3&&Math.abs(j)<3){
+      if(Math.abs(i)<2&&Math.abs(j)<2){
         for(let k=-1;k<=1;k++){
-          objects.push({d:d+130,draw:()=>{
+          objects.push({d:d+130,depth:depthAt(x,z),draw:()=>{
             ground(x+k*10-3,z+31.5,x+k*10+3,z+32.5,rgb(0xe9d78a,brightness));
             ground(x+31.5,z+k*10-3,x+32.5,z+k*10+3,rgb(0xe9d78a,brightness));
           }});
@@ -807,25 +844,25 @@ function render(){
   }
 
   objects.push({d:(14*P+32-cameraX)**2+(13*P+32-cameraZ)**2+250,
-    draw:airport});
+    depth:depthAt(14*P+32,13*P+32),draw:airport});
 
   for(const c of cars){
     const d=(c.x-cameraX)**2+(c.z-cameraZ)**2;
-    if(d<22500)objects.push({d,draw:()=>drawCar(c)});
+    if(d<22500)objects.push({d,depth:depthAt(c.x,c.z),draw:()=>drawCar(c)});
   }
   if(!car){
     objects.push({
-      d:(player.x-cameraX)**2+(player.z-cameraZ)**2,
+      d:(player.x-cameraX)**2+(player.z-cameraZ)**2,depth:depthAt(player.x,player.z),
       draw:()=>drawPerson(player,true)
     });
   }
   remotes.forEach(p=>{
     if(p.inCarId)return;
     const d=(p.x-cameraX)**2+(p.z-cameraZ)**2;
-    if(d<22500)objects.push({d,draw:()=>drawPerson(p)});
+    if(d<22500)objects.push({d,depth:depthAt(p.x,p.z),draw:()=>drawPerson(p)});
   });
 
-  objects.sort((a,b)=>b.d-a.d);
+  objects.sort((a,b)=>(b.depth??0)-(a.depth??0));
   for(const item of objects){
     fog=clamp((Math.sqrt(Math.max(0,item.d))-50)/210,0,.75);
     item.draw();
@@ -1179,7 +1216,9 @@ addEventListener('blur',()=>{
 });
 
 let lastFrame=0;
+const TARGET_FRAME_MS=1000/60;
 function frame(now){
+  if(lastFrame&&now-lastFrame<TARGET_FRAME_MS){requestAnimationFrame(frame);return}
   try{
     const raw=lastFrame?(now-lastFrame)/1000:1/60;
     lastFrame=now;
@@ -1191,7 +1230,7 @@ function frame(now){
       const average=frameTime/frames;
       const next=average>.027&&quality>.55?
         Math.max(.55,quality-.15):
-        average<.02&&quality<1?Math.min(1,quality+.1):quality;
+        average<.02&&quality<.82?Math.min(.82,quality+.06):quality;
       if(next!==quality){quality=next;resize()}
       frames=0;frameTime=0;
     }
@@ -1202,7 +1241,7 @@ function frame(now){
   requestAnimationFrame(frame);
 }
 syncButtons();
-say('Bem-vindo ao GTA X!');
+say('Bem-vindo! O avião está na pista do aeroporto.');
 requestAnimationFrame(frame);
 
 })();
