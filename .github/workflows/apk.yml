@@ -1,7 +1,6 @@
-Escrita
 name: Gerar APK Android
 
-on:
+'on':
   workflow_dispatch:
 
 jobs:
@@ -79,11 +78,12 @@ jobs:
                   origem = arquivos[0]
 
           if origem is None:
-              print("ERRO: Nenhum HTML encontrado na raiz do projeto!")
+              print("ERRO: Nenhum HTML encontrado!")
               sys.exit(1)
 
           shutil.copy2(origem, destino)
-          print(f"HTML principal configurado: {origem} -> index.html")
+
+          print(f"HTML principal: {origem} -> index.html")
           PY
 
       - name: Criar projeto Android
@@ -93,7 +93,10 @@ jobs:
           rm -rf app/www/*
           cp -a "$RUNNER_TEMP/gtax-www/." app/www/
 
-          test -f app/www/index.html
+          test -s app/www/index.html
+
+          echo "Arquivos copiados para o Cordova:"
+          find app/www -maxdepth 2 -type f | sort
 
       - name: Configurar ícone GTA X
         run: |
@@ -103,11 +106,19 @@ jobs:
           from pathlib import Path
           import shutil
 
-          candidates = [Path("icon.png"), Path("icone.png")]
-          icon = next((p for p in candidates if p.is_file()), None)
+          candidates = [
+              Path("icon.png"),
+              Path("icone.png")
+          ]
+
+          icon = next(
+              (p for p in candidates if p.is_file()),
+              None
+          )
 
           if icon:
               shutil.copy2(icon, "app/res/icon.png")
+
               config = Path("app/config.xml")
               content = config.read_text()
 
@@ -120,7 +131,7 @@ jobs:
               config.write_text(content)
               print("Ícone GTA X configurado!")
           else:
-              print("Aviso: ícone não encontrado. Continuando sem ícone personalizado.")
+              print("Aviso: ícone não encontrado.")
           PY
 
       - name: Instalar plataforma Android
@@ -139,3 +150,4 @@ jobs:
           name: GTA-X-APK
           path: app/platforms/android/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
+          
