@@ -1,4 +1,4 @@
-
+Escrita
 name: Gerar APK Android
 
 on:
@@ -39,12 +39,61 @@ jobs:
             --exclude='plugins/' \
             ./ "$RUNNER_TEMP/gtax-www/"
 
+      - name: Configurar HTML principal
+        run: |
+          cd "$RUNNER_TEMP/gtax-www"
+
+          python3 - <<'PY'
+          from pathlib import Path
+          import shutil
+          import sys
+
+          destino = Path("index.html")
+
+          if destino.is_file():
+              print("index.html já existe!")
+              sys.exit(0)
+
+          preferidos = [
+              "GTA-X-RGB-Chat-Aeroporto.html",
+              "GTA-X-Neon-RGB-Leve-1.html",
+              "GTA-X-Neon-RGB-Leve.html",
+              "GTA.X2D.html"
+          ]
+
+          origem = None
+
+          for nome in preferidos:
+              arquivo = Path(nome)
+              if arquivo.is_file():
+                  origem = arquivo
+                  break
+
+          if origem is None:
+              arquivos = sorted(
+                  p for p in Path(".").glob("*.html")
+                  if p.is_file()
+              )
+
+              if arquivos:
+                  origem = arquivos[0]
+
+          if origem is None:
+              print("ERRO: Nenhum HTML encontrado na raiz do projeto!")
+              sys.exit(1)
+
+          shutil.copy2(origem, destino)
+          print(f"HTML principal configurado: {origem} -> index.html")
+          PY
+
       - name: Criar projeto Android
         run: |
           cordova create app com.elias.gtax "GTA X"
 
           rm -rf app/www/*
           cp -a "$RUNNER_TEMP/gtax-www/." app/www/
+
+          test -f app/www/index.html
 
       - name: Configurar ícone GTA X
         run: |
