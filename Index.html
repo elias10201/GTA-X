@@ -91,7 +91,7 @@ canvas{display:block;width:100vw;height:100vh}
 .lobby-actions button{width:100%;padding:11px 12px;border:1px solid #ffdb8a;border-radius:10px;background:linear-gradient(180deg,#ffe08b,#d58b20);color:#1a2027;font-weight:900;font-size:13px;letter-spacing:1.1px;box-shadow:0 4px 0 #704715;cursor:pointer}
 .lobby-actions button:active{transform:translateY(2px);box-shadow:0 2px 0 #704715}
 .lobby-actions button.sec{border-color:#8be9ff66;background:linear-gradient(180deg,#25465b,#142b3c);color:#eafaff;box-shadow:0 4px 0 #07121d;font-size:11px;padding:9px}
-</style>
+#voicePTT:active{background:#b3261e} #voicePTT.voice-active{background:#b3261e;border-color:#ffb5ae}</style>
 </head>
 <body>
 <div id="rot">↻ Gire o celular para o modo deitado</div>
@@ -144,7 +144,7 @@ canvas{display:block;width:100vw;height:100vh}
 <div id="ui">
   <div id="stats">GTA X<br><span id="cash">$500</span> · <span id="name">Rafa</span><br><span id="weapon">Pistola 12/12</span></div>
   <div id="mission">MISSÃO: Primeiro Assalto</div>
-  <div id="safeZoneBadge">🛡️ ZONA SEGURA · PRAÇA</div>
+  <div id="safeZoneBadge">🛡️ ZONA SEGURA · PRAÇA</div><button id="voicePTT" type="button" style="position:fixed;left:50%;bottom:4%;transform:translateX(-50%);z-index:30;pointer-events:auto;border:2px solid #d7e8ff;border-radius:30px;background:#17283ddd;color:#fff;padding:12px 18px;font-weight:bold">🎙️ FALAR</button>
   <div id="clock">16:28</div>
   <div id="stars">☆☆☆☆☆</div>
   <div id="msg"></div>
@@ -168,7 +168,7 @@ canvas{display:block;width:100vw;height:100vh}
   <button class="b" data="car" data-foot>ENTRAR</button>
   <button class="b" data="passenger" data-foot style="display:none">PASSAGEIRO</button>
   <button class="b" data="elevator" data-foot style="display:none">ELEVADOR</button>
-  <button class="b" data="seat" data-foot style="display:none">SENTAR</button>
+  
   <button class="b" data="weapon" data-foot>ARMA</button>
   <button class="b" data="swap" data-foot>TROCAR</button>
   <button class="b" data="accelerate" data-vehicle style="display:none">ACELERAR</button>
@@ -507,7 +507,7 @@ function getElevatorTarget(){
   return best;
 }
 function useElevator(){
-  if(sitting){say('Levante-se antes de usar o elevador');return}
+  
   if(cur||passengerCar){say('Saia do veículo antes de usar o elevador');return}
   const t=playerElevation>0?elevatorTower:getElevatorTarget();
   if(!t){say('Aproxime-se da entrada de uma das torres');return}
@@ -856,7 +856,7 @@ function syncControls(){
   document.querySelectorAll('[data-vehicle]').forEach(b=>{const a=b.getAttribute('data');b.style.display=inside?(passengerCar&&(a==='accelerate'||a==='brake')?'none':''):'none';if(a==='car')b.textContent=passengerCar?'SAIR PASSAGEIRO':'SAIR'});
   const elevatorButton=document.querySelector('[data="elevator"]');
   if(elevatorButton){elevatorButton.style.display=(!inside&&(playerElevation>0||getElevatorTarget()))?'':'none';elevatorButton.textContent=playerElevation>0?'DESCER':'ELEVADOR';}
-  const seatBtn=document.querySelector('[data="seat"]');if(seatBtn){const spot=sitting?seatSpot:getNearestBench();seatBtn.style.display=(!inside&&(sitting||spot))?'':'none';seatBtn.textContent=sitting?'LEVANTAR':'SENTAR'}
+  const seatBtn=document.querySelector('[data="seat"]');if(seatBtn)seatBtn.style.display="none";
   const passBtn=document.querySelector('[data="passenger"]');if(passBtn){const candidate=getPassengerTarget();passBtn.style.display=(!inside&&candidate)?'':'none'}
   held.up=false;held.brake=false;held.run=false;held.fire=false;
   document.querySelectorAll('.b').forEach(b=>b.classList.remove('active'));
@@ -879,7 +879,7 @@ function exitPassenger(){
 }
 function enterCar(){
   if(isDead)return;
-  if(sitting){say('Levante-se antes de entrar no veículo');return}
+  
   if(passengerCar){exitPassenger();return}
   if(cur){
     if(cur.type===8&&(cur.altitude||0)>1.2){say('Pouse o avião antes de sair');return}
@@ -903,7 +903,7 @@ function enterCar(){
   if(window.mpSocket&&window.mpSocket.connected)window.mpSocket.emit('car:toggle');
 }
 
-function jump(){if(cur||sitting||jy>0||isDead)return;crouch=false;jv=7;jy=.001}
+function jump(){if(cur||jy>0||isDead)return;crouch=false;jv=7;jy=.001}
 function swap(){if(cur||playerElevation>0||isDead){say('Desça pelo elevador antes de trocar de personagem');return}chars[chr]={...player};chr=(chr+1)%3;player={...chars[chr]};crouch=prone=false;say('Controlando '+names[chr])}
 function openWeaponWheel(){if(cur||isDead)return;wheelOpen=true;wheelHover=WHEEL_ITEMS.findIndex(it=>it.id===weapon);held.fire=false}
 function closeWeaponWheel(){
@@ -925,7 +925,7 @@ function action(a){
   else if(a==='car')enterCar();
   else if(a==='passenger')enterPassenger();
   else if(a==='elevator')useElevator();
-  else if(a==='seat')toggleSeat();
+  
   else if(a==='swap')swap();
   else if(a==='weapon'){if(wheelOpen)closeWeaponWheel();else openWeaponWheel()}
   else if(a==='crouch'){crouch=!crouch;prone=false}
@@ -1014,7 +1014,7 @@ function update(dt){
   if(elevatorRide){elevatorRide.time-=dt;if(elevatorRide.time<=0)finishElevatorRide();return}
   if(wheelOpen)dt*=0.18;
   anim+=dt;
-  sitBlend+=(sitting?1-sitBlend:-sitBlend)*Math.min(1,dt*6);
+  sitBlend=0;
   myBubbleT=Math.max(0,myBubbleT-dt);
   if(window.mpRemotePlayers){
     window.mpRemotePlayers.forEach(rp=>{rp.bubbleT=Math.max(0,rp.bubbleT-dt)});
@@ -1043,13 +1043,13 @@ function update(dt){
     sfx.engine(passengerCar.type,passengerCar.spd,true);
   }else if(!cur){
     sfx.engine(0,0,false);
-    if(sitting&&seatSpot){player.x=seatSpot.x;player.z=seatSpot.z;player.yaw=seatSpot.yaw;vx=vz=0;joy.x=joy.y=0;}
-    let mag=sitting?0:Math.hypot(joy.x,joy.y),norm=mag>1?1/mag:1;
+    
+    let mag=Math.hypot(joy.x,joy.y),norm=mag>1?1/mag:1;
     let jx=joy.x*norm,jyAxis=joy.y*norm;
     let mx=jx*cos(camYaw)-jyAxis*sin(camYaw);
     let mz=-jx*sin(camYaw)-jyAxis*cos(camYaw);
     let sp=(prone?.9:crouch?1.8:(held.run||keyRun)?6.5:3.4)*[1,1.15,.9][chr];
-    let on=mag>.15&&!sitting,ac=Math.min(1,(jy>0?3:12)*dt);
+    let on=mag>.15,ac=Math.min(1,(jy>0?3:12)*dt);
     vx+=((on?mx*sp:0)-vx)*ac;
     vz+=((on?mz*sp:0)-vz)*ac;
     let v=Math.hypot(vx,vz);
@@ -1127,7 +1127,7 @@ function update(dt){
   if(passengerButton&&!cur&&!passengerCar)passengerButton.style.display=getPassengerTarget()?'':'none';
   const elevatorButton=document.querySelector('[data="elevator"]');
   if(elevatorButton&&!cur&&!passengerCar){const available=playerElevation>0||getElevatorTarget();elevatorButton.style.display=available?'':'none';elevatorButton.textContent=playerElevation>0?'DESCER':'ELEVADOR'}
-  const seatBtn=document.querySelector('[data="seat"]');if(seatBtn&&!cur&&!passengerCar){const spot=sitting?seatSpot:getNearestBench();seatBtn.style.display=(sitting||spot)?'':'none';seatBtn.textContent=sitting?'LEVANTAR':'SENTAR'}
+  const seatBtn=document.querySelector('[data="seat"]');if(seatBtn)seatBtn.style.display="none";
   $('cash').textContent='$'+Math.floor(money);
   $('name').textContent=(window.getMpNick&&window.getMpNick())||names[chr];
   $('weapon').textContent=weapon<0?'Desarmado (Punhos)':(wn[weapon]+' '+ammo[weapon]+'/'+maxAmmo[weapon]);
@@ -1777,12 +1777,7 @@ function drawPlazaGround(ix,iz){
 function benchPoint(x,z,lx,lz,yaw){const sn=sin(yaw),cs=cos(yaw);return [x+lx*cs+lz*sn,z-lx*sn+lz*cs]}
 const BENCH_SLOT_OFFSETS=[-1.25,-0.42,0.42,1.25];
 
-function drawBench(x,z,yaw){
-  const wood=night?0xff986b3d:0xffbd8750,metal=0xff38434a;
-  box(x,z,1.72,.32,.68,.84,yaw,wood,false,.8);
-  const back=benchPoint(x,z,0,-.28,yaw);box(back[0],back[1],1.72,.13,.86,1.48,yaw,wood,false,.8);
-  for(const side of [-1,1]){const leg=benchPoint(x,z,side*1.35,0,yaw);box(leg[0],leg[1],.10,.11,.05,.69,yaw,metal,false,.45)}
-}
+function drawBench(x,z,yaw){ /* Bancos removidos das praças. */ }
 
 function plazaBenchSpots(ix,iz){
   const x=ix*P,z=iz*P;
@@ -1832,34 +1827,9 @@ function pointInBench(x,z,b){
   const lx=dx*cs-dz*sn,lz=dx*sn+dz*cs;
   return Math.abs(lx)<1.82 && (Math.abs(lz)<.43 || (Math.abs(lz+.28)<.23));
 }
-function benchCollision(x,z){
-  const ix0=Math.round(x/P),iz0=Math.round(z/P);
-  for(let ix=ix0-1;ix<=ix0+1;ix++)for(let iz=iz0-1;iz<=iz0+1;iz++){
-    if(!isPlazaLot(ix,iz))continue;
-    for(const b of plazaBenchSpots(ix,iz))if(pointInBench(x,z,b))return true;
-  }
-  return false;
-}
-function getNearestBench(){
-  if(playerElevation>0||cur||passengerCar)return null;
-  let best=null,bd=4.8,ix0=Math.round(player.x/P),iz0=Math.round(player.z/P);
-  for(let ix=ix0-1;ix<=ix0+1;ix++)for(let iz=iz0-1;iz<=iz0+1;iz++)if(isPlazaLot(ix,iz))for(const b of plazaBenchSpots(ix,iz)){
-    if(isBenchSlotOccupied(b))continue;
-    const d=Math.hypot(player.x-b.x,player.z-b.z);
-    if(d<bd){best=b;bd=d}
-  }
-  return best;
-}
-function toggleSeat(){
-  if(sitting){
-    sitting=false;const old=seatSpot;seatSpot=null;vx=vz=0;
-    if(old){player.x=old.standX;player.z=old.standZ;player.yaw=old.yaw}
-    say('Você se levantou.');syncControls();return;
-  }
-  if(cur||passengerCar||playerElevation>0)return;
-  const spot=getNearestBench();if(!spot){say('Chegue perto de um banco da praça para sentar.');return}
-  sitting=true;seatSpot=spot;player.x=spot.x;player.z=spot.z;player.yaw=spot.yaw;vx=vz=0;joy.x=joy.y=0;crouch=prone=false;syncControls();say('Você sentou no banco. Toque em LEVANTAR para continuar.');
-}
+function benchCollision(x,z){ return false; }
+function getNearestBench(){ return null; }
+function toggleSeat(){ return; }
 function drawPlaza(ix,iz){
   const x=ix*P,z=iz*P;
   if(isCoastalPlazaLot(ix,iz))for(const [dx,dz] of [[-14,-14],[14,-14],[-14,14],[14,14]])tree(x+dx,z+dz,h(ix+dx,iz+dz),0);
@@ -2260,7 +2230,9 @@ function render(){
   cars.forEach(q=>{if((q.x-cx)**2+(q.z-cz)**2<22500)items.push({d:(q.x-cx)**2+(q.z-cz)**2,depth:cameraDepth(q.x,q.z,(q.altitude||0)+.8),fn:()=>car(q)})});
   const drawCurrentPlayer=()=>person(player.x,player.z,player.yaw,SHIRT_PAL[customLook.shirt],SKIN[customLook.skin],1,1.75,sitBlend,(sitting||sitBlend>.1)?-1:weapon,pph,sitting?0:pamp,
     cl((Math.hypot(vx,vz)-3.6)/2.8,0,1),(held.fire||keyFire||shootT>.06)?1:0,ca,jy,jv,'player',punchT,playerElevation+groundLift,customLook);
-  if(!cur&&!passengerCar&&playerElevation<=0&&hasSceneLineOfSight(player.x,player.z)){
+  // O jogador deve continuar sendo desenhado mesmo quando o banco bloqueia a linha entre câmera e personagem.
+  // A ordem de profundidade dos objetos da cena faz o banco ficar na frente e ocultar o corpo corretamente.
+  if(!cur&&!passengerCar&&playerElevation<=0){
     const pd=(player.x-cx)**2+(player.z-cz)**2;
     items.push({d:pd,depth:cameraDepth(player.x,player.z,groundLift+.9),fn:drawCurrentPlayer});
   }
@@ -2409,7 +2381,82 @@ function frame(t){
 }
 
 (()=>{
+
   const remotePlayers=new Map();
+  const voicePeers=new Map();
+  let voiceStream=null, voiceTalking=false;
+  const voiceBtn=document.getElementById('voicePTT');
+  const voiceConfig={iceServers:[{urls:'stun:stun.l.google.com:19302'}]};
+  function voiceDistance(rp){return rp?Math.hypot((rp.x||0)-player.x,(rp.y||rp.z||0)-player.z):Infinity}
+  function voiceClosePeer(id){const pc=voicePeers.get(id);if(pc){try{pc.close()}catch(_){}voicePeers.delete(id)}}
+  async function voiceGetStream(){
+    if(voiceStream)return voiceStream;
+    if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia)throw new Error('Microfone exige HTTPS e permissão do navegador.');
+    voiceStream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true},video:false});
+    voiceStream.getAudioTracks().forEach(t=>t.enabled=false);
+    return voiceStream;
+  }
+  function voiceMakePeer(id){
+    let pc=voicePeers.get(id);if(pc)return pc;
+    pc=new RTCPeerConnection(voiceConfig);voicePeers.set(id,pc);
+    if(voiceStream)voiceStream.getTracks().forEach(t=>pc.addTrack(t,voiceStream));
+    pc.onicecandidate=e=>{if(e.candidate&&window.mpSocket&&window.mpSocket.connected)window.mpSocket.emit('voice:signal',{to:id,type:'ice',signal:e.candidate})};
+    pc.ontrack=e=>{
+      let audio=document.getElementById('voice-audio-'+id);
+      if(!audio){audio=document.createElement('audio');audio.id='voice-audio-'+id;audio.autoplay=true;audio.playsInline=true;audio.style.display='none';document.body.appendChild(audio)}
+      audio.srcObject=e.streams[0];audio.play().catch(()=>{});
+    };
+    pc.onconnectionstatechange=()=>{if(['failed','closed','disconnected'].includes(pc.connectionState))voiceClosePeer(id)};
+    return pc;
+  }
+  async function voiceOfferNearby(){
+    if(!window.mpSocket||!window.mpSocket.connected)return;
+    for(const [id,rp] of remotePlayers){
+      if(voiceDistance(rp)>128||voicePeers.has(id))continue;
+      try{
+        const pc=voiceMakePeer(id);
+        const stream=await voiceGetStream();
+        stream.getTracks().forEach(t=>{if(!pc.getSenders().some(s=>s.track===t))pc.addTrack(t,stream)});
+        const offer=await pc.createOffer();await pc.setLocalDescription(offer);
+        window.mpSocket.emit('voice:signal',{to:id,type:'offer',signal:pc.localDescription});
+      }catch(err){say(err.message||'Não foi possível ativar o microfone.');break}
+    }
+  }
+  async function voiceSignal(payload){
+    if(!payload||!payload.from||!payload.signal)return;
+    try{
+      const pc=voiceMakePeer(payload.from);
+      if(payload.type==='offer'){
+        await voiceGetStream();
+        voiceStream.getTracks().forEach(t=>{if(!pc.getSenders().some(s=>s.track===t))pc.addTrack(t,voiceStream)});
+        await pc.setRemoteDescription(new RTCSessionDescription(payload.signal));
+        const answer=await pc.createAnswer();await pc.setLocalDescription(answer);
+        window.mpSocket.emit('voice:signal',{to:payload.from,type:'answer',signal:pc.localDescription});
+      }else if(payload.type==='answer'){
+        await pc.setRemoteDescription(new RTCSessionDescription(payload.signal));
+      }else if(payload.type==='ice'&&payload.signal){
+        await pc.addIceCandidate(new RTCIceCandidate(payload.signal));
+      }
+    }catch(_){voiceClosePeer(payload.from)}
+  }
+  async function voiceStart(){
+    if(voiceTalking)return;voiceTalking=true;
+    if(voiceBtn){voiceBtn.classList.add('voice-active');voiceBtn.textContent='🔴 FALANDO...'}
+    try{
+      const stream=await voiceGetStream();stream.getAudioTracks().forEach(t=>t.enabled=true);
+      await voiceOfferNearby();
+    }catch(err){voiceTalking=false;if(voiceBtn){voiceBtn.classList.remove('voice-active');voiceBtn.textContent='🎙️ FALAR'}say(err.message||'Ative a permissão do microfone.')}
+  }
+  function voiceStop(){
+    voiceTalking=false;if(voiceStream)voiceStream.getAudioTracks().forEach(t=>t.enabled=false);
+    if(voiceBtn){voiceBtn.classList.remove('voice-active');voiceBtn.textContent='🎙️ FALAR'}
+  }
+  if(voiceBtn){
+    voiceBtn.addEventListener('pointerdown',e=>{e.preventDefault();voiceStart()});
+    ['pointerup','pointercancel','pointerleave'].forEach(ev=>voiceBtn.addEventListener(ev,voiceStop));
+    voiceBtn.addEventListener('contextmenu',e=>e.preventDefault());
+  }
+
   window.mpRemotePlayers=remotePlayers;
   let mpConnected=false;
   let mpConnecting=false;
@@ -2638,10 +2685,11 @@ function frame(t){
         updateBadge();
       });
 
-      sock.on('player:join',(p)=>{if(isCurrentSocket())upsertRemote(p)});
+      sock.on('player:join',(p)=>{if(isCurrentSocket()){upsertRemote(p);if(voiceTalking)voiceOfferNearby()}});
+      sock.on('voice:signal',(payload)=>{if(isCurrentSocket())voiceSignal(payload)});
       sock.on('player:move',(p)=>{if(isCurrentSocket())upsertRemote(p)});
       sock.on('player:update',(p)=>{if(isCurrentSocket())upsertRemote(p)});
-      sock.on('player:leave',(id)=>{if(isCurrentSocket()){remotePlayers.delete(id);updateBadge()}});
+      sock.on('player:leave',(id)=>{if(isCurrentSocket()){remotePlayers.delete(id);voiceClosePeer(id);const a=document.getElementById('voice-audio-'+id);if(a)a.remove();updateBadge()}});
 
       sock.on('player:shoot',(data)=>{
         if(!isCurrentSocket()||!data||data.id===sock.id)return;
