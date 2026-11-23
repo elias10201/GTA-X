@@ -163,7 +163,7 @@ canvas{display:block;width:100vw;height:100vh}
     <label style="font-size:12px;display:block;text-align:left">Escolha um dos dois servidores:</label>
     <select id="mpServerSelect"><option value="1">Servidor 1 · até 35 jogadores*</option><option value="2">Servidor 2 · até 35 jogadores*</option></select>
     <label style="font-size:12px;display:block;text-align:left">URL do servidor selecionado (vazio = padrão/site atual):</label>
-    <input id="mpUrlInput" type="url" placeholder="https://seu-servidor.onrender.com">
+    <input id="mpUrlInput" type="url" placeholder="https://reinos-de-aco-server.onrender.com">
     <p style="font-size:10px;color:#b0bec5;text-align:left">*A capacidade real e a separação entre salas precisam estar configuradas no servidor; o HTML conecta à URL escolhida.</p>
     <div>
       <button id="mpConnectBtn" type="button">SALVAR / CONECTAR</button>
@@ -176,8 +176,7 @@ canvas{display:block;width:100vw;height:100vh}
 <script>
 (()=>{'use strict';
 
-// Coloque aqui a URL do seu servidor no Render caso abra o jogo direto pelo APK
-const DEFAULT_SERVER_URL = 'https://SEU-SERVIDOR.onrender.com';
+const DEFAULT_SERVER_URL = 'https://reinos-de-aco-server.onrender.com';
 
 const errBox=document.getElementById('errbox');
 function showErr(e){
@@ -1624,7 +1623,6 @@ function planeBox(q,lx,lz,hw,hl,y0,y1,col){
 }
 function drawPilotPlane(q){
   const a=q.altitude||0;
-  // Frente do avião alinhada com +Z (direção de avanço de x + sin(yaw)*spd, z + cos(yaw)*spd)
   const fuselage=(x,z,w,l,y0,y1,col)=>planeBox(q,x,z,w,l,y0,y1,col);
   fuselage(0,0,.48,5.25,-.42,.36,0xffe8edf2);
   fuselage(0,5.0,.43,.72,-.30,.18,0xfff5f7f8);
@@ -2116,17 +2114,18 @@ function frame(t){
 }
 
 // ============================================================================
-// MULTIPLAYER: NICK SINCRONIZADO, CARROS, BALÃO E CHAT DE TODOS
+// MULTIPLAYER: CONEXÃO AUTOMÁTICA, RECONEXÃO, CARROS, BALÃO E CHAT
 // ============================================================================
 (()=>{
   const remotePlayers=new Map();
   window.mpRemotePlayers=remotePlayers;
   let mpConnected=false;
+  let mpConnecting=false;
   let mpNick=(localStorage.getItem('gtax_mp_nick')||'').trim()||('Player_'+Math.floor(100+Math.random()*899));
   let selectedServer=localStorage.getItem('gtax_selected_server')||'1';
-  const fallbackUrl=(DEFAULT_SERVER_URL&&!DEFAULT_SERVER_URL.includes('SEU-SERVIDOR'))?DEFAULT_SERVER_URL.trim():'';
+  const fallbackUrl=DEFAULT_SERVER_URL.trim();
   let serverUrls={
-    1:(localStorage.getItem('gtax_server_1')||localStorage.getItem('gtax_mp_url')||fallbackUrl).trim(),
+    1:(localStorage.getItem('gtax_server_1')||fallbackUrl).trim(),
     2:(localStorage.getItem('gtax_server_2')||fallbackUrl).trim()
   };
   let mpServerUrl=serverUrls[selectedServer]||fallbackUrl;
@@ -2263,17 +2262,21 @@ function frame(t){
   function loadSocketIo(origin,cb){
     if(typeof window.io==='function'){cb(null,window.io);return}
     const s=document.createElement('script');
-    s.src=origin+'/socket.io/socket.io.js';
+    s.src=origin+'/socket.io/socket.io.js?t='+Date.now();
     s.onload=()=>typeof window.io==='function'?cb(null,window.io):cb(new Error('Socket.io não carregou'));
     s.onerror=()=>cb(new Error('Falha ao carregar socket.io.js'));
     document.head.appendChild(s);
   }
 
-  function connectNow(){
+  function connectNow(forceReconnect=false){
+    if(mpConnecting&&!forceReconnect)return;
+    if(!forceReconnect&&window.mpSocket&&(window.mpSocket.connected||window.mpSocket.active))return;
+
     const inpNick=$('mpNickInput');
     if(inpNick&&inpNick.value.trim())mpNick=inpNick.value.trim();
-    selectedServer=$('mpServerSelect').value||'1';
-    mpServerUrl=($('mpUrlInput')&&$('mpUrlInput').value.trim())||fallbackUrl;
+    selectedServer=($('mpServerSelect')&&$('mpServerSelect').value)||selectedServer||'1';
+    const typedUrl=($('mpUrlInput')&&$('mpUrlInput').value.trim())||'';
+    mpServerUrl=typedUrl||fallbackUrl;
     serverUrls[selectedServer]=mpServerUrl;
     localStorage.setItem('gtax_mp_nick',mpNick);
     localStorage.setItem('gtax_selected_server',selectedServer);
@@ -2281,22 +2284,29 @@ function frame(t){
     localStorage.setItem('gtax_mp_url',mpServerUrl);
     updateBadge();
 
-    const rawOrigin=mpServerUrl||(location.origin&&location.origin.startsWith('http')?location.origin:'');
+    const rawOrigin=mpServerUrl||fallbackUrl||(location.origin&&location.origin.startsWith('http')?location.origin:'');
     const origin=rawOrigin.replace(/\/+$/,'');
     if(!origin){setMpStatus('Informe a URL do servidor no campo acima.');return}
 
+    mpConnecting=true;
     setMpStatus('Conectando em '+origin+'...');
     loadSocketIo(origin,(err,ioFn)=>{
+      mpConnecting=false;
       if(err||!ioFn){
         mpConnected=false;updateBadge();
         setMpStatus('Não foi possível conectar ao servidor em '+origin+'.');
         return;
       }
-      if(window.mpSocket){try{window.mpSocket.disconnect()}catch(_){}}
+      if(window.mpSocket&&forceReconnect){try{window.mpSocket.disconnect()}catch(_){}}
+      if(window.mpSocket&&!forceReconnect&&(window.mpSocket.connected||window.mpSocket.active))return;
       remotePlayers.clear();
 
       const sock=ioFn(origin,{
         transports:['websocket','polling'],
+        reconnection:true,
+        reconnectionDelay:1500,
+        reconnectionDelayMax:6000,
+        timeout:15000,
         query:{server:selectedServer}
       });
       window.mpSocket=sock;
@@ -2402,6 +2412,9 @@ function frame(t){
   }
 
   setInterval(sendPlayerState,110);
+  setInterval(()=>{
+    if(!mpConnected&&!mpConnecting)connectNow(false);
+  },3500);
 
   mpOpenBtn.onclick=()=>{
     $('mpNickInput').value=mpNick;
@@ -2414,16 +2427,19 @@ function frame(t){
     $('mpUrlInput').value=serverUrls[selectedServer]||fallbackUrl;
     if(window.mpSocket&&window.mpSocket.connected){
       window.mpSocket.emit('room:select',selectedServer);
+    }else{
+      connectNow(true);
     }
   };
   $('mpCloseBtn').onclick=()=>{mpModal.style.display='none'};
   $('mpConnectBtn').onclick=()=>{
-    connectNow();
+    connectNow(true);
     mpModal.style.display='none';
   };
 
   updateBadge();
   window.gtaxConnectNow=connectNow;
+  connectNow(false);
 })();
 
 let joyEl=$('joy'),knob=$('knob'),joyId=null,camId=null,lastX=0,lastY=0;
@@ -2529,7 +2545,7 @@ addEventListener('keydown',e=>{
 addEventListener('keyup',e=>{keysDown.delete(e.key.toLowerCase());refreshKeyInput()});
 
 let gameStarted=false;
-$('playBtn').onclick=()=>{unlockAudio();gameStarted=true;$('intro').style.display='none';if(window.gtaxConnectNow)window.gtaxConnectNow();say('Bem-vindo ao GTA X!')};
+$('playBtn').onclick=()=>{unlockAudio();gameStarted=true;$('intro').style.display='none';if(window.gtaxConnectNow)window.gtaxConnectNow(false);say('Bem-vindo ao GTA X!')};
 $('menuServersBtn').onclick=()=>{ $('mpOpenBtn').click(); };
 $('mpCloseBtn').addEventListener('click',()=>{if(!gameStarted)$('intro').style.display='flex'});
 $('mpConnectBtn').addEventListener('click',()=>{if(!gameStarted){gameStarted=true;$('intro').style.display='none'}});
