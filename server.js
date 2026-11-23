@@ -136,7 +136,9 @@ function joinRoom(socket, nextRoomId) {
     angle: 0,
     inCarId: null,
     seatRole: 'foot',
-    elevation: 0
+    elevation: 0,
+    look: { skin: 1, shirt: 0, pant: 0, hair: 0 },
+    weapon: 0
   };
 
   socket.emit('init', {
@@ -173,9 +175,48 @@ io.on('connection', (socket) => {
     p.inCarId = data.inCarId || null;
     p.seatRole = data.seatRole || 'foot';
     if (Number.isFinite(data.elevation)) p.elevation = data.elevation;
+    if (data.look && typeof data.look === 'object') {
+      p.look = {
+        skin: Number(data.look.skin) || 0,
+        shirt: Number(data.look.shirt) || 0,
+        pant: Number(data.look.pant) || 0,
+        hair: Number(data.look.hair) || 0
+      };
+    }
+    if (typeof data.weapon === 'number') {
+      p.weapon = data.weapon;
+    }
 
     room.players[socket.id] = p;
     socket.to('srv_' + roomId).emit('player:move', p);
+  });
+
+  socket.on('player:shoot', (data) => {
+    const roomId = socket.data.roomId || '1';
+    if (!data) return;
+    socket.to('srv_' + roomId).emit('player:shoot', {
+      id: socket.id,
+      x: data.x,
+      y: data.y,
+      angle: data.angle,
+      range: data.range
+    });
+  });
+
+  socket.on('player:hit', (data) => {
+    const roomId = socket.data.roomId || '1';
+    const room = rooms[roomId];
+    if (!room || !data || !data.targetId) return;
+    if (!room.players[data.targetId]) return;
+
+    const attackerName = (room.players[socket.id] && room.players[socket.id].name) || socket.data.name || 'Jogador';
+    const dmg = Math.max(1, Math.min(150, Number(data.dmg) || 20));
+
+    io.to(data.targetId).emit('player:hit', {
+      attackerId: socket.id,
+      attackerName,
+      dmg
+    });
   });
 
   socket.on('car:toggle', () => {
