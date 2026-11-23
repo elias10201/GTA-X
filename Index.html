@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="pt-BR">
+<html lang="pt-PT">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
@@ -78,18 +78,18 @@ canvas{display:block;width:100vw;height:100vh}
 </style>
 </head>
 <body>
-<div id="rot">↻ Gire o celular para o modo deitado</div>
+<div id="rot">↻ Rode o telemóvel para o modo horizontal</div>
 <canvas id="c"></canvas>
 
 <div id="intro">
   <div class="panel">
     <div class="eyebrow">MUNDO ABERTO · ONLINE</div>
     <h1>GTA X</h1>
-    <p class="subtitle">SUA CIDADE. SUAS REGRAS. SUA HISTÓRIA.</p>
+    <p class="subtitle">A TUA CIDADE. AS TUAS REGRAS. A TUA HISTÓRIA.</p>
     <div class="menu-line"></div>
     <button id="playBtn" type="button">▶ &nbsp; ENTRAR NO JOGO</button>
     <button id="menuServersBtn" class="sec" type="button">🌐 &nbsp; MULTIPLAYER · ESCOLHER SERVIDOR</button>
-    <p class="foot">Explore a cidade, encontre veículos, cumpra missões e jogue com seus amigos.</p>
+    <p class="foot">Explora a cidade, encontra veículos, cumpre missões e joga com os teus amigos.</p>
     <div class="version">GTA X · OPEN WORLD EXPERIENCE</div>
   </div>
 </div>
@@ -99,7 +99,7 @@ canvas{display:block;width:100vw;height:100vh}
   <div id="clock">16:28</div>
   <div id="stars">☆☆☆☆☆</div>
   <div id="msg"></div>
-  <div id="tip">Arraste o controle esquerdo para andar · Arraste a tela para girar a câmera · +/− aproxima e afasta</div>
+  <div id="tip">Arrasta o controlo esquerdo para andar · Arrasta o ecrã para rodar a câmera · +/− aproxima e afasta</div>
   <div id="health"><div id="hp"></div></div>
 </div>
 
@@ -115,7 +115,7 @@ canvas{display:block;width:100vw;height:100vh}
   <button class="b" data="fire" data-foot>ATIRAR</button>
   <button class="b" data="run" data-foot>CORRER</button>
   <button class="b" data="crouch" data-foot>AGACHAR</button>
-  <button class="b" data="jump" data-foot>PULAR</button>
+  <button class="b" data="jump" data-foot>SALTAR</button>
   <button class="b" data="car" data-foot>ENTRAR</button>
   <button class="b" data="passenger" data-foot style="display:none">PASSAGEIRO</button>
   <button class="b" data="elevator" data-foot style="display:none">ELEVADOR</button>
@@ -123,7 +123,7 @@ canvas{display:block;width:100vw;height:100vh}
   <button class="b" data="weapon" data-foot>ARMA</button>
   <button class="b" data="swap" data-foot>TROCAR</button>
   <button class="b" data="accelerate" data-vehicle style="display:none">ACELERAR</button>
-  <button class="b" data="brake" data-vehicle style="display:none">FREIO</button>
+  <button class="b" data="brake" data-vehicle style="display:none">TRAVÃO</button>
   <button class="b" data="car" data-vehicle style="display:none">SAIR</button>
 </div>
 
@@ -131,8 +131,8 @@ canvas{display:block;width:100vw;height:100vh}
 
 <div id="modal">
   <div>
-    <h2>GTA X — PAUSADO</h2>
-    <p>Toque em continuar para voltar ao jogo.</p>
+    <h2>GTA X — EM PAUSA</h2>
+    <p>Toca em continuar para regressar ao jogo.</p>
     <button id="resume" type="button">CONTINUAR</button>
     <button id="restartBtn" type="button">REINICIAR</button>
   </div>
@@ -144,32 +144,32 @@ canvas{display:block;width:100vw;height:100vh}
 <div id="chatLog"></div>
 
 <div id="chatBox">
-  <input id="chatInput" type="text" maxlength="110" placeholder="Digite sua mensagem...">
+  <input id="chatInput" type="text" maxlength="110" placeholder="Escreve a tua mensagem...">
   <button id="chatSendBtn" type="button">ENVIAR</button>
   <button id="chatCloseBtn" type="button">X</button>
 </div>
 
 <div id="mpBar">
-  <button id="mpOpenBtn" class="mp-pill warn" type="button">🌐 ONLINE: CONECTANDO...</button>
+  <button id="mpOpenBtn" class="mp-pill warn" type="button">🌐 ONLINE: A LIGAR...</button>
   <button id="chatOpenBtn" class="mp-pill" type="button">💬 CHAT</button>
   <span id="mpCountBadge" class="mp-pill" style="cursor:default">1 PLAYER</span>
 </div>
 
 <div id="mpModal">
   <div>
-    <h3>GTA X — Conexão Multiplayer</h3>
-    <label style="font-size:12px;display:block;text-align:left">Seu nome (nick):</label>
+    <h3>GTA X — Ligação Multiplayer</h3>
+    <label style="font-size:12px;display:block;text-align:left">O teu nome (nick):</label>
     <input id="mpNickInput" type="text" maxlength="16" placeholder="Ex.: EliasX7">
-    <label style="font-size:12px;display:block;text-align:left">Escolha um dos dois servidores:</label>
+    <label style="font-size:12px;display:block;text-align:left">Escolhe um dos dois servidores:</label>
     <select id="mpServerSelect"><option value="1">Servidor 1 · até 35 jogadores*</option><option value="2">Servidor 2 · até 35 jogadores*</option></select>
     <label style="font-size:12px;display:block;text-align:left">URL do servidor selecionado:</label>
     <input id="mpUrlInput" type="url" placeholder="https://reinos-de-aco-server.onrender.com">
-    <p style="font-size:10px;color:#b0bec5;text-align:left">*Servidor principal já configurado para funcionar tanto no site quanto no APK.</p>
+    <p style="font-size:10px;color:#b0bec5;text-align:left">*Servidor principal já configurado para funcionar tanto no site como no APK.</p>
     <div>
-      <button id="mpConnectBtn" type="button">SALVAR / CONECTAR</button>
+      <button id="mpConnectBtn" type="button">GUARDAR / LIGAR</button>
       <button id="mpCloseBtn" class="sec" type="button">FECHAR</button>
     </div>
-    <p id="mpStatusText" style="font-size:11px;color:#ffe082;margin-top:8px">Conectando ao servidor...</p>
+    <p id="mpStatusText" style="font-size:11px;color:#ffe082;margin-top:8px">A ligar ao servidor...</p>
   </div>
 </div>
 
@@ -194,9 +194,14 @@ const M=document.querySelector('#map'),m=M.getContext('2d');
 const $=id=>document.getElementById(id);
 
 let W=innerWidth||800,H=innerHeight||450,dpr=1,q=0.85,qa=0,qn=0;
+let f=Math.max(100,H*.95),hor=H*.42,cx=0,cy=3.2,cz=0,sn=0,cs=1,fg=0,glow=false,wx=[0,0,0,0],wz=[0,0,0,0],ox=0,oz=0,ofs=0,ofc=1,os=1;
+let FR=200,FG=232,FB=250,fogK=0;
+
 function size(){
   W=Math.max(1,innerWidth||800);
   H=Math.max(1,innerHeight||450);
+  f=Math.max(100,H*.95);
+  hor=H*.42;
   dpr=Math.min(devicePixelRatio||1,1.25)*q;
   C.width=Math.floor(W*dpr);
   C.height=Math.floor(H*dpr);
@@ -251,7 +256,7 @@ const CT=[
 ];
 
 const MT=['Primeiro Assalto','Fuga Noturna','Guerra de Gangues','O Grande Golpe','Caçada Final','Entrega Perigosa','Rei da Cidade'];
-const MO=['Vá até o ponto amarelo','Roube um carro','Vá até o local indicado','Entre em um veículo para escapar','Leve o carro até o ponto'];
+const MO=['Vai até ao ponto amarelo','Rouba um carro','Vai até ao local indicado','Entra num veículo para escapar','Leva o carro até ao ponto'];
 const MR=[500,1000,1500,2500,5000,3500,8000];
 const MS=[
   [[0,2,0,0],[1,0,0,0],[0,-3,2,0]],
@@ -421,13 +426,13 @@ function getElevatorTarget(){
   return best;
 }
 function useElevator(){
-  if(sitting){say('Levante-se antes de usar o elevador');return}
-  if(cur||passengerCar){say('Saia do veículo antes de usar o elevador');return}
+  if(sitting){say('Levanta-te antes de usar o elevador');return}
+  if(cur||passengerCar){say('Sai do veículo antes de usar o elevador');return}
   const t=playerElevation>0?elevatorTower:getElevatorTarget();
-  if(!t){say('Aproxime-se da entrada de uma das torres');return}
+  if(!t){say('Aproxima-te da entrada de uma das torres');return}
   const goingUp=playerElevation<=0;
   elevatorRide={tower:t,goingUp,time:.72};
-  const fx=$('elevatorFx');if(fx){fx.textContent=goingUp?'ELEVADOR · SUBINDO':'ELEVADOR · DESCENDO';fx.style.display='flex'}
+  const fx=$('elevatorFx');if(fx){fx.textContent=goingUp?'ELEVADOR · A SUBIR':'ELEVADOR · A DESCER';fx.style.display='flex'}
   sfx.door();
 }
 function finishElevatorRide(){
@@ -437,7 +442,7 @@ function finishElevatorRide(){
   else{playerElevation=0;elevatorTower=null;player.x=tower.doorX;player.z=tower.doorZ+2.2;player.yaw=PI;}
   elevatorRide=null;camPitch=.04;
   const fx=$('elevatorFx');if(fx)fx.style.display='none';
-  syncControls();say(goingUp?'Você chegou ao terraço. Aprecie a vista!':'Você voltou ao térreo.');
+  syncControls();say(goingUp?'Chegaste ao terraço. Aprecia a vista!':'Regressaste ao rés do chão.');
 }
 
 function getTreePos(ix,iz,q,zn){
@@ -732,7 +737,7 @@ function shoot(){
     shootT=.58;punchT=.58;sfx.punch();
     return;
   }
-  if(ammo[weapon]<=0){ammo[weapon]=maxAmmo[weapon];shootT=1.6;say('Recarregando...');sfx.click();return}
+  if(ammo[weapon]<=0){ammo[weapon]=maxAmmo[weapon];shootT=1.6;say('A recarregar...');sfx.click();return}
   ammo[weapon]--;shootT=rate[weapon];flash=.07;sfx.gun(weapon,0);
   for(let i=0;i<(weapon===2?5:1);i++){
     let a=player.yaw+rnd(-.09,.09);
@@ -762,20 +767,20 @@ function getPassengerTarget(){
 }
 function enterPassenger(){
   if(passengerCar)return;
-  const c=getPassengerTarget();if(!c){say('Chegue perto de um veículo com motorista para entrar como passageiro');return}
-  passengerCar=c;player.x=c.x;player.z=c.z;player.yaw=c.yaw;syncControls();sfx.door();say('Você entrou como passageiro. Toque em SAIR PASSAGEIRO para descer.');
+  const c=getPassengerTarget();if(!c){say('Aproxima-te de um veículo com condutor para entrares como passageiro');return}
+  passengerCar=c;player.x=c.x;player.z=c.z;player.yaw=c.yaw;syncControls();sfx.door();say('Entraste como passageiro. Toca em SAIR PASSAGEIRO para sair.');
 }
 function exitPassenger(){
-  if(!passengerCar)return;const c=passengerCar;player.x=c.x+cos(c.yaw)*2.3;player.z=c.z-sin(c.yaw)*2.3;if(psolid(player.x,player.z)){player.x=c.x;player.z=c.z}passengerCar=null;syncControls();sfx.door();say('Você saiu do veículo');
+  if(!passengerCar)return;const c=passengerCar;player.x=c.x+cos(c.yaw)*2.3;player.z=c.z-sin(c.yaw)*2.3;if(psolid(player.x,player.z)){player.x=c.x;player.z=c.z}passengerCar=null;syncControls();sfx.door();say('Saíste do veículo');
 }
 function enterCar(){
-  if(sitting){say('Levante-se antes de entrar no veículo');return}
+  if(sitting){say('Levanta-te antes de entrares no veículo');return}
   if(passengerCar){exitPassenger();return}
   if(cur){
-    if(cur.type===8&&(cur.altitude||0)>1.2){say('Pouse o avião antes de sair');return}
+    if(cur.type===8&&(cur.altitude||0)>1.2){say('Aterra o avião antes de saíres');return}
     player.x=cur.x+cos(cur.yaw)*2.6;player.z=cur.z-sin(cur.yaw)*2.6;
     if(psolid(player.x,player.z)){player.x=cur.x;player.z=cur.z}
-    cur.spd=0;cur.driverId=null;cur=null;sfx.engine(0,0,false);syncControls();say('Você saiu do veículo');sfx.door();
+    cur.spd=0;cur.driverId=null;cur=null;sfx.engine(0,0,false);syncControls();say('Saíste do veículo');sfx.door();
     if(window.mpSocket&&window.mpSocket.connected)window.mpSocket.emit('car:toggle');
     return;
   }
@@ -785,13 +790,13 @@ function enterCar(){
     let d=Math.hypot(c.x-player.x,c.z-player.z);
     if(d<bd){bd=d;best=c}
   }
-  if(!best){say('Nenhum carro livre perto');return}
-  cur=best;cur.driverId=window.mpSocket?window.mpSocket.id:'local';syncControls();sfx.door();say(best.type===8?'Avião: acelere na pista; puxe o analógico para trás para levantar o nariz e decolar. Empurre para frente para descer, mesmo em alta velocidade.':CN[best.type]);
+  if(!best){say('Nenhum carro livre por perto');return}
+  cur=best;cur.driverId=window.mpSocket?window.mpSocket.id:'local';syncControls();sfx.door();say(best.type===8?'Avião: acelera na pista; puxa o analógico para trás para subir e descolar. Empurra para a frente para descer.':CN[best.type]);
   if(window.mpSocket&&window.mpSocket.connected)window.mpSocket.emit('car:toggle');
 }
 
 function jump(){if(cur||sitting||jy>0)return;crouch=false;jv=7;jy=.001}
-function swap(){if(cur||playerElevation>0){say('Desça pelo elevador antes de trocar de personagem');return}chars[chr]={...player};chr=(chr+1)%3;player={...chars[chr]};crouch=prone=false;say('Controlando '+names[chr])}
+function swap(){if(cur||playerElevation>0){say('Desce pelo elevador antes de trocares de personagem');return}chars[chr]={...player};chr=(chr+1)%3;player={...chars[chr]};crouch=prone=false;say('A controlar '+names[chr])}
 function openWeaponWheel(){if(cur)return;wheelOpen=true;wheelHover=WHEEL_ITEMS.findIndex(it=>it.id===weapon);held.fire=false}
 function closeWeaponWheel(){
   if(!wheelOpen)return;
@@ -894,7 +899,7 @@ function update(dt){
     money=Math.max(0,money-300);hp[chr]=200;wanted=0;
     if(cur){cur.driverId=null;cur.spd=0;cur.altitude=0;cur.pitch=0;if(window.mpSocket&&window.mpSocket.connected)window.mpSocket.emit('car:toggle')}
     cur=null;passengerCar=null;playerElevation=0;elevatorTower=null;elevatorRide=null;sfx.engine(0,0,false);sink=0;syncControls();
-    player.x=32;player.z=32;say('Você foi derrotado! -$300');
+    player.x=32;player.z=32;say('Foste derrotado! -$300');
   }
 
   if(jy>0){
@@ -992,9 +997,6 @@ function update(dt){
   $('msg').textContent=msgT>0?msg:'';
 }
 
-let f,hor,cx,cy,cz,sn,cs,fg,glow=false,wx=[0,0,0,0],wz=[0,0,0,0],ox,oz,ofs,ofc,os;
-let FR=200,FG=232,FB=250,fogK=0;
-
 function color(c,b){
   let r=(c>>16)&255,gg=(c>>8)&255,bb=c&255;
   const bands=Math.max(.52,Math.min(1.22,Math.round(b*3)/3));
@@ -1004,27 +1006,30 @@ function color(c,b){
 }
 
 function project(x,y,z){
+  const foc=f||(H*.95);
   let dx=x-cx,dz=z-cz,xx=dx*cs-dz*sn,depth=dx*sn+dz*cs,dy=y-cy;
   let cp=cos(camPitch),sp=sin(camPitch);
   let yy=dy*cp-depth*sp;
   let zz=dy*sp+depth*cp;
   if(zz<near)return null;
-  let k=f/zz;
+  let k=foc/zz;
   return [W/2+xx*k,hor-yy*k,zz,k];
 }
 
 function projectSkyDir(dx,dy,dz){
+  const foc=f||(H*.95);
   let xx=dx*cs-dz*sn;
   let depth=dx*sn+dz*cs;
   let cp=cos(camPitch),sp=sin(camPitch);
   let yy=dy*cp-depth*sp;
   let zz=dy*sp+depth*cp;
   if(zz<=0.06)return null;
-  let k=f/zz;
+  let k=foc/zz;
   return [W/2+xx*k,hor-yy*k,zz];
 }
 
 function polygon3(points,col,outlineW){
+  const foc=f||(H*.95);
   let out=[];
   for(let i=0;i<points.length;i++){
     let a=points[i],b=points[(i+1)%points.length],da=a[2],db=b[2],ina=da>=near,inb=db>=near;
@@ -1034,7 +1039,7 @@ function polygon3(points,col,outlineW){
   if(out.length<3)return;
   g.fillStyle=col;
   g.beginPath();
-  out.forEach((v,i)=>{let k=f/v[2],x=W/2+v[0]*k,y=hor-v[1]*k;i?g.lineTo(x,y):g.moveTo(x,y)});
+  out.forEach((v,i)=>{let k=foc/v[2],x=W/2+v[0]*k,y=hor-v[1]*k;i?g.lineTo(x,y):g.moveTo(x,y)});
   g.closePath();
   g.fill();
   if(outlineW>0&&q>=0.65){
@@ -1228,9 +1233,10 @@ function bld(ix,iz){
 }
 
 function bone(x1,y1,z1,x2,y2,z2,w,col,outlined){
+  const foc=f||(H*.95);
   let a=pt(x1,y1,z1),b=pt(x2,y2,z2);
   if(a[2]<near||b[2]<near)return;
-  let k1=f/a[2],k2=f/b[2];
+  let k1=foc/a[2],k2=foc/b[2];
   let sx1=W/2+a[0]*k1,sy1=hor-a[1]*k1,sx2=W/2+b[0]*k2,sy2=hor-b[1]*k2;
   const segLen=Math.hypot(sx2-sx1,sy2-sy1);
   if(!Number.isFinite(segLen)||segLen<4.6)return;
@@ -1267,6 +1273,7 @@ function post(x,z){
 }
 
 function tree(x,z,hh,zn){
+  const foc=f||(H*.95);
   let ht=zn?5.5+hh%3:3.5+hh%2,ln=zn?(hh%3-1)*.6:0;
   bone(x,0,z,x+ln,ht,z,zn?.45:.5,0xff6d4c2f,true);
   if(zn){
@@ -1276,24 +1283,26 @@ function tree(x,z,hh,zn){
     }
   }else{
     const crown=[[-1.6,ht+.7,-.6,1.7],[0,ht+1.0,0,2.0],[1.6,ht+.65,.6,1.6]];
-    for(const [dx,yy,dz,rr] of crown){const p=project(x+dx,yy,z+dz);if(!p||p[2]<near)continue;const rx=cl(rr*f/p[2],1.2,30),ry=Math.max(1,rx*.72);g.fillStyle=color((hh%2)?0xff33843e:0xff3b9147,dayL);g.beginPath();g.ellipse(p[0],p[1],rx,ry,0,0,PI*2);g.fill()}
+    for(const [dx,yy,dz,rr] of crown){const p=project(x+dx,yy,z+dz);if(!p||p[2]<near)continue;const rx=cl(rr*foc/p[2],1.2,30),ry=Math.max(1,rx*.72);g.fillStyle=color((hh%2)?0xff33843e:0xff3b9147,dayL);g.beginPath();g.ellipse(p[0],p[1],rx,ry,0,0,PI*2);g.fill()}
   }
 }
 
 const GL=[.32,.52,.78,.92,1.18],SG=[];
-for(let i=0;i<56;i++)SG.push({a:0,b:0,c:0,d:0,e:0,f:0,w:0,col:0,k:0});
+for(let i=0;i<56;i++)SG.push({a:0,b:0,c:0,d:0,e:0,f:0,lw:0,col:0,k:0});
 let SN=0;
 
-function sg(ax,y1,z1,bx,y2,z2,w,col){
+function sg(ax,y1,z1,bx,y2,z2,lw,col){
+  if(SN>=SG.length)return;
   let s=SG[SN++];
   let X1=ox+(ax*ofc+z1*ofs)*os,Z1=oz+(-ax*ofs+z1*ofc)*os;
   let X2=ox+(bx*ofc+z2*ofs)*os,Z2=oz+(-bx*ofs+z2*ofc)*os;
   let Y1=renderGroundY+y1*os,Y2=renderGroundY+y2*os;
   let mx=(X1+X2)/2-cx,my=(Y1+Y2)/2-cy,mz=(Z1+Z2)/2-cz;
-  s.a=X1;s.b=Y1;s.c=Z1;s.d=X2;s.e=Y2;s.f=Z2;s.w=w*os;s.col=col;s.k=mx*sn+mz*cs;
+  s.a=X1;s.b=Y1;s.c=Z1;s.d=X2;s.e=Y2;s.f=Z2;s.lw=lw*os;s.col=col;s.k=mx*sn+mz*cs;
 }
 
 function flush(){
+  const foc=f||(H*.95);
   for(let i=1;i<SN;i++){
     let s=SG[i],j=i-1;
     while(j>=0&&SG[j].k<s.k){SG[j+1]=SG[j];j--}
@@ -1302,17 +1311,17 @@ function flush(){
   g.lineCap='round';
   for(let i=0;i<SN;i++){
     let s=SG[i],a=pt(s.a,s.b,s.c),b=pt(s.d,s.e,s.f);
-    if(a[2]<near||b[2]<near)continue;
-    let k1=f/a[2],k2=f/b[2];
+    if(!a||!b||a[2]<near||b[2]<near)continue;
+    let k1=foc/a[2],k2=foc/b[2];
     let sx1=W/2+a[0]*k1,sy1=hor-a[1]*k1,sx2=W/2+b[0]*k2,sy2=hor-b[1]*k2;
     const segLen=Math.hypot(sx2-sx1,sy2-sy1);
-    if(!Number.isFinite(segLen)||segLen<4.6)return;
-    let lw=cl(s.w*(k1+k2)/2,1.15,24);
+    if(!Number.isFinite(segLen)||segLen<4.6)continue;
+    let strokeW=cl(s.lw*(k1+k2)/2,1.15,24);
     if(q>=0.65){
-      g.strokeStyle=OUTLINE_COL;g.lineWidth=lw+(segLen<13?1.15:2.6);
+      g.strokeStyle=OUTLINE_COL;g.lineWidth=strokeW+(segLen<13?1.15:2.6);
       g.beginPath();g.moveTo(sx1,sy1);g.lineTo(sx2,sy2);g.stroke();
     }
-    g.strokeStyle=color(s.col,dayL);g.lineWidth=lw;
+    g.strokeStyle=color(s.col,dayL);g.lineWidth=strokeW;
     g.beginPath();g.moveTo(sx1,sy1);g.lineTo(sx2,sy2);g.stroke();
   }
   g.lineCap='butt';SN=0;
@@ -1348,8 +1357,9 @@ function drawWeaponModel(wp,x0,y0,z0,x1,y1,z1){
 }
 
 function person(x,z,yaw,tc,sk,seed,height,pose,wp,ph,amp,r,aim,ci,jy,jv,role,punch,groundY=0){
+  const foc=f||(H*.95);
   renderGroundY=groundY;
-  let q=pt(x,groundY,z);if(q[2]<1.2){renderGroundY=0;return}let k=f/q[2],sx=W/2+q[0]*k;if(sx<-300||sx>W+300){renderGroundY=0;return}
+  let q=pt(x,groundY,z);if(q[2]<1.2){renderGroundY=0;return}let k=foc/q[2],sx=W/2+q[0]*k;if(sx<-300||sx>W+300){renderGroundY=0;return}
   ox=x;oz=z;ofs=sin(yaw);ofc=cos(yaw);os=height/1.8;
   let pc=PANT[seed%5],hc=HAIR[Math.floor(seed/5)%5],sh=0xff1b1b1b,gl=wp>=0?GL[wp]:0;
   let am=Math.min(1,amp*1.35),jt=jy>.01?1:0,tk=jt?1-Math.min(1,Math.abs(jv)/7)**2:0;
@@ -1501,11 +1511,11 @@ function toggleSeat(){
   if(sitting){
     sitting=false;const old=seatSpot;seatSpot=null;vx=vz=0;
     if(old){player.x=old.standX;player.z=old.standZ;player.yaw=old.yaw}
-    say('Você se levantou.');syncControls();return;
+    say('Levantaste-te.');syncControls();return;
   }
   if(cur||passengerCar||playerElevation>0)return;
-  const spot=getNearestBench();if(!spot){say('Chegue perto de um banco da praça para sentar.');return}
-  sitting=true;seatSpot=spot;player.x=spot.x;player.z=spot.z;player.yaw=spot.yaw;vx=vz=0;joy.x=joy.y=0;crouch=prone=false;syncControls();say('Você sentou no banco. Toque em LEVANTAR para continuar.');
+  const spot=getNearestBench();if(!spot){say('Aproxima-te de um banco da praça para te sentares.');return}
+  sitting=true;seatSpot=spot;player.x=spot.x;player.z=spot.z;player.yaw=spot.yaw;vx=vz=0;joy.x=joy.y=0;crouch=prone=false;syncControls();say('Sentaste-te no banco. Toca em LEVANTAR para continuares.');
 }
 function drawPlaza(ix,iz){
   const x=ix*P,z=iz*P;
@@ -1628,7 +1638,7 @@ function drawWeaponWheel(){
   g.fillStyle='#ffd600';g.font='bold 13px Arial';g.textAlign='center';
   g.fillText(active.name.toUpperCase(),cxw,cyw-5);
   g.fillStyle='#cfd8dc';g.font='11px Arial';
-  g.fillText('Solte ou toque para equipar',cxw,cyw+12);
+  g.fillText('Larga ou toca para equipar',cxw,cyw+12);
   g.restore();
 }
 
@@ -1637,7 +1647,7 @@ function render(){
   const sunAngle=(tod-.25)*PI*2,sunH=sin(sunAngle);
   let daylight=cl((sunH+.20)/.36,0,1);daylight=daylight*daylight*(3-2*daylight);
   nightAmount=1-daylight;night=nightAmount>.52;dayL=1-.45*nightAmount;
-  f=H*.95;hor=H*.42;sn=sin(camYaw);cs=cos(camYaw);
+  f=Math.max(100,H*.95);hor=H*.42;sn=sin(camYaw);cs=cos(camYaw);
   let D=(cur?11.5:playerElevation>0?26:8.2)*cameraZoom;
   const groundLift=(!cur&&!passengerCar&&playerElevation<=0)?hillSurfaceHeight(player.x,player.z):0;
   let baseCamY=(cur?4.2:3.2)+(cur&&cur.type===8?(cur.altitude||0):cur?0:playerElevation+groundLift+Math.abs(sin(pph))*pamp*.02+jy*.5);
@@ -1936,7 +1946,7 @@ function frame(t){
   function updateBadge(){
     const total=mpConnected?(1+remotePlayers.size):1;
     if(mpOpenBtn){
-      mpOpenBtn.textContent=mpConnected?'🌐 ONLINE: CONECTADO':'🌐 ONLINE: OFFLINE';
+      mpOpenBtn.textContent=mpConnected?'🌐 ONLINE: LIGADO':'🌐 ONLINE: OFFLINE';
       mpOpenBtn.className='mp-pill '+(mpConnected?'active':'warn');
     }
     if(mpCountBadge)mpCountBadge.textContent=total+(total===1?' PLAYER':' PLAYERS');
@@ -2043,13 +2053,13 @@ function frame(t){
     updateBadge();
 
     const origin=(mpServerUrl||(location.origin&&location.origin!=='null'&&location.origin.startsWith('http')?location.origin:DEFAULT_SERVER_1)).replace(/\/+$/,'');
-    if(!origin){setMpStatus('Informe a URL do servidor no campo acima.');return}
+    if(!origin){setMpStatus('Indica a URL do servidor no campo acima.');return}
 
-    setMpStatus('Conectando em '+origin+'...');
+    setMpStatus('A ligar a '+origin+'...');
     loadSocketIo(origin,(err,ioFn)=>{
       if(err||!ioFn){
         mpConnected=false;updateBadge();
-        setMpStatus('Não foi possível conectar ao servidor em '+origin+'.');
+        setMpStatus('Não foi possível ligar ao servidor em '+origin+'.');
         return;
       }
       if(window.mpSocket){try{window.mpSocket.disconnect()}catch(_){}}
@@ -2064,8 +2074,8 @@ function frame(t){
         mpConnected=true;
         updateBadge();
         sendPlayerState();
-        setMpStatus('Conectado como '+mpNick+'!');
-        say('Conectado como '+mpNick+'!');
+        setMpStatus('Ligado como '+mpNick+'!');
+        say('Ligado como '+mpNick+'!');
       });
 
       sock.on('init',(data)=>{
@@ -2125,7 +2135,7 @@ function frame(t){
       });
 
       sock.on('disconnect',()=>{if(!isCurrentSocket())return;mpConnected=false;remotePlayers.clear();updateBadge()});
-      sock.on('connect_error',()=>{if(!isCurrentSocket())return;mpConnected=false;updateBadge();setMpStatus('Aguardando servidor em '+origin+'...')});
+      sock.on('connect_error',()=>{if(!isCurrentSocket())return;mpConnected=false;updateBadge();setMpStatus('A aguardar servidor em '+origin+'...')});
     });
   }
 
