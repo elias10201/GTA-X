@@ -48,8 +48,11 @@ canvas{display:block;width:100vw;height:100vh}
 .mp-pill.active{background:#1f7a3e;border-color:#80e27e}
 .mp-pill.warn{background:#8d5b0c;border-color:#ffd54f}
 
-#chatLog{position:fixed;left:50%;top:14.2%;bottom:auto;transform:translateX(-50%);z-index:18;pointer-events:none;width:min(360px,58vw);max-height:76px;overflow:hidden;display:flex;flex-direction:column;gap:5px;align-items:center}
-.chat-line{background:linear-gradient(105deg,#081522ed,#15102bed);border:1px solid #25dfff;border-left:3px solid #25dfff;padding:6px 11px;border-radius:9px;font-size:clamp(11px,1.25vw,14px);line-height:1.25;text-shadow:0 0 5px #4deaff88,1px 2px 3px #000;word-break:break-word;box-shadow:0 0 7px #00cfff55,inset 0 0 8px #9b4dff22;animation:chatIn .18s ease-out}
+#chatLog{position:fixed;left:2%;top:calc(2% + var(--ms) + 12px);bottom:auto;transform:none;z-index:18;pointer-events:auto;width:min(340px,38vw);max-height:min(30vh,230px);overflow-y:auto;overflow-x:hidden;display:flex;flex-direction:column;gap:5px;align-items:stretch;padding:3px 5px 3px 0;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:#25dfff88 #10151a66}
+#chatLog::-webkit-scrollbar{width:6px}
+#chatLog::-webkit-scrollbar-track{background:#10151a66;border-radius:8px}
+#chatLog::-webkit-scrollbar-thumb{background:#25dfff99;border-radius:8px}
+.chat-line{flex:0 0 auto;background:linear-gradient(105deg,#081522ed,#15102bed);border:1px solid #25dfff;border-left:3px solid #25dfff;padding:6px 11px;border-radius:9px;font-size:clamp(11px,1.25vw,14px);line-height:1.25;text-shadow:0 0 5px #4deaff88,1px 2px 3px #000;word-break:break-word;box-shadow:0 0 7px #00cfff55,inset 0 0 8px #9b4dff22;animation:chatIn .18s ease-out}
 .chat-line b{color:#83f4ff;text-shadow:0 0 6px #00dfff}
 @keyframes chatIn{from{opacity:0;transform:translateY(-5px)}to{opacity:1;transform:translateY(0)}}
 #chatOpenBtn{position:fixed;left:50%;top:10.8%;transform:translateX(-50%);z-index:19;background:linear-gradient(100deg,#101a32ee,#27113eee);border:1px solid #36eaff;color:#d9fbff;box-shadow:0 0 8px #00dfff77, inset 0 0 8px #a34cff33}
@@ -1478,7 +1481,7 @@ function flush(){
     let k1=f/a[2],k2=f/b[2];
     let sx1=W/2+a[0]*k1,sy1=hor-a[1]*k1,sx2=W/2+b[0]*k2,sy2=hor-b[1]*k2;
     const segLen=Math.hypot(sx2-sx1,sy2-sy1);
-    if(!Number.isFinite(segLen)||segLen<4.6)return;
+    if(!Number.isFinite(segLen)||segLen<4.6)continue;
     let lw=cl(s.w*(k1+k2)/2,1.15,24);
     g.strokeStyle=OUTLINE_COL;g.lineWidth=lw+(segLen<13?1.15:3.0);
     g.beginPath();g.moveTo(sx1,sy1);g.lineTo(sx2,sy2);g.stroke();
@@ -2442,7 +2445,10 @@ function frame(t){
     row.appendChild(b);
     row.appendChild(document.createTextNode(text));
     chatLog.appendChild(row);
-    while(chatLog.children.length>3)chatLog.removeChild(chatLog.firstChild);
+    // Mantém um histórico curto para picos de mensagens sem limitar a três linhas.
+    while(chatLog.children.length>50)chatLog.removeChild(chatLog.firstChild);
+    // A mensagem mais recente fica visível; as anteriores sobem na lista.
+    chatLog.scrollTop=chatLog.scrollHeight;
     setTimeout(()=>{if(row.parentNode){row.style.transition='opacity .22s ease, transform .22s ease';row.style.opacity='0';row.style.transform='translateY(-5px)';setTimeout(()=>row.remove(),240)}},3000);
   }
 
