@@ -272,7 +272,6 @@ const HAIR=[0xff1c1c1c,0xff4e342e,0xffb58b3c,0xffb71c1c,0xffd8d8d8,0xff1565c0];
 const SHIRT_PAL=[0xffd32f2f,0xff1e88e5,0xff2e7d32,0xff8e24aa,0xfff57c00,0xff212121,0xffeceff1,0xff00838f];
 const PANT=[0xff37474f,0xff1a237e,0xff3e2723,0xff212121,0xff6d4c41,0xffcfd8dc];
 
-// Aparência customizada salva localmente
 let customLook={skin:1,shirt:0,pant:0,hair:0};
 try{
   const savedLook=JSON.parse(localStorage.getItem('gtax_custom_look')||'null');
@@ -411,7 +410,6 @@ function isPlazaLot(ix,iz){
   return Math.abs(ix-c.ix)<=5&&Math.abs(iz-c.iz)<=5;
 }
 
-// Verifica se um ponto (x,z) está dentro de uma praça (Zona Segura)
 function isInSafeZone(x,z){
   if(playerElevation>0)return false;
   const ix0=Math.round(x/P),iz0=Math.round(z/P);
@@ -425,7 +423,6 @@ function isInSafeZone(x,z){
   return false;
 }
 
-// Lista todas as praças num raio amplo em volta de (x,z) e devolve o centro da praça mais próxima
 function findNearestPlazaSpawn(x,z){
   const ix0=Math.round(x/P),iz0=Math.round(z/P);
   let best=null,bestDist=Infinity;
@@ -435,7 +432,6 @@ function findNearestPlazaSpawn(x,z){
         if(Math.abs(dx)!==r&&Math.abs(dz)!==r)continue;
         const ix=ix0+dx,iz=iz0+dz;
         if(isPlazaLot(ix,iz)){
-          // Ponto seguro no meio da praça (desviado 5m da fonte central)
           const px=ix*P,pz=iz*P+6;
           const d=Math.hypot(px-x,pz-z);
           if(d<bestDist){bestDist=d;best={x:px,z:pz,ix,iz}}
@@ -782,7 +778,7 @@ function triggerDeath(reason){
   sfx.engine(0,0,false);
   syncControls();
   const desc=$('deathDesc');
-  if(desc)desc.textContent=(reason||'Você foi eliminado!')+' Toque em reviver para nascer na praça mais próxima.';
+  if(desc)desc.textContent=(reason||'Você foi eliminado!')+' Toque em reviver para voltar na praça mais próxima.';
   $('deathModal').style.display='flex';
 }
 
@@ -1015,7 +1011,7 @@ function update(dt){
   if(elevatorRide){elevatorRide.time-=dt;if(elevatorRide.time<=0)finishElevatorRide();return}
   if(wheelOpen)dt*=0.18;
   anim+=dt;
-  sitBlend+=(sitting?1-sitBlend:-sitBlend)*Math.min(1,dt*5);
+  sitBlend+=(sitting?1-sitBlend:-sitBlend)*Math.min(1,dt*6);
   myBubbleT=Math.max(0,myBubbleT-dt);
   if(window.mpRemotePlayers){
     window.mpRemotePlayers.forEach(rp=>{rp.bubbleT=Math.max(0,rp.bubbleT-dt)});
@@ -1482,7 +1478,7 @@ function flush(){
     let k1=f/a[2],k2=f/b[2];
     let sx1=W/2+a[0]*k1,sy1=hor-a[1]*k1,sx2=W/2+b[0]*k2,sy2=hor-b[1]*k2;
     const segLen=Math.hypot(sx2-sx1,sy2-sy1);
-    if(!Number.isFinite(segLen)||segLen<4.6)continue;
+    if(!Number.isFinite(segLen)||segLen<4.6)return;
     let lw=cl(s.w*(k1+k2)/2,1.15,24);
     g.strokeStyle=OUTLINE_COL;g.lineWidth=lw+(segLen<13?1.15:3.0);
     g.beginPath();g.moveTo(sx1,sy1);g.lineTo(sx2,sy2);g.stroke();
@@ -1521,7 +1517,6 @@ function drawWeaponModel(wp,x0,y0,z0,x1,y1,z1){
   }
 }
 
-// Renderização do personagem com suporte a cores customizadas e física de armas (1 mão vs 2 mãos)
 function person(x,z,yaw,tc,sk,seed,height,pose,wp,ph,amp,r,aim,ci,jy,jv,role,punch,groundY=0,lookOverride=null){
   renderGroundY=groundY;
   let q=pt(x,groundY,z);if(q[2]<1.0){renderGroundY=0;return}let k=f/q[2],sx=W/2+q[0]*k;if(sx<-340||sx>W+340){renderGroundY=0;return}
@@ -1568,14 +1563,13 @@ function person(x,z,yaw,tc,sk,seed,height,pose,wp,ph,amp,r,aim,ci,jy,jv,role,pun
     arm(-1,tx2-.20,sy-.18,zs+.12,tx2-.16,sy-.28,zs+.34);
     arm(1,tx2+.20,sy-.18,zs+.12,tx2+.16,sy-.28,zs+.34);
   }else if(wp>=0){
-    const isHeavyWeapon=(wp>=2); // Escopeta (2), Fuzil (3) e Sniper (4) usam duas mãos!
+    const isHeavyWeapon=(wp>=2);
     if(aim){
       let hx=tx2+.1,hy2=sy-.06,hz2=zs+.55;
       arm(1,tx2+.2,sy-.2,zs+.25,hx,hy2,hz2);
       drawWeaponModel(wp,hx,hy2,hz2,hx,hy2+.02,hz2+gl);
       arm(-1,tx2-.12,sy-.2,zs+.28,tx2+.03,sy-.08,zs+.52+(wp>0?gl*.45:0));
     }else if(isHeavyWeapon){
-      // Física de arma grande: segura cruzada no peito com AS DUAS MÃOS enquanto anda/corre
       const bobY=sin(4*PI*u0)*(.025+.03*r)*am;
       const swayZ=cos(2*PI*u0)*(.03+.03*r)*am;
       const rHandX=tx2+.13,rHandY=sy-.22+bobY,rHandZ=zs+.26+swayZ;
@@ -1590,7 +1584,6 @@ function person(x,z,yaw,tc,sk,seed,height,pose,wp,ph,amp,r,aim,ci,jy,jv,role,pun
         rHandX+(dirX/len)*gl,rHandY+(dirY/len)*gl,rHandZ+(dirZ/len)*gl
       );
     }else{
-      // Arma leve (Pistola 0 ou SMG 1): corre com UMA MÃO SÓ e o outro braço livre balançando!
       const swingAng=-(.32+.58*r)*am*cos(2*PI*u0);
       const ey=sy-.28*cos(swingAng),ez=zs+.26*sin(swingAng);
       const hx=tx2+.21,hy2=ey-.22,hz2=ez+.20;
@@ -1628,9 +1621,6 @@ function person(x,z,yaw,tc,sk,seed,height,pose,wp,ph,amp,r,aim,ci,jy,jv,role,pun
   renderGroundY=0;
 }
 
-// ============================================================================
-// PREVIEW 360° DO PERSONAGEM NO LOBBY (GIRAR COM O DEDO)
-// ============================================================================
 let lobbyPreviewYaw=0.35;
 let lobbyAutoSpin=true;
 function renderLobbyCharacterPreview(){
@@ -1640,7 +1630,6 @@ function renderLobbyCharacterPreview(){
   const pw=cv.width,ph=cv.height;
   ctx.clearRect(0,0,pw,ph);
 
-  // Plataforma circular no chão do lobby
   ctx.save();
   ctx.fillStyle='rgba(10, 22, 34, 0.72)';
   ctx.strokeStyle='#4dd0e1';
@@ -1652,23 +1641,11 @@ function renderLobbyCharacterPreview(){
 
   if(lobbyAutoSpin)lobbyPreviewYaw+=0.012;
 
-  // Projeta usando a própria engine de traço do jogo
   const savedW=W,savedH=H,savedF=f,savedHor=hor,savedCx=cx,savedCy=cy,savedCz=cz,savedSn=sn,savedCs=cs,savedPitch=camPitch,savedDayL=dayL,savedFog=fogK;
   W=pw;H=ph;f=ph*1.32;hor=ph*0.46;
   cx=0;cy=1.18;cz=-3.55;sn=0;cs=1;camPitch=-0.04;dayL=1.02;fogK=0;
 
-  // Troca temporária do contexto 'g' para desenhar direto no canvas do preview
-  const origRect=C.getBoundingClientRect;
   g.save();
-  // Desenha num buffer offscreen usando 'g' temporariamente limpo
-  const tmpCanvas=document.createElement('canvas');
-  tmpCanvas.width=pw;tmpCanvas.height=ph;
-  const tmpCtx=tmpCanvas.getContext('2d');
-
-  // Redireciona primitivas do person() para tmpCtx
-  const realG=g;
-  // Executa person() em (0,0) com yaw = lobbyPreviewYaw
-  // Como 'g' é const, desenhamos no canto superior esquerdo de C e copiamos para cv!
   g.setTransform(1,0,0,1,0,0);
   g.clearRect(0,0,pw,ph);
   person(
@@ -1793,22 +1770,60 @@ function drawPlazaGround(ix,iz){
   polygon3([pt(x-3,.022,z-3),pt(x+3,.022,z-3),pt(x+3,.022,z+3),pt(x-3,.022,z+3)],color(0xff6bb3c0,dayL),0);
 }
 
+// Bancos da praça: posicionamento alinhado e suporte a 4 lugares lado a lado por banco
 function benchPoint(x,z,lx,lz,yaw){const sn=sin(yaw),cs=cos(yaw);return [x+lx*cs+lz*sn,z-lx*sn+lz*cs]}
+const BENCH_SLOT_OFFSETS=[-1.25,-0.42,0.42,1.25];
+
 function drawBench(x,z,yaw){
   const wood=night?0xff986b3d:0xffbd8750,metal=0xff38434a;
   box(x,z,1.72,.32,.68,.84,yaw,wood,false,.8);
   const back=benchPoint(x,z,0,-.28,yaw);box(back[0],back[1],1.72,.13,.86,1.48,yaw,wood,false,.8);
   for(const side of [-1,1]){const leg=benchPoint(x,z,side*1.35,0,yaw);box(leg[0],leg[1],.10,.11,.05,.69,yaw,metal,false,.45)}
 }
+
 function plazaBenchSpots(ix,iz){
   const x=ix*P,z=iz*P;
-  return [-14,14].flatMap(a=>[-1,1].map(side=>{
-    const benchX=x+a,benchZ=z+side*8,yaw=side<0?0:PI;
-    const seat=benchPoint(benchX,benchZ,0,0,yaw);
+  const benches=[
+    [-14,-8,0],
+    [-14,8,PI],
+    [14,-8,0],
+    [14,8,PI],
+    [-14,-15.5,0],
+    [14,-15.5,0]
+  ];
+  return benches.flatMap(([ox,oz,yaw],bIdx)=>{
+    const benchX=x+ox,benchZ=z+oz;
     const stand=benchPoint(benchX,benchZ,0,1.45,yaw);
-    return {x:seat[0],z:seat[1],yaw,benchX,benchZ,ix,iz,standX:stand[0],standZ:stand[1]};
-  }));
+    return BENCH_SLOT_OFFSETS.map((slotX,sIdx)=>{
+      // Assento alinhado ao lado frontal do banco conforme a orientação yaw
+      const seat=benchPoint(benchX,benchZ,slotX,0.06,yaw);
+      return {
+        id:ix+'_'+iz+'_'+bIdx+'_'+sIdx,
+        x:seat[0],
+        z:seat[1],
+        yaw,
+        benchX,
+        benchZ,
+        ix,
+        iz,
+        standX:stand[0],
+        standZ:stand[1]
+      };
+    });
+  });
 }
+
+function isBenchSlotOccupied(spot){
+  const dLocal=Math.hypot(player.x-spot.x,player.z-spot.z);
+  if(sitting&&dLocal<0.65)return true;
+  if(window.mpRemotePlayers){
+    for(const rp of window.mpRemotePlayers.values()){
+      if(rp&&!rp.inCarId&&Math.hypot((rp.x||0)-spot.x,(rp.z||0)-spot.z)<0.65)return true;
+    }
+  }
+  return false;
+}
+
 function pointInBench(x,z,b){
   const dx=x-b.benchX,dz=z-b.benchZ,sn=sin(b.yaw),cs=cos(b.yaw);
   const lx=dx*cs-dz*sn,lz=dx*sn+dz*cs;
@@ -1824,8 +1839,12 @@ function benchCollision(x,z){
 }
 function getNearestBench(){
   if(playerElevation>0||cur||passengerCar)return null;
-  let best=null,bd=4.3,ix0=Math.round(player.x/P),iz0=Math.round(player.z/P);
-  for(let ix=ix0-1;ix<=ix0+1;ix++)for(let iz=iz0-1;iz<=iz0+1;iz++)if(isPlazaLot(ix,iz))for(const b of plazaBenchSpots(ix,iz)){const d=Math.hypot(player.x-b.x,player.z-b.z);if(d<bd){best=b;bd=d}}
+  let best=null,bd=4.8,ix0=Math.round(player.x/P),iz0=Math.round(player.z/P);
+  for(let ix=ix0-1;ix<=ix0+1;ix++)for(let iz=iz0-1;iz<=iz0+1;iz++)if(isPlazaLot(ix,iz))for(const b of plazaBenchSpots(ix,iz)){
+    if(isBenchSlotOccupied(b))continue;
+    const d=Math.hypot(player.x-b.x,player.z-b.z);
+    if(d<bd){best=b;bd=d}
+  }
   return best;
 }
 function toggleSeat(){
@@ -2182,6 +2201,7 @@ function render(){
     const tx=city.ix*P+32,tz=city.iz*P+32,dx=tx-cx,dz=tz-cz,d2=dx*dx+dz*dz,front=dx*sn+dz*cs;
     if(d2>390*390&&d2<2500*2500&&front>0)items.push({d:d2,depth:cameraDepth(tx,tz,38),fn:()=>drawDistantCity(city)});
   }
+  const seenBenches=new Set();
   for(let i=-viewRange;i<=viewRange;i++)for(let j=-viewRange;j<=viewRange;j++){
     let ix=bx+i,iz=bz+j;if((ix*P-cx)*sn+(iz*P-cz)*cs<=-25)continue;
     let zn=zone(ix,iz),dd=(ix*P-cx)**2+(iz*P-cz)**2,pk=h(ix,iz)%6===0;
@@ -2204,6 +2224,9 @@ function render(){
     else if(zn===0&&pk&&isPlazaLot(ix,iz)){
       items.push({d:dd,depth:cameraDepth(ix*P,iz*P,2),fn:()=>drawPlaza(ix,iz)});
       for(const bench of plazaBenchSpots(ix,iz)){
+        const bKey=bench.ix+'_'+bench.iz+'_'+bench.benchX+'_'+bench.benchZ;
+        if(seenBenches.has(bKey))continue;
+        seenBenches.add(bKey);
         const bd=(bench.benchX-cx)**2+(bench.benchZ-cz)**2;
         items.push({d:bd,depth:cameraDepth(bench.benchX,bench.benchZ,.76),fn:()=>drawBench(bench.benchX,bench.benchZ,bench.yaw)});
       }
@@ -2218,6 +2241,9 @@ function render(){
       else if(isCoastalPlazaLot(ix,iz)){
         items.push({d:dd,depth:cameraDepth(ix*P,iz*P,2),fn:()=>drawPlaza(ix,iz)});
         for(const bench of plazaBenchSpots(ix,iz)){
+          const bKey=bench.ix+'_'+bench.iz+'_'+bench.benchX+'_'+bench.benchZ;
+          if(seenBenches.has(bKey))continue;
+          seenBenches.add(bKey);
           const bd=(bench.benchX-cx)**2+(bench.benchZ-cz)**2;
           items.push({d:bd,depth:cameraDepth(bench.benchX,bench.benchZ,.76),fn:()=>drawBench(bench.benchX,bench.benchZ,bench.yaw)});
         }
@@ -2379,9 +2405,6 @@ function frame(t){
   requestAnimationFrame(frame);
 }
 
-// ============================================================================
-// MULTIPLAYER: CONEXÃO AUTOMÁTICA, APARÊNCIA, PVP E ZONA SEGURA
-// ============================================================================
 (()=>{
   const remotePlayers=new Map();
   window.mpRemotePlayers=remotePlayers;
@@ -2614,7 +2637,6 @@ function frame(t){
       sock.on('player:update',(p)=>{if(isCurrentSocket())upsertRemote(p)});
       sock.on('player:leave',(id)=>{if(isCurrentSocket()){remotePlayers.delete(id);updateBadge()}});
 
-      // Visualização dos tiros dos outros jogadores online
       sock.on('player:shoot',(data)=>{
         if(!isCurrentSocket()||!data||data.id===sock.id)return;
         if(Number.isFinite(data.x)&&Number.isFinite(data.y)&&Number.isFinite(data.angle)){
@@ -2633,7 +2655,6 @@ function frame(t){
         }
       });
 
-      // Receber dano de jogador online (respeitando Zona Segura da praça)
       sock.on('player:hit',(data)=>{
         if(!isCurrentSocket()||!data||isDead)return;
         if(isInSafeZone(player.x,player.z))return;
