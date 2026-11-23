@@ -1,245 +1,263 @@
-const express = require("express");
-const http = require("http");
-const path = require("path");
-const fs = require("fs");
-const cors = require("cors");
-const { Server } = require("socket.io");
+const path = require('path');
+const fs = require('fs');
+const http = require('http');
+const express = require('express');
+const cors = require('cors');
+const { Server } = require('socket.io');
 
 const app = express();
-app.use(cors({ origin: "*" }));
+app.use(cors());
+app.use(express.json());
 
-const server = http.createServer(app);
-const io = new Server(server, {
-  cors: {
-    origin: "*",
-    methods: ["GET", "POST"]
-  }
-});
+const PORT = process.env.PORT || 3000;
+const MAX_PLAYERS_PER_ROOM = 35;
+const P = 64;
+const AIRPORT_X = 14 * P + 32;
+const AIRPORT_Z = 13 * P + 32;
 
-function getIndexFile() {
-  const candidates = [
-    "index.html",
-    "Index.html",
-    "Index (2).html",
-    "GTA-X-ONLINE-COMPLETO-v2.html"
-  ];
-  for (const name of candidates) {
-    const full = path.join(__dirname, name);
-    if (fs.existsSync(full)) return full;
+const htmlCandidates = [
+  path.join(__dirname, 'Index.html'),
+  path.join(__dirname, 'index.html'),
+  path.join(__dirname, 'public', 'Index.html'),
+  path.join(__dirname, 'public', 'index.html'),
+  path.join(__dirname, 'www', 'Index.html'),
+  path.join(__dirname, 'www', 'index.html')
+];
+
+function findHtmlFile() {
+  for (const file of htmlCandidates) {
+    if (fs.existsSync(file)) return file;
   }
   return null;
 }
 
+app.get('/health', (_req, res) => {
+  res.json({ ok: true, rooms: ['1', '2'] });
+});
+
+app.get('/', (_req, res) => {
+  const htmlFile = findHtmlFile();
+  if (htmlFile) {
+    return res.sendFile(htmlFile);
+  }
+  res.status(200).send('GTA X Server online');
+});
+
 app.use(express.static(__dirname));
+if (fs.existsSync(path.join(__dirname, 'public'))) {
+  app.use(express.static(path.join(__dirname, 'public')));
+}
+if (fs.existsSync(path.join(__dirname, 'www'))) {
+  app.use(express.static(path.join(__dirname, 'www')));
+}
 
-app.get("/", (req, res) => {
-  const indexFile = getIndexFile();
-  if (indexFile) return res.sendFile(indexFile);
-  res.status(404).send("Arquivo HTML do jogo não encontrado na pasta.");
+const server = http.createServer(app);
+const io = new Server(server, {
+  cors: {
+    origin: '*',
+    methods: ['GET', 'POST']
+  }
 });
-
-app.get("/health", (req, res) => {
-  res.status(200).json({ ok: true });
-});
-
-const AIRPORT_X = 14 * 64 + 32;
-const AIRPORT_Z = 13 * 64 + 32;
 
 function createInitialCars() {
-  return {
-    carro_1: { id: "carro_1", x: 24, y: 50, angle: 0, speed: 0, altitude: 0, pitch: 0, roll: 0, driverId: null },
-    carro_2: { id: "carro_2", x: 40, y: 10, angle: Math.PI, speed: 0, altitude: 0, pitch: 0, roll: 0, driverId: null },
-    carro_3: { id: "carro_3", x: 74, y: 38, angle: Math.PI / 2, speed: 0, altitude: 0, pitch: 0, roll: 0, driverId: null },
-    carro_4: { id: "carro_4", x: -8, y: 38, angle: -Math.PI / 2, speed: 0, altitude: 0, pitch: 0, roll: 0, driverId: null },
-    carro_fusca: { id: "carro_fusca", x: 12, y: 32, angle: 0, speed: 0, altitude: 0, pitch: 0, roll: 0, driverId: null },
-    moto_1: { id: "moto_1", x: 50, y: 34, angle: Math.PI / 2, speed: 0, altitude: 0, pitch: 0, roll: 0, driverId: null },
-    aviao_aeroporto: { id: "aviao_aeroporto", x: AIRPORT_X - 76, y: AIRPORT_Z, angle: Math.PI / 2, speed: 0, altitude: 0, pitch: 0, roll: 0, driverId: null }
-  };
+  return [
+    { id: 'carro_1', x: 24, y: 50, angle: 0, speed: 0, driverId: null },
+    { id: 'carro_2', x: 40, y: 10, angle: Math.PI, speed: 0, driverId: null },
+    { id: 'carro_3', x: 74, y: 38, angle: Math.PI / 2, speed: 0, driverId: null },
+    { id: 'carro_4', x: -8, y: 38, angle: -Math.PI / 2, speed: 0, driverId: null },
+    { id: 'carro_fusca', x: 12, y: 32, angle: 0, speed: 0, driverId: null },
+    { id: 'moto_1', x: 50, y: 34, angle: Math.PI / 2, speed: 0, driverId: null },
+    {
+      id: 'aviao_aeroporto',
+      x: AIRPORT_X - 76,
+      y: AIRPORT_Z,
+      angle: Math.PI / 2,
+      speed: 0,
+      altitude: 0,
+      pitch: 0,
+      roll: 0,
+      driverId: null
+    }
+  ];
 }
 
 const rooms = {
-  srv_1: { players: {}, cars: createInitialCars() },
-  srv_2: { players: {}, cars: createInitialCars() }
+  '1': { players: {}, cars: createInitialCars() },
+  '2': { players: {}, cars: createInitialCars() }
 };
 
-function normalizeRoom(raw) {
-  return String(raw) === "2" || raw === "srv_2" ? "srv_2" : "srv_1";
+function normalizeRoomId(raw) {
+  return String(raw) === '2' ? '2' : '1';
 }
 
-function releaseDriver(roomState, socketId) {
-  const p = roomState.players[socketId];
-  if (!p) return null;
-  let releasedCar = null;
-  if (p.inCarId && roomState.cars[p.inCarId]) {
-    const car = roomState.cars[p.inCarId];
-    if (car.driverId === socketId) {
+function removePlayerFromRoom(socket, roomId) {
+  const room = rooms[roomId];
+  if (!room) return;
+
+  if (room.players[socket.id]) {
+    delete room.players[socket.id];
+    socket.to('srv_' + roomId).emit('player:leave', socket.id);
+  }
+
+  room.cars.forEach((car) => {
+    if (car.driverId === socket.id) {
       car.driverId = null;
       car.speed = 0;
-      releasedCar = car;
+      io.to('srv_' + roomId).emit('car:update', car);
     }
-    p.inCarId = null;
-  }
-  return releasedCar;
+  });
+
+  socket.leave('srv_' + roomId);
 }
 
-io.on("connection", (socket) => {
-  let currentRoom = normalizeRoom(socket.handshake.query && socket.handshake.query.server);
-  socket.join(currentRoom);
+function joinRoom(socket, nextRoomId) {
+  const targetRoom = normalizeRoomId(nextRoomId);
+  const currentRoom = socket.data.roomId;
 
-  const initPlayer = () => {
-    const state = rooms[currentRoom];
-    state.players[socket.id] = {
-      id: socket.id,
-      name: `Player_${socket.id.slice(0, 4)}`,
-      x: 32,
-      y: 32,
-      angle: 0,
-      elevation: 0,
-      inCarId: null
-    };
-    socket.emit("init", {
-      id: socket.id,
-      room: currentRoom,
-      players: state.players,
-      cars: state.cars
-    });
-    socket.to(currentRoom).emit("player:join", state.players[socket.id]);
+  if (currentRoom && currentRoom !== targetRoom) {
+    removePlayerFromRoom(socket, currentRoom);
+  }
+
+  const room = rooms[targetRoom];
+  const playerCount = Object.keys(room.players).length;
+  if (!room.players[socket.id] && playerCount >= MAX_PLAYERS_PER_ROOM) {
+    socket.emit('room:full', { room: targetRoom, max: MAX_PLAYERS_PER_ROOM });
+    return;
+  }
+
+  socket.data.roomId = targetRoom;
+  socket.join('srv_' + targetRoom);
+
+  room.players[socket.id] = {
+    id: socket.id,
+    name: socket.data.name || ('Player_' + socket.id.slice(0, 4)),
+    x: 32,
+    y: 32,
+    angle: 0,
+    inCarId: null,
+    seatRole: 'foot',
+    elevation: 0
   };
 
-  initPlayer();
-
-  socket.on("room:select", (rawServer) => {
-    const nextRoom = normalizeRoom(rawServer);
-    if (nextRoom === currentRoom) return;
-    const prevState = rooms[currentRoom];
-    const released = releaseDriver(prevState, socket.id);
-    if (released) io.to(currentRoom).emit("car:update", released);
-    delete prevState.players[socket.id];
-    socket.leave(currentRoom);
-    socket.to(currentRoom).emit("player:leave", socket.id);
-
-    currentRoom = nextRoom;
-    socket.join(currentRoom);
-    initPlayer();
+  socket.emit('init', {
+    room: targetRoom,
+    players: room.players,
+    cars: room.cars
   });
 
-  socket.on("player:move", (data) => {
-    const state = rooms[currentRoom];
-    const p = state.players[socket.id];
-    if (!p || !data) return;
+  socket.to('srv_' + targetRoom).emit('player:join', room.players[socket.id]);
+}
 
-    if (typeof data.x === "number" && Number.isFinite(data.x)) p.x = data.x;
-    if (typeof data.y === "number" && Number.isFinite(data.y)) p.y = data.y;
-    if (typeof data.angle === "number" && Number.isFinite(data.angle)) p.angle = data.angle;
-    if (typeof data.elevation === "number" && Number.isFinite(data.elevation)) p.elevation = data.elevation;
-    if (typeof data.name === "string" && data.name.trim()) {
+io.on('connection', (socket) => {
+  socket.data.name = 'Player_' + socket.id.slice(0, 4);
+  const initialRoom = normalizeRoomId(socket.handshake.query && socket.handshake.query.server);
+  joinRoom(socket, initialRoom);
+
+  socket.on('room:select', (roomChoice) => {
+    joinRoom(socket, roomChoice);
+  });
+
+  socket.on('player:move', (data) => {
+    const roomId = socket.data.roomId || '1';
+    const room = rooms[roomId];
+    if (!room || !data) return;
+
+    const p = room.players[socket.id] || { id: socket.id };
+    if (typeof data.name === 'string' && data.name.trim()) {
       p.name = data.name.trim().slice(0, 16);
+      socket.data.name = p.name;
     }
-    if (data.inCarId !== undefined) {
-      p.inCarId = data.inCarId || null;
-    }
+    if (Number.isFinite(data.x)) p.x = data.x;
+    if (Number.isFinite(data.y)) p.y = data.y;
+    if (Number.isFinite(data.angle)) p.angle = data.angle;
+    p.inCarId = data.inCarId || null;
+    p.seatRole = data.seatRole || 'foot';
+    if (Number.isFinite(data.elevation)) p.elevation = data.elevation;
 
-    socket.to(currentRoom).emit("player:move", p);
+    room.players[socket.id] = p;
+    socket.to('srv_' + roomId).emit('player:move', p);
   });
 
-  socket.on("car:toggle", () => {
-    const state = rooms[currentRoom];
-    const p = state.players[socket.id];
-    if (!p) return;
+  socket.on('car:toggle', () => {
+    const roomId = socket.data.roomId || '1';
+    const room = rooms[roomId];
+    if (!room) return;
 
-    if (p.inCarId && state.cars[p.inCarId]) {
-      const car = state.cars[p.inCarId];
-      car.driverId = null;
-      car.speed = 0;
-      p.inCarId = null;
-      io.to(currentRoom).emit("car:update", car);
-      io.to(currentRoom).emit("player:update", p);
+    const existingCar = room.cars.find((c) => c.driverId === socket.id);
+    if (existingCar) {
+      existingCar.driverId = null;
+      existingCar.speed = 0;
+      if (room.players[socket.id]) room.players[socket.id].inCarId = null;
+      io.to('srv_' + roomId).emit('car:update', existingCar);
       return;
     }
 
-    let bestCar = null;
+    const player = room.players[socket.id];
+    if (!player) return;
+
+    let nearest = null;
     let bestDist = 18;
-    for (const id of Object.keys(state.cars)) {
-      const car = state.cars[id];
-      if (car.driverId) continue;
-      const dist = Math.hypot(car.x - p.x, car.y - p.y);
-      if (dist < bestDist) {
-        bestDist = dist;
-        bestCar = car;
+    for (const car of room.cars) {
+      if (car.driverId && car.driverId !== socket.id) continue;
+      const d = Math.hypot(car.x - player.x, car.y - player.y);
+      if (d < bestDist) {
+        bestDist = d;
+        nearest = car;
       }
     }
 
-    if (bestCar) {
-      bestCar.driverId = socket.id;
-      p.inCarId = bestCar.id;
-      p.x = bestCar.x;
-      p.y = bestCar.y;
-      io.to(currentRoom).emit("car:update", bestCar);
-      io.to(currentRoom).emit("player:update", p);
+    if (nearest) {
+      nearest.driverId = socket.id;
+      player.inCarId = nearest.id;
+      io.to('srv_' + roomId).emit('car:update', nearest);
     }
   });
 
-  socket.on("car:drive", (data) => {
-    const state = rooms[currentRoom];
-    const p = state.players[socket.id];
-    if (!p || !p.inCarId || !state.cars[p.inCarId] || !data) return;
+  socket.on('car:drive', (data) => {
+    const roomId = socket.data.roomId || '1';
+    const room = rooms[roomId];
+    if (!room || !data || !data.id) return;
 
-    const car = state.cars[p.inCarId];
-    if (car.driverId !== socket.id) return;
+    const car = room.cars.find((c) => c.id === data.id);
+    if (!car) return;
+    if (car.driverId && car.driverId !== socket.id) return;
 
-    if (typeof data.x === "number" && Number.isFinite(data.x)) {
-      car.x = data.x;
-      p.x = data.x;
-    }
-    if (typeof data.y === "number" && Number.isFinite(data.y)) {
-      car.y = data.y;
-      p.y = data.y;
-    }
-    if (typeof data.angle === "number" && Number.isFinite(data.angle)) {
-      car.angle = data.angle;
-      p.angle = data.angle;
-    }
-    if (typeof data.speed === "number" && Number.isFinite(data.speed)) {
-      car.speed = data.speed;
-    }
-    if (typeof data.altitude === "number" && Number.isFinite(data.altitude)) {
-      car.altitude = data.altitude;
-    }
-    if (typeof data.pitch === "number" && Number.isFinite(data.pitch)) {
-      car.pitch = data.pitch;
-    }
-    if (typeof data.roll === "number" && Number.isFinite(data.roll)) {
-      car.roll = data.roll;
-    }
+    car.driverId = socket.id;
+    if (Number.isFinite(data.x)) car.x = data.x;
+    if (Number.isFinite(data.y)) car.y = data.y;
+    if (Number.isFinite(data.angle)) car.angle = data.angle;
+    if (Number.isFinite(data.speed)) car.speed = data.speed;
+    if (Number.isFinite(data.altitude)) car.altitude = data.altitude;
+    if (Number.isFinite(data.pitch)) car.pitch = data.pitch;
+    if (Number.isFinite(data.roll)) car.roll = data.roll;
 
-    socket.to(currentRoom).emit("car:drive", car);
+    socket.to('srv_' + roomId).emit('car:drive', car);
   });
 
-  socket.on("chat:msg", (data) => {
-    const state = rooms[currentRoom];
-    const p = state.players[socket.id];
-    const text = data && typeof data.text === "string" ? data.text.trim().slice(0, 110) : "";
+  socket.on('chat:msg', (payload) => {
+    const roomId = socket.data.roomId || '1';
+    if (!payload || typeof payload.text !== 'string') return;
+    const text = payload.text.trim().slice(0, 110);
     if (!text) return;
 
-    const name =
-      (data && typeof data.name === "string" && data.name.trim().slice(0, 16)) ||
-      (p && p.name) ||
-      "Jogador";
+    const sender =
+      (typeof payload.name === 'string' && payload.name.trim().slice(0, 16)) ||
+      socket.data.name ||
+      'Jogador';
 
-    if (p) p.name = name;
-    io.to(currentRoom).emit("chat:msg", { id: socket.id, name, text });
+    io.to('srv_' + roomId).emit('chat:msg', {
+      id: socket.id,
+      name: sender,
+      text
+    });
   });
 
-  socket.on("disconnect", () => {
-    const state = rooms[currentRoom];
-    const released = releaseDriver(state, socket.id);
-    if (released) io.to(currentRoom).emit("car:update", released);
-    delete state.players[socket.id];
-    socket.to(currentRoom).emit("player:leave", socket.id);
+  socket.on('disconnect', () => {
+    const roomId = socket.data.roomId || '1';
+    removePlayerFromRoom(socket, roomId);
   });
 });
 
-const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
-  console.log(`Servidor GTA X rodando na porta ${PORT}`);
+  console.log('GTA X Server rodando na porta ' + PORT);
 });
