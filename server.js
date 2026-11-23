@@ -138,7 +138,8 @@ function joinRoom(socket, nextRoomId) {
     seatRole: 'foot',
     elevation: 0,
     look: { skin: 1, shirt: 0, pant: 0, hair: 0 },
-    weapon: 0
+    weapon: 0,
+    safeZone: false
   };
 
   socket.emit('init', {
@@ -186,6 +187,8 @@ io.on('connection', (socket) => {
     if (typeof data.weapon === 'number') {
       p.weapon = data.weapon;
     }
+    // Estado da zona segura enviado pelo cliente; usado para impedir dano entre jogadores protegidos.
+    p.safeZone = data.safeZone === true;
 
     room.players[socket.id] = p;
     socket.to('srv_' + roomId).emit('player:move', p);
@@ -208,6 +211,13 @@ io.on('connection', (socket) => {
     const room = rooms[roomId];
     if (!room || !data || !data.targetId) return;
     if (!room.players[data.targetId]) return;
+    const attacker = room.players[socket.id];
+    const target = room.players[data.targetId];
+    if (!attacker || !target) return;
+    if (attacker.safeZone || target.safeZone) {
+      socket.emit('combat:blocked', { reason: 'safe_zone' });
+      return;
+    }
 
     const attackerName = (room.players[socket.id] && room.players[socket.id].name) || socket.data.name || 'Jogador';
     const dmg = Math.max(1, Math.min(150, Number(data.dmg) || 20));
@@ -216,6 +226,20 @@ io.on('connection', (socket) => {
       attackerId: socket.id,
       attackerName,
       dmg
+    });
+  });
+
+  // Sinalização WebRTC para voz por proximidade. O servidor apenas retransmite
+  // offer/answer/ICE entre jogadores da mesma sala.
+  socket.on('voice:signal', (payload) => {
+    const roomId = socket.data.roomId || '1';
+    const room = rooms[roomId];
+    if (!room || !payload || typeof payload.to !== 'string' || !room.players[payload.to]) return;
+    if (!payload.signal || !['offer', 'answer', 'ice'].includes(payload.type)) return;
+    io.to(payload.to).emit('voice:signal', {
+      from: socket.id,
+      type: payload.type,
+      signal: payload.signal
     });
   });
 
