@@ -1,6 +1,6 @@
 name: Gerar APK Android
 
-'on':
+on:
   workflow_dispatch:
 
 jobs:
@@ -38,7 +38,7 @@ jobs:
             --exclude='plugins/' \
             ./ "$RUNNER_TEMP/gtax-www/"
 
-      - name: Configurar HTML principal
+      - name: Configurar HTML principal e URL padrão do servidor
         run: |
           cd "$RUNNER_TEMP/gtax-www"
 
@@ -47,13 +47,10 @@ jobs:
           import shutil
           import sys
 
-          destino = Path("index.html")
-
-          if destino.is_file():
-              print("index.html já existe!")
-              sys.exit(0)
-
           preferidos = [
+              "GTA-X-RGB-Chat-Aeroporto-BANCOS-CORRIGIDOS.html",
+              "index.html",
+              "Index.html",
               "GTA-X-RGB-Chat-Aeroporto.html",
               "GTA-X-Neon-RGB-Leve-1.html",
               "GTA-X-Neon-RGB-Leve.html",
@@ -61,7 +58,6 @@ jobs:
           ]
 
           origem = None
-
           for nome in preferidos:
               arquivo = Path(nome)
               if arquivo.is_file():
@@ -69,11 +65,7 @@ jobs:
                   break
 
           if origem is None:
-              arquivos = sorted(
-                  p for p in Path(".").glob("*.html")
-                  if p.is_file()
-              )
-
+              arquivos = sorted(p for p in Path(".").glob("*.html") if p.is_file())
               if arquivos:
                   origem = arquivos[0]
 
@@ -81,9 +73,21 @@ jobs:
               print("ERRO: Nenhum HTML encontrado!")
               sys.exit(1)
 
-          shutil.copy2(origem, destino)
+          destino = Path("index.html")
+          if origem.resolve() != destino.resolve():
+              shutil.copy2(origem, destino)
 
-          print(f"HTML principal: {origem} -> index.html")
+          html = destino.read_text(encoding="utf-8", errors="ignore")
+          default_url = "https://reinos-de-aco-server.onrender.com"
+          html = html.replace("https://seu-servidor.onrender.com", default_url)
+          if "DEFAULT_SERVER_1" not in html:
+              html = html.replace(
+                  "(localStorage.getItem('gtax_server_1') || localStorage.getItem('gtax_mp_url') || '').trim()",
+                  f"(localStorage.getItem('gtax_server_1') || localStorage.getItem('gtax_mp_url') || '{default_url}').trim()"
+              )
+          destino.write_text(html, encoding="utf-8")
+
+          print(f"HTML principal configurado: {origem} -> index.html")
           PY
 
       - name: Criar projeto Android
@@ -98,7 +102,7 @@ jobs:
           echo "Arquivos copiados para o Cordova:"
           find app/www -maxdepth 2 -type f | sort
 
-      - name: Configurar ícone GTA X
+      - name: Configurar permissões de rede e ícone GTA X
         run: |
           mkdir -p app/res
 
@@ -106,32 +110,32 @@ jobs:
           from pathlib import Path
           import shutil
 
-          candidates = [
-              Path("icon.png"),
-              Path("icone.png")
+          config = Path("app/config.xml")
+          content = config.read_text(encoding="utf-8")
+
+          extras = [
+              '    <access origin="*" />',
+              '    <allow-navigation href="*" />',
+              '    <allow-intent href="http://*/*" />',
+              '    <allow-intent href="https://*/*" />'
           ]
+          for line in extras:
+              tag = line.strip().split()[0]
+              if tag not in content:
+                  content = content.replace("</widget>", f"{line}\n</widget>")
 
-          icon = next(
-              (p for p in candidates if p.is_file()),
-              None
-          )
-
+          candidates = [Path("icon.png"), Path("icone.png")]
+          icon = next((p for p in candidates if p.is_file()), None)
           if icon:
               shutil.copy2(icon, "app/res/icon.png")
-
-              config = Path("app/config.xml")
-              content = config.read_text()
-
               if 'src="res/icon.png"' not in content:
-                  content = content.replace(
-                      "</widget>",
-                      '    <icon src="res/icon.png" />\n</widget>'
-                  )
-
-              config.write_text(content)
+                  content = content.replace("</widget>", '    <icon src="res/icon.png" />\n</widget>')
               print("Ícone GTA X configurado!")
           else:
               print("Aviso: ícone não encontrado.")
+
+          config.write_text(content, encoding="utf-8")
+          print("Permissões de rede configuradas no config.xml")
           PY
 
       - name: Instalar plataforma Android
@@ -150,4 +154,3 @@ jobs:
           name: GTA-X-APK
           path: app/platforms/android/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
-          
