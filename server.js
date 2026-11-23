@@ -2,9 +2,12 @@ const express = require("express");
 const http = require("http");
 const path = require("path");
 const fs = require("fs");
+const cors = require("cors");
 const { Server } = require("socket.io");
 
 const app = express();
+app.use(cors({ origin: "*" }));
+
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
@@ -13,7 +16,6 @@ const io = new Server(server, {
   }
 });
 
-// Encontra Index.html ou index.html na pasta raiz
 function getIndexFile() {
   const candidates = ["Index.html", "index.html"];
   for (const name of candidates) {
@@ -31,10 +33,8 @@ app.get("/", (req, res) => {
   res.status(404).send("Index.html não encontrado.");
 });
 
-// Estado dos jogadores conectados
 const players = {};
 
-// Carros fixos sincronizados entre todos os jogadores
 const cars = {
   carro_1: { id: "carro_1", x: 24, y: 50, angle: 0, speed: 0, driverId: null },
   carro_2: { id: "carro_2", x: 40, y: 10, angle: Math.PI, speed: 0, driverId: null },
@@ -49,20 +49,18 @@ io.on("connection", (socket) => {
     x: 32,
     y: 32,
     angle: 0,
+    elevation: 0,
     inCarId: null
   };
 
-  // Envia o estado inicial (todos os jogadores e todos os carros)
   socket.emit("init", {
     id: socket.id,
     players,
     cars
   });
 
-  // Avisa os outros jogadores que alguém entrou
   socket.broadcast.emit("player:join", players[socket.id]);
 
-  // Atualização de posição, nick e status de dentro/fora do carro
   socket.on("player:move", (data) => {
     const p = players[socket.id];
     if (!p || !data) return;
@@ -70,6 +68,7 @@ io.on("connection", (socket) => {
     if (typeof data.x === "number") p.x = data.x;
     if (typeof data.y === "number") p.y = data.y;
     if (typeof data.angle === "number") p.angle = data.angle;
+    if (typeof data.elevation === "number") p.elevation = data.elevation;
     if (typeof data.name === "string" && data.name.trim()) {
       p.name = data.name.trim().slice(0, 16);
     }
@@ -80,12 +79,10 @@ io.on("connection", (socket) => {
     socket.broadcast.emit("player:move", p);
   });
 
-  // Entrar ou sair do carro mais próximo
   socket.on("car:toggle", () => {
     const p = players[socket.id];
     if (!p) return;
 
-    // Se já está dirigindo um carro, sai dele
     if (p.inCarId && cars[p.inCarId]) {
       const car = cars[p.inCarId];
       car.driverId = null;
@@ -96,7 +93,6 @@ io.on("connection", (socket) => {
       return;
     }
 
-    // Procura o carro livre mais próximo
     let bestCar = null;
     let bestDist = 18;
     for (const id of Object.keys(cars)) {
@@ -119,7 +115,6 @@ io.on("connection", (socket) => {
     }
   });
 
-  // Movimento do carro dirigido pelo jogador
   socket.on("car:drive", (data) => {
     const p = players[socket.id];
     if (!p || !p.inCarId || !cars[p.inCarId] || !data) return;
@@ -142,11 +137,19 @@ io.on("connection", (socket) => {
     if (typeof data.speed === "number") {
       car.speed = data.speed;
     }
+    if (typeof data.altitude === "number") {
+      car.altitude = data.altitude;
+    }
+    if (typeof data.pitch === "number") {
+      car.pitch = data.pitch;
+    }
+    if (typeof data.roll === "number") {
+      car.roll = data.roll;
+    }
 
     socket.broadcast.emit("car:drive", car);
   });
 
-  // Mensagem de chat (aparece no histórico global e no balão em cima do jogador)
   socket.on("chat:msg", (data) => {
     const p = players[socket.id];
     const text = data && typeof data.text === "string" ? data.text.trim().slice(0, 110) : "";
@@ -161,7 +164,6 @@ io.on("connection", (socket) => {
     io.emit("chat:msg", { id: socket.id, name, text });
   });
 
-  // Desconexão
   socket.on("disconnect", () => {
     const p = players[socket.id];
     if (p && p.inCarId && cars[p.inCarId]) {
