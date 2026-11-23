@@ -20,6 +20,7 @@ function getIndexFile() {
   const candidates = [
     "index.html",
     "Index.html",
+    "Index (2).html",
     "GTA-X-ONLINE-COMPLETO-v2.html"
   ];
   for (const name of candidates) {
@@ -35,6 +36,10 @@ app.get("/", (req, res) => {
   const indexFile = getIndexFile();
   if (indexFile) return res.sendFile(indexFile);
   res.status(404).send("Arquivo HTML do jogo não encontrado na pasta.");
+});
+
+app.get("/health", (req, res) => {
+  res.status(200).json({ ok: true });
 });
 
 const AIRPORT_X = 14 * 64 + 32;
@@ -94,6 +99,7 @@ io.on("connection", (socket) => {
     };
     socket.emit("init", {
       id: socket.id,
+      room: currentRoom,
       players: state.players,
       cars: state.cars
     });
