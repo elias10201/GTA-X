@@ -139,6 +139,7 @@ function joinRoom(socket, nextRoomId) {
     elevation: 0,
     look: { skin: 1, shirt: 0, pant: 0, hair: 0 },
     weapon: 0,
+    hp: 200,
     safeZone: false
   };
 
@@ -165,7 +166,7 @@ io.on('connection', (socket) => {
     const room = rooms[roomId];
     if (!room || !data) return;
 
-    const p = room.players[socket.id] || { id: socket.id };
+    const p = room.players[socket.id] || { id: socket.id, hp: 200 };
     if (typeof data.name === 'string' && data.name.trim()) {
       p.name = data.name.trim().slice(0, 16);
       socket.data.name = p.name;
@@ -187,7 +188,11 @@ io.on('connection', (socket) => {
     if (typeof data.weapon === 'number') {
       p.weapon = data.weapon;
     }
-    // Estado da zona segura enviado pelo cliente; usado para impedir dano entre jogadores protegidos.
+    if (Number.isFinite(data.hp)) {
+      p.hp = Math.max(0, Math.min(200, Number(data.hp)));
+    } else if (typeof p.hp !== 'number') {
+      p.hp = 200;
+    }
     p.safeZone = data.safeZone === true;
 
     room.players[socket.id] = p;
@@ -210,23 +215,32 @@ io.on('connection', (socket) => {
     const roomId = socket.data.roomId || '1';
     const room = rooms[roomId];
     if (!room || !data || !data.targetId) return;
-    if (!room.players[data.targetId]) return;
+
     const attacker = room.players[socket.id];
     const target = room.players[data.targetId];
     if (!attacker || !target) return;
+
     if (attacker.safeZone || target.safeZone) {
       socket.emit('combat:blocked', { reason: 'safe_zone' });
       return;
     }
 
-    const attackerName = (room.players[socket.id] && room.players[socket.id].name) || socket.data.name || 'Jogador';
-    const dmg = Math.max(1, Math.min(150, Number(data.dmg) || 20));
+    const amount = Math.max(1, Math.min(200, Number(data.dmg) || 20));
+    const currentHp = typeof target.hp === 'number' ? target.hp : 200;
+    const nextHp = Math.max(0, currentHp - amount);
+    target.hp = nextHp;
 
-    io.to(data.targetId).emit('player:hit', {
+    io.to('srv_' + roomId).emit('player:damaged', {
+      targetId: data.targetId,
       attackerId: socket.id,
-      attackerName,
-      dmg
+      attackerName: attacker.name || socket.data.name || 'Jogador',
+      dmg: amount,
+      hp: nextHp
     });
+
+    if (nextHp <= 0) {
+      target.hp = 200;
+    }
   });
 
   // Sinalização WebRTC para voz por proximidade. O servidor apenas retransmite
