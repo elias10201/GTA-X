@@ -20,11 +20,14 @@ canvas{display:block;width:100vw;height:100vh}
 #msg{position:absolute;left:50%;top:17%;transform:translateX(-50%);font-weight:bold;color:#ffe082;text-align:center;font-size:clamp(12px,1.8vw,18px);max-width:75vw}
 #joy{position:fixed;left:5%;bottom:11%;width:clamp(105px,19vw,165px);aspect-ratio:1;border:2px solid #ffffff80;border-radius:50%;background:#1117;pointer-events:auto}
 #knob{position:absolute;left:31%;top:31%;width:38%;height:38%;border-radius:50%;background:#ffffff88;border:2px solid #fff}
-#buttons{position:fixed;right:2%;bottom:4%;display:grid;grid-template-columns:repeat(2,clamp(58px,8.5vw,76px));gap:7px;pointer-events:auto;align-items:center}
+#buttons{position:fixed;right:2.5%;bottom:5%;display:grid;grid-template-columns:repeat(2,clamp(64px,10vw,82px));gap:9px;pointer-events:auto;align-items:center;filter:drop-shadow(0 3px 5px #0009)}
 #buttons.car-mode{grid-template-columns:repeat(2,clamp(58px,9vw,82px));gap:9px}
 #buttons.car-mode [data-vehicle]:last-child{grid-column:1/-1;justify-self:end}
-.b{aspect-ratio:1;border-radius:50%;border:1px solid #ffffffaa;background:#111b;color:#fff;font-size:clamp(9px,1.2vw,13px);font-weight:bold;touch-action:none}
-.b.active{background:#d59b20}
+.b{aspect-ratio:1;border-radius:50%;border:2px solid #dcecffaa;background:radial-gradient(circle at 35% 25%,#536b82ee,#101a2aee 72%);color:#fff;font-size:clamp(9px,1.35vw,13px);font-weight:900;letter-spacing:.3px;touch-action:none;box-shadow:inset 0 2px 5px #ffffff35,0 4px 9px #0009;text-shadow:0 2px 3px #000;transition:transform .08s,filter .08s}
+.b.active{background:radial-gradient(circle at 35% 25%,#ffe28a,#b66a08 75%);border-color:#fff0b0;transform:scale(.94);filter:brightness(1.15)}
+#fire{background:radial-gradient(circle at 35% 25%,#ff7777,#9b101c 75%);border:2px solid #ffc2c2;box-shadow:0 0 13px #ff303066,inset 0 2px 5px #ffffff44}
+#jump{background:radial-gradient(circle at 35% 25%,#70c9ff,#14558b 75%)}
+#carFoot,#carExit{background:radial-gradient(circle at 35% 25%,#80d6a0,#155b3b 75%)}
 #run{box-sizing:border-box;width:100%;height:100%;min-width:0;min-height:0;padding:0;aspect-ratio:1/1;white-space:nowrap;overflow:hidden;transform:none!important;transition:background-color .12s,border-color .12s;font-size:clamp(8px,1.05vw,12px);line-height:1;display:flex;align-items:center;justify-content:center}
 #run.active{background:#d59b20;border-color:#ffe08a}
 #buttons:not(.car-mode) #run{display:flex!important;visibility:visible!important;position:relative;left:auto;top:auto;right:auto;bottom:auto;transform:none!important;flex:none;z-index:2}
@@ -951,26 +954,45 @@ function mission(){
   }else stage();
 }
 
+function getAimTarget(){
+  const remotes=window.mpRemotePlayers;
+  if(!remotes||!remotes.size)return null;
+  let best=null,bestScore=Infinity;
+  const maxDistance=weapon===2?42:34;
+  for(const rp of remotes.values()){
+    if(!rp||!rp.id||rp.hp===0||!Number.isFinite(rp.x)||!Number.isFinite(rp.z))continue;
+    if(isInSafeZone(rp.x,rp.z)||isInSafeZone(player.x,player.z))continue;
+    const dx=rp.x-player.x,dz=rp.z-player.z,dist=Math.hypot(dx,dz);
+    if(dist<1||dist>maxDistance)continue;
+    const targetYaw=Math.atan2(dx,dz);
+    let diff=Math.atan2(Math.sin(targetYaw-player.yaw),Math.cos(targetYaw-player.yaw));
+    if(Math.abs(diff)>0.95)continue;
+    const score=dist+Math.abs(diff)*13;
+    if(score<bestScore){bestScore=score;best={rp,dist,yaw:targetYaw,diff};}
+  }
+  return best;
+}
+
 function shoot(){
   if(shootT>0||isDead)return;
   if(isInSafeZone(player.x,player.z)){
-    shootT=.35;
-    say('Zona Segura: armas bloqueadas dentro da praça!');
-    return;
+    shootT=.35;say('Zona Segura: armas bloqueadas dentro da praça!');return;
   }
-  if(weapon<0){
-    shootT=.58;punchT=.58;sfx.punch();
-    return;
+  if(weapon<0){shootT=.58;punchT=.58;sfx.punch();return;}
+  if(ammo[weapon]<=0){ammo[weapon]=maxAmmo[weapon];shootT=1.6;say('Recarregando...');sfx.click();return;}
+  const lock=getAimTarget();
+  if(lock){
+    // Assistência de mira: encaixa a direção no centro do oponente próximo.
+    player.yaw=lock.yaw;
   }
-  if(ammo[weapon]<=0){ammo[weapon]=maxAmmo[weapon];shootT=1.6;say('Recarregando...');sfx.click();return}
   ammo[weapon]--;shootT=rate[weapon];flash=.07;sfx.gun(weapon,0);
   const bDmg=dmg[weapon]*(chr===1?1.2:1);
   for(let i=0;i<(weapon===2?5:1);i++){
-    let a=player.yaw+rnd(-.09,.09);
+    const a=lock?lock.yaw+rnd(-.018,.018):player.yaw+rnd(-.09,.09);
     const bx=player.x+sin(a)*.9,bz=player.z+cos(a)*.9;
-    bullets.push({x:bx,z:bz,vx:sin(a)*95,vz:cos(a)*95,life:range[weapon]/95,dmg:bDmg,owner:'local'});
+    bullets.push({x:bx,z:bz,vx:sin(a)*95,vz:cos(a)*95,life:range[weapon]/95,dmg:bDmg,owner:'local',targetId:lock&&lock.rp.id});
     if(window.mpSocket&&window.mpSocket.connected){
-      window.mpSocket.emit('player:shoot',{x:bx,y:bz,angle:a,dmg:bDmg,range:range[weapon],elevation:playerElevation});
+      window.mpSocket.emit('player:shoot',{x:bx,y:bz,angle:a,dmg:bDmg,range:range[weapon],elevation:playerElevation,targetId:lock&&lock.rp.id});
     }
   }
 }
@@ -1241,7 +1263,7 @@ function update(dt){
     if(b.owner==='local'&&window.mpRemotePlayers){
       window.mpRemotePlayers.forEach(rp=>{
         if(hitRemote||!rp)return;
-        if(Math.hypot(b.x-rp.x,b.z-rp.z)<1.25){
+        if((!b.targetId||b.targetId===rp.id)&&Math.hypot(b.x-rp.x,b.z-rp.z)<2.0){
           hitRemote=true;
           for(let k=0;k<5;k++){
             particles.push({x:rp.x,y:1.2,z:rp.z,vx:rnd(-2,2),vy:rnd(1,4),vz:rnd(-2,2),life:.45});
