@@ -1,3 +1,5 @@
+JavaScript
+
 const path = require('path');
 const fs = require('fs');
 const http = require('http');
@@ -97,6 +99,7 @@ function removePlayerFromRoom(socket, roomId) {
   if (room.players[socket.id]) {
     delete room.players[socket.id];
     socket.to('srv_' + roomId).emit('player:leave', socket.id);
+    socket.to('srv_' + roomId).emit('player:left', socket.id);
   }
 
   room.cars.forEach((car) => {
@@ -104,6 +107,7 @@ function removePlayerFromRoom(socket, roomId) {
       car.driverId = null;
       car.speed = 0;
       io.to('srv_' + roomId).emit('car:update', car);
+      io.to('srv_' + roomId).emit('cars:update', room.cars);
     }
   });
 
@@ -121,7 +125,13 @@ function joinRoom(socket, nextRoomId) {
   const room = rooms[targetRoom];
   const playerCount = Object.keys(room.players).length;
   if (!room.players[socket.id] && playerCount >= MAX_PLAYERS_PER_ROOM) {
-    socket.emit('room:full', { room: targetRoom, max: MAX_PLAYERS_PER_ROOM });
+    const full = {
+      room: targetRoom,
+      max: MAX_PLAYERS_PER_ROOM,
+      message: 'Servidor cheio (35/35). Escolha outro servidor.'
+    };
+    socket.emit('room:full', full);
+    socket.emit('server:full', full);
     return;
   }
 
@@ -143,22 +153,57 @@ function joinRoom(socket, nextRoomId) {
     safeZone: false
   };
 
-  socket.emit('init', {
+  const snapshot = {
     room: targetRoom,
     players: room.players,
     cars: room.cars
-  });
+  };
+
+  socket.emit('init', snapshot);
+  socket.emit('world:init', snapshot);
 
   socket.to('srv_' + targetRoom).emit('player:join', room.players[socket.id]);
+  socket.to('srv_' + targetRoom).emit('player:joined', room.players[socket.id]);
 }
 
 io.on('connection', (socket) => {
   socket.data.name = 'Player_' + socket.id.slice(0, 4);
-  const initialRoom = normalizeRoomId(socket.handshake.query && socket.handshake.query.server);
+  const initialRoom = normalizeRoomId(
+    socket.handshake.query && socket.handshake.query.server
+  );
+
   joinRoom(socket, initialRoom);
 
   socket.on('room:select', (roomChoice) => {
     joinRoom(socket, roomChoice);
+  });
+
+  socket.on('player:join', (data) => {
+    if (data && typeof data.name === 'string' && data.name.trim()) {
+      socket.data.name = data.name.trim().slice(0, 16);
+    }
+
+    const roomId = socket.data.roomId || initialRoom;
+    const room = rooms[roomId];
+    const p = room && room.players[socket.id];
+    if (!p) return;
+
+    if (data && Number.isFinite(data.x)) p.x = data.x;
+    if (data && Number.isFinite(data.y)) p.y = data.y;
+    if (data && Number.isFinite(data.angle)) p.angle = data.angle;
+    if (data && data.look && typeof data.look === 'object') p.look = data.look;
+    if (data && typeof data.weapon === 'number') p.weapon = data.weapon;
+    if (data && Number.isFinite(data.hp)) {
+      p.hp = Math.max(0, Math.min(200, data.hp));
+    }
+
+    p.name = socket.data.name;
+
+    socket.emit('world:init', {
+      room: roomId,
+      players: room.players,
+      cars: room.cars
+    });
   });
 
   socket.on('player:move', (data) => {
@@ -166,17 +211,27 @@ io.on('connection', (socket) => {
     const room = rooms[roomId];
     if (!room || !data) return;
 
-    const p = room.players[socket.id] || { id: socket.id, hp: 200 };
+    const p = room.players[socket.id] || {
+      id: socket.id,
+      hp: 200
+    };
+
     if (typeof data.name === 'string' && data.name.trim()) {
       p.name = data.name.trim().slice(0, 16);
       socket.data.name = p.name;
     }
+
     if (Number.isFinite(data.x)) p.x = data.x;
     if (Number.isFinite(data.y)) p.y = data.y;
     if (Number.isFinite(data.angle)) p.angle = data.angle;
+
     p.inCarId = data.inCarId || null;
     p.seatRole = data.seatRole || 'foot';
-    if (Number.isFinite(data.elevation)) p.elevation = data.elevation;
+
+    if (Number.isFinite(data.elevation)) {
+      p.elevation = data.elevation;
+    }
+
     if (data.look && typeof data.look === 'object') {
       p.look = {
         skin: Number(data.look.skin) || 0,
@@ -185,30 +240,40 @@ io.on('connection', (socket) => {
         hair: Number(data.look.hair) || 0
       };
     }
+
     if (typeof data.weapon === 'number') {
       p.weapon = data.weapon;
     }
+
     if (Number.isFinite(data.hp)) {
       p.hp = Math.max(0, Math.min(200, Number(data.hp)));
     } else if (typeof p.hp !== 'number') {
       p.hp = 200;
     }
+
     p.safeZone = data.safeZone === true;
 
     room.players[socket.id] = p;
+
     socket.to('srv_' + roomId).emit('player:move', p);
+    socket.to('srv_' + roomId).emit('player:moved', p);
   });
 
   socket.on('player:shoot', (data) => {
     const roomId = socket.data.roomId || '1';
     if (!data) return;
-    socket.to('srv_' + roomId).emit('player:shoot', {
+
+    const shot = {
       id: socket.id,
       x: data.x,
       y: data.y,
       angle: data.angle,
-      range: data.range
-    });
+      range: data.range,
+      dmg: data.dmg
+    };
+
+    socket.to('srv_' + roomId).emit('player:shoot', shot);
+    socket.to('srv_' + roomId).emit('player:shot', shot);
   });
 
   socket.on('player:hit', (data) => {
@@ -228,6 +293,7 @@ io.on('connection', (socket) => {
     const amount = Math.max(1, Math.min(200, Number(data.dmg) || 20));
     const currentHp = typeof target.hp === 'number' ? target.hp : 200;
     const nextHp = Math.max(0, currentHp - amount);
+
     target.hp = nextHp;
 
     io.to('srv_' + roomId).emit('player:damaged', {
@@ -243,13 +309,20 @@ io.on('connection', (socket) => {
     }
   });
 
-  // Sinalização WebRTC para voz por proximidade. O servidor apenas retransmite
-  // offer/answer/ICE entre jogadores da mesma sala.
+  // Sinalização WebRTC para voz por proximidade.
+  // O servidor apenas retransmite offer/answer/ICE entre jogadores da mesma sala.
   socket.on('voice:signal', (payload) => {
     const roomId = socket.data.roomId || '1';
     const room = rooms[roomId];
-    if (!room || !payload || typeof payload.to !== 'string' || !room.players[payload.to]) return;
-    if (!payload.signal || !['offer', 'answer', 'ice'].includes(payload.type)) return;
+
+    if (!room || !payload || typeof payload.to !== 'string' || !room.players[payload.to]) {
+      return;
+    }
+
+    if (!payload.signal || !['offer', 'answer', 'ice'].includes(payload.type)) {
+      return;
+    }
+
     io.to(payload.to).emit('voice:signal', {
       from: socket.id,
       type: payload.type,
@@ -263,10 +336,15 @@ io.on('connection', (socket) => {
     if (!room) return;
 
     const existingCar = room.cars.find((c) => c.driverId === socket.id);
+
     if (existingCar) {
       existingCar.driverId = null;
       existingCar.speed = 0;
-      if (room.players[socket.id]) room.players[socket.id].inCarId = null;
+
+      if (room.players[socket.id]) {
+        room.players[socket.id].inCarId = null;
+      }
+
       io.to('srv_' + roomId).emit('car:update', existingCar);
       return;
     }
@@ -276,9 +354,12 @@ io.on('connection', (socket) => {
 
     let nearest = null;
     let bestDist = 18;
+
     for (const car of room.cars) {
       if (car.driverId && car.driverId !== socket.id) continue;
+
       const d = Math.hypot(car.x - player.x, car.y - player.y);
+
       if (d < bestDist) {
         bestDist = d;
         nearest = car;
@@ -288,13 +369,16 @@ io.on('connection', (socket) => {
     if (nearest) {
       nearest.driverId = socket.id;
       player.inCarId = nearest.id;
+
       io.to('srv_' + roomId).emit('car:update', nearest);
+      io.to('srv_' + roomId).emit('cars:update', room.cars);
     }
   });
 
   socket.on('car:drive', (data) => {
     const roomId = socket.data.roomId || '1';
     const room = rooms[roomId];
+
     if (!room || !data || !data.id) return;
 
     const car = room.cars.find((c) => c.id === data.id);
@@ -302,6 +386,7 @@ io.on('connection', (socket) => {
     if (car.driverId && car.driverId !== socket.id) return;
 
     car.driverId = socket.id;
+
     if (Number.isFinite(data.x)) car.x = data.x;
     if (Number.isFinite(data.y)) car.y = data.y;
     if (Number.isFinite(data.angle)) car.angle = data.angle;
@@ -311,11 +396,14 @@ io.on('connection', (socket) => {
     if (Number.isFinite(data.roll)) car.roll = data.roll;
 
     socket.to('srv_' + roomId).emit('car:drive', car);
+    socket.to('srv_' + roomId).emit('cars:update', room.cars);
   });
 
-  socket.on('chat:msg', (payload) => {
+  const handleChatMessage = (payload) => {
     const roomId = socket.data.roomId || '1';
+
     if (!payload || typeof payload.text !== 'string') return;
+
     const text = payload.text.trim().slice(0, 110);
     if (!text) return;
 
@@ -324,12 +412,18 @@ io.on('connection', (socket) => {
       socket.data.name ||
       'Jogador';
 
-    io.to('srv_' + roomId).emit('chat:msg', {
+    const message = {
       id: socket.id,
       name: sender,
       text
-    });
-  });
+    };
+
+    io.to('srv_' + roomId).emit('chat:msg', message);
+    io.to('srv_' + roomId).emit('chat:message', message);
+  };
+
+  socket.on('chat:msg', handleChatMessage);
+  socket.on('chat:send', handleChatMessage);
 
   socket.on('disconnect', () => {
     const roomId = socket.data.roomId || '1';
