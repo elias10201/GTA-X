@@ -28,7 +28,7 @@ canvas{display:block;width:100vw;height:100vh}
 #aim{border:2px solid #63d8ff;background:linear-gradient(145deg,#123c55ee,#081522ee);color:#b9efff;box-shadow:0 0 12px #28bfff66}
 #aim.locked{background:linear-gradient(145deg,#8a2020,#3b1010);border-color:#ff6b6b;color:#fff;box-shadow:0 0 14px #ff333399}
 #fire{border:2px solid #ff8b65;background:linear-gradient(145deg,#74301e,#24100d);box-shadow:0 0 10px #ff603855}
-#run{box-sizing:border-box;width:100%;height:100%;min-width:0;min-height:0;padding:0;aspect-ratio:1/1;white-space:nowrap;overflow:hidden;transform:none!important;transition:background-color .12s,border-color .12s;font-size:clamp(8px,1.05vw,12px);line-height:1;display:flex;align-items:center;justify-content:center}
+#run{box-sizing:border-box;width:clamp(58px,8.5vw,76px);height:clamp(58px,8.5vw,76px);min-width:0;min-height:0;padding:0;aspect-ratio:1/1;white-space:nowrap;overflow:hidden;transform:none!important;transition:background-color .12s,border-color .12s;font-size:clamp(8px,1.05vw,12px);line-height:1;display:flex;align-items:center;justify-content:center}
 #run.active{background:#d59b20;border-color:#ffe08a}
 #buttons:not(.car-mode) #run{display:flex!important;visibility:visible!important;position:relative;left:auto;top:auto;right:auto;bottom:auto;transform:none!important;flex:none;z-index:2}
 .weapon-button{border:2px solid #ffd166;background:linear-gradient(145deg,#26394c,#111b);color:#ffe6a3;font-size:clamp(8px,1.05vw,12px);box-shadow:0 0 9px #ffd16655}
@@ -215,7 +215,7 @@ canvas{display:block;width:100vw;height:100vh}
   <button id="carExit" class="b" data="car" data-vehicle style="display:none">SAIR</button>
 </div>
 
-<div id="hudEditor"><div class="hud-tools"><b>EDITOR DE HUD — ESTILO FREE FIRE</b><div style="margin:6px 0">Escolha o perfil: <select id="hudProfile"><option value="foot">Personagem a pé</option><option value="vehicle">Veículo</option></select></div><div class="line"><label>Tamanho <input id="hudEditSize" type="range" min="55" max="160" value="100"></label><label>Transparência <input id="hudEditOpacity" type="range" min="20" max="100" value="100"></label></div><div id="hudButtonList"></div><button id="hudSave">SALVAR HUD</button><button id="hudSaveReturn">SALVAR E VOLTAR AO JOGO</button><button id="hudReset">RESTAURAR</button><button id="hudEditorClose">VOLTAR SEM SALVAR</button><small style="display:block;color:#b9dce9">Toque em um botão para selecionar e arraste para mudar sua posição.</small></div></div>
+<div id="hudEditor"><div class="hud-tools"><b>EDITOR DE HUD — ESTILO FREE FIRE</b><div style="margin:6px 0">Escolha o perfil: <select id="hudProfile"><option value="foot">Personagem a pé</option><option value="vehicle">Veículo</option></select></div><div class="line"><label>Tamanho <input id="hudEditSize" type="range" min="70" max="125" value="100"></label><label>Transparência <input id="hudEditOpacity" type="range" min="20" max="100" value="100"></label></div><div id="hudButtonList"></div><button id="hudSave">SALVAR HUD</button><button id="hudSaveReturn">SALVAR E VOLTAR AO JOGO</button><button id="hudReset">RESTAURAR</button><button id="hudEditorClose">VOLTAR SEM SALVAR</button><small style="display:block;color:#b9dce9">Toque em um botão para selecionar e arraste para mudar sua posição.</small></div></div>
 <div id="graphicsPanel"><div><h2>QUALIDADE GRÁFICA DA CIDADE</h2><p>O personagem permanece nítido em todos os modos</p><button data-quality="low">SUPER LEVE · 2 GB RAM (Só a cidade embaça)</button><button data-quality="medium">MÉDIO · 3,5 a 4 GB RAM (Cidade Top + Reflexos)</button><button data-quality="high">ULTRA · 5 GB+ RAM (Máximo Detalhe + Chuva)</button><button id="graphicsAuto">AUTOMÁTICO (RECOMENDADO)</button><button id="graphicsClose">FECHAR</button><small id="graphicsCurrent"></small></div></div>
 <button id="pause" type="button">Ⅱ</button>
 
@@ -3439,7 +3439,7 @@ function applyGfx(mode){
 }
 
 function getHudTargetList(prof){
-  return prof==='vehicle'?['joy','accelerate','brake','carExit','voicePTT','chatOpenBtn']:['joy','fire','weapon','run','crouch','jump','carFoot','passenger','elevator','voicePTT','chatOpenBtn'];
+  return prof==='vehicle'?['joy','accelerate','brake','carExit','voicePTT','chatOpenBtn']:['joy','aim','fire','weapon','run','crouch','jump','carFoot','passenger','elevator','voicePTT','chatOpenBtn'];
 }
 
 function applyHudProfile(prof){
@@ -3453,12 +3453,19 @@ function applyHudProfile(prof){
       el.style.top=cfg.y+'px';
       el.style.right='auto';
       el.style.bottom='auto';
-      el.style.transform='scale('+(cfg.s||1)+')';
-      el.style.transformOrigin='center center';
+      // O botão CORRER usa width:100% no grid original. Ao destacá-lo
+      // para arrastar no HUD, fixa seu tamanho real para não ocupar a tela toda.
+      if(id==='run'){
+        const side='clamp(58px,8.5vw,76px)';
+        el.style.width=side;el.style.height=side;
+      }
+      el.style.setProperty('transform','scale('+(cfg.s||1)+')','important');
+      el.style.transformOrigin='top left';
       el.style.opacity=String(cfg.o!=null?cfg.o:1);
     }else{
       el.style.left='';el.style.top='';el.style.right='';el.style.bottom='';
-      el.style.transform='';el.style.opacity='';
+      el.style.removeProperty('transform');el.style.transformOrigin='';el.style.opacity='';
+      if(id==='run'){el.style.width='';el.style.height='';}
     }
   });
   if(hudEditorOpen){
@@ -3511,21 +3518,22 @@ HUD_IDS.forEach(id=>{
     e.preventDefault();e.stopPropagation();
     selectHudItem(id);
     const rect=el.getBoundingClientRect();
-    ox=e.clientX-rect.left;oy=e.clientY-rect.top;
+    const cfg=((hudStore[hudProfileMode]||{})[id])||{s:1,o:1};
+    const scale=cfg.s||1;
+    ox=(e.clientX-rect.left)/scale;oy=(e.clientY-rect.top)/scale;
     drag=true;
     try{el.setPointerCapture(e.pointerId)}catch(_){}
   },true);
   el.addEventListener('pointermove',e=>{
     if(!hudEditorOpen||!drag||hudSelected!==id)return;
     e.preventDefault();e.stopPropagation();
-    const nx=cl(e.clientX-ox,4,W-40),ny=cl(e.clientY-oy,4,H-40);
-    if(!hudStore[hudProfileMode][id]){
-      const c=((hudStore[hudProfileMode]||{})[id])||{s:1,o:1};
-      hudStore[hudProfileMode][id]={x:nx,y:ny,s:c.s||1,o:c.o!=null?c.o:1};
-    }else{
-      hudStore[hudProfileMode][id].x=nx;
-      hudStore[hudProfileMode][id].y=ny;
-    }
+    const c=((hudStore[hudProfileMode]||{})[id])||{s:1,o:1};
+    const scale=c.s||1;
+    const baseW=el.offsetWidth||60,baseH=el.offsetHeight||60;
+    const maxX=Math.max(0,window.innerWidth-baseW*scale);
+    const maxY=Math.max(0,window.innerHeight-baseH*scale);
+    const nx=cl(e.clientX-ox*scale,0,maxX),ny=cl(e.clientY-oy*scale,0,maxY);
+    hudStore[hudProfileMode][id]={x:nx,y:ny,s:scale,o:c.o!=null?c.o:1};
     applyHudProfile(hudProfileMode);
   },true);
   const endD=()=>{drag=false};
@@ -3543,7 +3551,10 @@ if($('hudEditSize'))$('hudEditSize').oninput=()=>{
   const el=$(hudSelected);if(!el)return;
   const r=el.getBoundingClientRect();
   const curCfg=hudStore[hudProfileMode][hudSelected]||{x:r.left,y:r.top,s:1,o:1};
-  curCfg.s=Number($('hudEditSize').value)/100;
+  curCfg.s=Math.min(1.25,Math.max(.70,Number($('hudEditSize').value)/100));
+  const maxX=Math.max(0,window.innerWidth-(el.offsetWidth||60)*curCfg.s);
+  const maxY=Math.max(0,window.innerHeight-(el.offsetHeight||60)*curCfg.s);
+  curCfg.x=cl(curCfg.x||r.left,0,maxX);curCfg.y=cl(curCfg.y||r.top,0,maxY);
   hudStore[hudProfileMode][hudSelected]=curCfg;
   applyHudProfile(hudProfileMode);
 };
