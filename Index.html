@@ -20,14 +20,14 @@ canvas{display:block;width:100vw;height:100vh}
 #msg{position:absolute;left:50%;top:17%;transform:translateX(-50%);font-weight:bold;color:#ffe082;text-align:center;font-size:clamp(12px,1.8vw,18px);max-width:75vw}
 #joy{position:fixed;left:5%;bottom:11%;width:clamp(105px,19vw,165px);aspect-ratio:1;border:2px solid #ffffff80;border-radius:50%;background:#1117;pointer-events:auto}
 #knob{position:absolute;left:31%;top:31%;width:38%;height:38%;border-radius:50%;background:#ffffff88;border:2px solid #fff}
-#buttons{position:fixed;right:2.5%;bottom:5%;display:grid;grid-template-columns:repeat(2,clamp(64px,10vw,82px));gap:9px;pointer-events:auto;align-items:center;filter:drop-shadow(0 3px 5px #0009)}
+#buttons{position:fixed;right:2%;bottom:4%;display:grid;grid-template-columns:repeat(2,clamp(58px,8.5vw,76px));gap:7px;pointer-events:auto;align-items:center}
 #buttons.car-mode{grid-template-columns:repeat(2,clamp(58px,9vw,82px));gap:9px}
 #buttons.car-mode [data-vehicle]:last-child{grid-column:1/-1;justify-self:end}
-.b{aspect-ratio:1;border-radius:50%;border:2px solid #dcecffaa;background:radial-gradient(circle at 35% 25%,#536b82ee,#101a2aee 72%);color:#fff;font-size:clamp(9px,1.35vw,13px);font-weight:900;letter-spacing:.3px;touch-action:none;box-shadow:inset 0 2px 5px #ffffff35,0 4px 9px #0009;text-shadow:0 2px 3px #000;transition:transform .08s,filter .08s}
-.b.active{background:radial-gradient(circle at 35% 25%,#ffe28a,#b66a08 75%);border-color:#fff0b0;transform:scale(.94);filter:brightness(1.15)}
-#fire{background:radial-gradient(circle at 35% 25%,#ff7777,#9b101c 75%);border:2px solid #ffc2c2;box-shadow:0 0 13px #ff303066,inset 0 2px 5px #ffffff44}
-#jump{background:radial-gradient(circle at 35% 25%,#70c9ff,#14558b 75%)}
-#carFoot,#carExit{background:radial-gradient(circle at 35% 25%,#80d6a0,#155b3b 75%)}
+.b{aspect-ratio:1;border-radius:50%;border:1px solid #ffffffaa;background:#111b;color:#fff;font-size:clamp(9px,1.2vw,13px);font-weight:bold;touch-action:none}
+.b.active{background:#d59b20}
+#aim{border:2px solid #63d8ff;background:linear-gradient(145deg,#123c55ee,#081522ee);color:#b9efff;box-shadow:0 0 12px #28bfff66}
+#aim.locked{background:linear-gradient(145deg,#8a2020,#3b1010);border-color:#ff6b6b;color:#fff;box-shadow:0 0 14px #ff333399}
+#fire{border:2px solid #ff8b65;background:linear-gradient(145deg,#74301e,#24100d);box-shadow:0 0 10px #ff603855}
 #run{box-sizing:border-box;width:100%;height:100%;min-width:0;min-height:0;padding:0;aspect-ratio:1/1;white-space:nowrap;overflow:hidden;transform:none!important;transition:background-color .12s,border-color .12s;font-size:clamp(8px,1.05vw,12px);line-height:1;display:flex;align-items:center;justify-content:center}
 #run.active{background:#d59b20;border-color:#ffe08a}
 #buttons:not(.car-mode) #run{display:flex!important;visibility:visible!important;position:relative;left:auto;top:auto;right:auto;bottom:auto;transform:none!important;flex:none;z-index:2}
@@ -200,6 +200,7 @@ canvas{display:block;width:100vw;height:100vh}
 </div>
 
 <div id="buttons">
+  <button id="aim" class="b" data="aim" data-foot type="button">MIRA<br>OFF</button>
   <button id="fire" class="b" data="fire" data-foot>ATIRAR</button>
   <button id="weapon" class="b weapon-button" data="weapon" data-foot aria-label="Trocar arma">🔫 TROCAR ARMA</button>
   <button id="run" class="b" data="run" data-foot>CORRER</button>
@@ -954,45 +955,48 @@ function mission(){
   }else stage();
 }
 
+let aimAssistEnabled=false;
+let aimTargetId=null;
 function getAimTarget(){
-  const remotes=window.mpRemotePlayers;
-  if(!remotes||!remotes.size)return null;
+  const remotes=window.mpRemotePlayers; if(!remotes||!remotes.size)return null;
   let best=null,bestScore=Infinity;
-  const maxDistance=weapon===2?42:34;
+  const maxDistance=weapon===2?48:38;
   for(const rp of remotes.values()){
     if(!rp||!rp.id||rp.hp===0||!Number.isFinite(rp.x)||!Number.isFinite(rp.z))continue;
     if(isInSafeZone(rp.x,rp.z)||isInSafeZone(player.x,player.z))continue;
-    const dx=rp.x-player.x,dz=rp.z-player.z,dist=Math.hypot(dx,dz);
-    if(dist<1||dist>maxDistance)continue;
-    const targetYaw=Math.atan2(dx,dz);
-    let diff=Math.atan2(Math.sin(targetYaw-player.yaw),Math.cos(targetYaw-player.yaw));
-    if(Math.abs(diff)>0.95)continue;
-    const score=dist+Math.abs(diff)*13;
-    if(score<bestScore){bestScore=score;best={rp,dist,yaw:targetYaw,diff};}
-  }
-  return best;
+    const dx=rp.x-player.x,dz=rp.z-player.z,dist=Math.hypot(dx,dz); if(dist<1||dist>maxDistance)continue;
+    const yaw=Math.atan2(dx,dz),diff=Math.atan2(Math.sin(yaw-player.yaw),Math.cos(yaw-player.yaw));
+    if(Math.abs(diff)>.24)continue; // só adquire alvo quando a mira já está próxima
+    const score=dist+Math.abs(diff)*18; if(score<bestScore){bestScore=score;best={rp,dist,yaw,diff};}
+  } return best;
 }
-
+function toggleAimAssist(){
+  aimAssistEnabled=!aimAssistEnabled; const b=$('aim'); if(b){b.classList.toggle('locked',aimAssistEnabled);b.innerHTML=aimAssistEnabled?'MIRA<br>ON':'MIRA<br>OFF';}
+  aimTargetId=null; say(aimAssistEnabled?'Assistência de mira ativada':'Assistência de mira desativada');
+}
 function shoot(){
   if(shootT>0||isDead)return;
   if(isInSafeZone(player.x,player.z)){
-    shootT=.35;say('Zona Segura: armas bloqueadas dentro da praça!');return;
+    shootT=.35;
+    say('Zona Segura: armas bloqueadas dentro da praça!');
+    return;
   }
-  if(weapon<0){shootT=.58;punchT=.58;sfx.punch();return;}
-  if(ammo[weapon]<=0){ammo[weapon]=maxAmmo[weapon];shootT=1.6;say('Recarregando...');sfx.click();return;}
-  const lock=getAimTarget();
-  if(lock){
-    // Assistência de mira: encaixa a direção no centro do oponente próximo.
-    player.yaw=lock.yaw;
+  if(weapon<0){
+    shootT=.58;punchT=.58;sfx.punch();
+    return;
   }
+  if(ammo[weapon]<=0){ammo[weapon]=maxAmmo[weapon];shootT=1.6;say('Recarregando...');sfx.click();return}
+  const target=aimAssistEnabled?getAimTarget():null;
+  // Grude de mira: mantém a direção escolhida pelo jogador; não puxa para a cabeça nem gira a câmera.
+  aimTargetId=target?target.rp.id:null;
   ammo[weapon]--;shootT=rate[weapon];flash=.07;sfx.gun(weapon,0);
   const bDmg=dmg[weapon]*(chr===1?1.2:1);
   for(let i=0;i<(weapon===2?5:1);i++){
-    const a=lock?lock.yaw+rnd(-.018,.018):player.yaw+rnd(-.09,.09);
+    let a=player.yaw+rnd(-.09,.09);
     const bx=player.x+sin(a)*.9,bz=player.z+cos(a)*.9;
-    bullets.push({x:bx,z:bz,vx:sin(a)*95,vz:cos(a)*95,life:range[weapon]/95,dmg:bDmg,owner:'local',targetId:lock&&lock.rp.id});
+    bullets.push({x:bx,z:bz,vx:sin(a)*95,vz:cos(a)*95,life:range[weapon]/95,dmg:bDmg,owner:'local',targetId:target?target.rp.id:null});
     if(window.mpSocket&&window.mpSocket.connected){
-      window.mpSocket.emit('player:shoot',{x:bx,y:bz,angle:a,dmg:bDmg,range:range[weapon],elevation:playerElevation,targetId:lock&&lock.rp.id});
+      window.mpSocket.emit('player:shoot',{x:bx,y:bz,angle:a,dmg:bDmg,range:range[weapon],elevation:playerElevation,targetId:target?target.rp.id:null});
     }
   }
 }
@@ -1001,6 +1005,7 @@ function syncControls(){
   let box=$('buttons'),inside=!!cur||!!passengerCar;
   box.classList.toggle('car-mode',inside);
   document.querySelectorAll('[data-foot]').forEach(b=>b.style.display=inside?'none':'');
+  if($('aim'))$('aim').style.display=inside?'none':'';
   document.querySelectorAll('[data-vehicle]').forEach(b=>{const a=b.getAttribute('data');b.style.display=inside?(passengerCar&&(a==='accelerate'||a==='brake')?'none':''):'none';if(a==='car')b.textContent=passengerCar?'SAIR PASSAGEIRO':'SAIR'});
   const elevatorButton=document.querySelector('[data="elevator"]');
   if(elevatorButton){elevatorButton.style.display=(!inside&&(playerElevation>0||getElevatorTarget()))?'':'none';elevatorButton.textContent=playerElevation>0?'DESCER':'ELEVADOR';}
@@ -1067,6 +1072,7 @@ function action(a){
   if(isDead)return;
   if(a==='accelerate')held.up=true;
   else if(a==='fire')held.fire=true;
+  else if(a==='aim')toggleAimAssist();
   else if(a==='run'){sprintMode=!sprintMode;held.run=sprintMode;const runBtn=document.querySelector('[data="run"]');if(runBtn){runBtn.classList.toggle('active',sprintMode);runBtn.textContent='CORRER'};}
   else if(a==='brake')held.brake=true;
   else if(a==='car')enterCar();
@@ -1263,7 +1269,7 @@ function update(dt){
     if(b.owner==='local'&&window.mpRemotePlayers){
       window.mpRemotePlayers.forEach(rp=>{
         if(hitRemote||!rp)return;
-        if((!b.targetId||b.targetId===rp.id)&&Math.hypot(b.x-rp.x,b.z-rp.z)<2.0){
+        if((!b.targetId||b.targetId===rp.id)&&Math.hypot(b.x-rp.x,b.z-rp.z)<1.25){
           hitRemote=true;
           for(let k=0;k<5;k++){
             particles.push({x:rp.x,y:1.2,z:rp.z,vx:rnd(-2,2),vy:rnd(1,4),vz:rnd(-2,2),life:.45});
@@ -3415,7 +3421,7 @@ addEventListener('blur',()=>{keys={};resetJoy();held={up:false,brake:false,run:s
 let gfxMode=localStorage.getItem('dx_gfx_mode')||'auto';
 let hudEditorOpen=false,hudProfileMode='foot',hudSelected=null;
 const hudStoreKey='dx_hud_profiles_v1';
-const HUD_IDS=['joy','fire','weapon','run','crouch','jump','carFoot','passenger','elevator','accelerate','brake','carExit','voicePTT','chatOpenBtn'];
+const HUD_IDS=['joy','aim','fire','weapon','run','crouch','jump','carFoot','passenger','elevator','accelerate','brake','carExit','voicePTT','chatOpenBtn'];
 let hudStore={};
 try{hudStore=JSON.parse(localStorage.getItem(hudStoreKey)||'{}')}catch(_){}
 if(!hudStore.foot)hudStore.foot={};
