@@ -1,3 +1,4 @@
+
 name: Gerar APK Android
 
 on:
@@ -25,7 +26,7 @@ jobs:
       - name: Instalar Cordova
         run: npm install -g cordova@12
 
-      - name: Preparar arquivos do GTA X
+      - name: Preparar arquivos do Distrito X City
         run: |
           mkdir -p "$RUNNER_TEMP/gtax-www"
 
@@ -92,7 +93,7 @@ jobs:
 
       - name: Criar projeto Android
         run: |
-          cordova create app com.elias.gtax "GTA X"
+          cordova create app com.elias.gtax "Distrito X City"
 
           rm -rf app/www/*
           cp -a "$RUNNER_TEMP/gtax-www/." app/www/
@@ -102,7 +103,7 @@ jobs:
           echo "Arquivos copiados para o Cordova:"
           find app/www -maxdepth 2 -type f | sort
 
-      - name: Configurar permissões de rede e ícone GTA X
+      - name: Configurar permissões de rede e ícone Distrito X City
         run: |
           mkdir -p app/res
 
@@ -130,7 +131,7 @@ jobs:
               shutil.copy2(icon, "app/res/icon.png")
               if 'src="res/icon.png"' not in content:
                   content = content.replace("</widget>", '    <icon src="res/icon.png" />\n</widget>')
-              print("Ícone GTA X configurado!")
+              print("Ícone Distrito X City configurado!")
           else:
               print("Aviso: ícone não encontrado.")
 
@@ -151,6 +152,6 @@ jobs:
       - name: Disponibilizar APK
         uses: actions/upload-artifact@v4
         with:
-          name: GTA-X-APK
+          name: DISTRITO-X-CITY-APK
           path: app/platforms/android/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
