@@ -39,21 +39,22 @@ app.get('/health', (_req, res) => {
 
 app.get('/', (_req, res) => {
   const htmlFile = findHtmlFile();
-  if (htmlFile) {
-    return res.sendFile(htmlFile);
-  }
+  if (htmlFile) return res.sendFile(htmlFile);
   res.status(200).send('GTA X Server online');
 });
 
 app.use(express.static(__dirname));
+
 if (fs.existsSync(path.join(__dirname, 'public'))) {
   app.use(express.static(path.join(__dirname, 'public')));
 }
+
 if (fs.existsSync(path.join(__dirname, 'www'))) {
   app.use(express.static(path.join(__dirname, 'www')));
 }
 
 const server = http.createServer(app);
+
 const io = new Server(server, {
   cors: {
     origin: '*',
@@ -124,12 +125,14 @@ function joinRoom(socket, nextRoomId) {
 
   const room = rooms[targetRoom];
   const playerCount = Object.keys(room.players).length;
+
   if (!room.players[socket.id] && playerCount >= MAX_PLAYERS_PER_ROOM) {
     const full = {
       room: targetRoom,
       max: MAX_PLAYERS_PER_ROOM,
       message: 'Servidor cheio (35/35). Escolha outro servidor.'
     };
+
     socket.emit('room:full', full);
     socket.emit('server:full', full);
     return;
@@ -168,6 +171,7 @@ function joinRoom(socket, nextRoomId) {
 
 io.on('connection', (socket) => {
   socket.data.name = 'Player_' + socket.id.slice(0, 4);
+
   const initialRoom = normalizeRoomId(
     socket.handshake.query && socket.handshake.query.server
   );
@@ -186,6 +190,7 @@ io.on('connection', (socket) => {
     const roomId = socket.data.roomId || initialRoom;
     const room = rooms[roomId];
     const p = room && room.players[socket.id];
+
     if (!p) return;
 
     if (data && Number.isFinite(data.x)) p.x = data.x;
@@ -193,6 +198,7 @@ io.on('connection', (socket) => {
     if (data && Number.isFinite(data.angle)) p.angle = data.angle;
     if (data && data.look && typeof data.look === 'object') p.look = data.look;
     if (data && typeof data.weapon === 'number') p.weapon = data.weapon;
+
     if (data && Number.isFinite(data.hp)) {
       p.hp = Math.max(0, Math.min(200, data.hp));
     }
@@ -209,6 +215,7 @@ io.on('connection', (socket) => {
   socket.on('player:move', (data) => {
     const roomId = socket.data.roomId || '1';
     const room = rooms[roomId];
+
     if (!room || !data) return;
 
     const p = room.players[socket.id] || {
@@ -252,7 +259,6 @@ io.on('connection', (socket) => {
     }
 
     p.safeZone = data.safeZone === true;
-
     room.players[socket.id] = p;
 
     socket.to('srv_' + roomId).emit('player:move', p);
@@ -279,10 +285,12 @@ io.on('connection', (socket) => {
   socket.on('player:hit', (data) => {
     const roomId = socket.data.roomId || '1';
     const room = rooms[roomId];
+
     if (!room || !data || !data.targetId) return;
 
     const attacker = room.players[socket.id];
     const target = room.players[data.targetId];
+
     if (!attacker || !target) return;
 
     if (attacker.safeZone || target.safeZone) {
@@ -310,7 +318,7 @@ io.on('connection', (socket) => {
   });
 
   // Sinalização WebRTC para voz por proximidade.
-  // O servidor apenas retransmite offer/answer/ICE entre jogadores da mesma sala.
+  // O servidor retransmite offer, answer e ICE entre jogadores da mesma sala.
   socket.on('voice:signal', (payload) => {
     const roomId = socket.data.roomId || '1';
     const room = rooms[roomId];
@@ -333,6 +341,7 @@ io.on('connection', (socket) => {
   socket.on('car:toggle', () => {
     const roomId = socket.data.roomId || '1';
     const room = rooms[roomId];
+
     if (!room) return;
 
     const existingCar = room.cars.find((c) => c.driverId === socket.id);
