@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <meta name="theme-color" content="#10151a">
-<title>GTA X — Câmera Livre</title>
+<title>Distrito X City — Mundo Aberto</title>
 <style>
 *{box-sizing:border-box}
 html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#161b20;color:#fff;font-family:Arial,sans-serif;touch-action:none;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
@@ -20,11 +20,16 @@ canvas{display:block;width:100vw;height:100vh}
 #msg{position:absolute;left:50%;top:17%;transform:translateX(-50%);font-weight:bold;color:#ffe082;text-align:center;font-size:clamp(12px,1.8vw,18px);max-width:75vw}
 #joy{position:fixed;left:5%;bottom:11%;width:clamp(105px,19vw,165px);aspect-ratio:1;border:2px solid #ffffff80;border-radius:50%;background:#1117;pointer-events:auto}
 #knob{position:absolute;left:31%;top:31%;width:38%;height:38%;border-radius:50%;background:#ffffff88;border:2px solid #fff}
-#buttons{position:fixed;right:2%;bottom:4%;display:grid;grid-template-columns:repeat(3,clamp(49px,7.7vw,76px));gap:7px;pointer-events:auto;align-items:center}
+#buttons{position:fixed;right:2%;bottom:4%;display:grid;grid-template-columns:repeat(2,clamp(58px,8.5vw,76px));gap:7px;pointer-events:auto;align-items:center}
 #buttons.car-mode{grid-template-columns:repeat(2,clamp(58px,9vw,82px));gap:9px}
 #buttons.car-mode [data-vehicle]:last-child{grid-column:1/-1;justify-self:end}
 .b{aspect-ratio:1;border-radius:50%;border:1px solid #ffffffaa;background:#111b;color:#fff;font-size:clamp(9px,1.2vw,13px);font-weight:bold;touch-action:none}
 .b.active{background:#d59b20}
+/* Botão correr mantém dimensões fixas ao alternar corrida */
+#run{box-sizing:border-box;width:100%;height:100%;min-width:0;min-height:0;padding:0;aspect-ratio:1/1;white-space:nowrap;overflow:hidden;transform:none!important;transition:background-color .12s,border-color .12s;font-size:clamp(8px,1.05vw,12px);line-height:1;display:flex;align-items:center;justify-content:center}
+#run.active{background:#d59b20;border-color:#ffe08a}
+#buttons:not(.car-mode) #run{display:flex!important;visibility:visible!important;position:relative;left:auto;top:auto;right:auto;bottom:auto;transform:none!important;flex:none;z-index:2}
+.weapon-button{border:2px solid #ffd166;background:linear-gradient(145deg,#26394c,#111b);color:#ffe6a3;font-size:clamp(8px,1.05vw,12px);box-shadow:0 0 9px #ffd16655}
 :root{--ms:clamp(88px,27vh,140px)}
 #map{position:fixed;width:var(--ms);height:var(--ms);z-index:5;left:max(2%,env(safe-area-inset-left));top:max(2%,env(safe-area-inset-top));background:#262b33;border:3px solid #0d0d0d;border-radius:50%;box-shadow:0 0 0 1.5px #ffffff90,0 3px 10px #000b;pointer-events:none}
 #pause{position:fixed;z-index:5;width:34px;height:34px;right:2%;top:2%;border-radius:50%;border:1px solid #fff;background:#111b;color:#fff;pointer-events:auto;font-weight:bold}
@@ -41,6 +46,10 @@ canvas{display:block;width:100vw;height:100vh}
 @keyframes tf{to{opacity:0}}
 #rot{display:none;position:fixed;inset:0;z-index:40;background:#10151a;color:#fff;align-items:center;justify-content:center;text-align:center;font:700 18px Arial;padding:24px}
 @media (orientation:portrait){#rot{display:flex}}
+@media (max-height:420px){
+ #voicePTT{bottom:calc(4% + 3 * clamp(42px,7.7vw,62px) + 58px)!important}
+ #chatOpenBtn{bottom:calc(4% + 3 * clamp(42px,7.7vw,62px) + 16px)}
+}
 #errbox{display:none;position:fixed;left:12px;right:12px;bottom:12px;z-index:99;background:#2b1114ee;border:1px solid #ff6b6b;color:#ffd6d6;padding:10px 14px;border-radius:10px;font:12px/1.4 monospace;max-height:36vh;overflow:auto}
 
 #mpBar{position:fixed;left:calc(2% + var(--ms) + 16px);bottom:calc(3% + 22px);z-index:7;pointer-events:auto;display:flex;flex-wrap:wrap;gap:6px;align-items:center}
@@ -55,7 +64,11 @@ canvas{display:block;width:100vw;height:100vh}
 .chat-line{flex:0 0 auto;background:linear-gradient(105deg,#081522ed,#15102bed);border:1px solid #25dfff;border-left:3px solid #25dfff;padding:6px 11px;border-radius:9px;font-size:clamp(11px,1.25vw,14px);line-height:1.25;text-shadow:0 0 5px #4deaff88,1px 2px 3px #000;word-break:break-word;box-shadow:0 0 7px #00cfff55,inset 0 0 8px #9b4dff22;animation:chatIn .18s ease-out}
 .chat-line b{color:#83f4ff;text-shadow:0 0 6px #00dfff}
 @keyframes chatIn{from{opacity:0;transform:translateY(-5px)}to{opacity:1;transform:translateY(0)}}
-#chatOpenBtn{position:fixed;left:50%;top:10.8%;transform:translateX(-50%);z-index:19;background:linear-gradient(100deg,#101a32ee,#27113eee);border:1px solid #36eaff;color:#d9fbff;box-shadow:0 0 8px #00dfff77, inset 0 0 8px #a34cff33}
+#chatOpenBtn{position:fixed;left:auto;right:2%;top:auto;bottom:calc(4% + 3 * clamp(49px,7.7vw,76px) + 20px);transform:none;z-index:31;background:linear-gradient(100deg,#101a32ee,#27113eee);border:1px solid #36eaff;color:#d9fbff;box-shadow:0 0 8px #00dfff77,inset 0 0 8px #a34cff33;min-width:76px;min-height:38px}
+#voicePTT{position:fixed!important;left:auto!important;right:2%!important;top:auto!important;bottom:calc(4% + 3 * clamp(49px,7.7vw,76px) + 64px)!important;transform:none!important;z-index:32!important;min-width:76px;min-height:38px;padding:8px 10px!important;font-size:11px}
+#voicePTT.voice-active{background:#9b1c27!important;border-color:#ff8b94!important}
+#voicePTT{touch-action:none!important;-webkit-user-select:none!important;user-select:none!important}
+#chatBox{left:auto;right:2%;bottom:calc(4% + 3 * clamp(49px,7.7vw,76px) + 20px);transform:none;width:min(92vw,380px)}
 
 #chatBox{display:none;position:fixed;left:50%;bottom:14%;transform:translateX(-50%);z-index:16;pointer-events:auto;background:#17212bf2;border:1px solid #8995a0;border-radius:10px;padding:8px;width:min(92vw,380px);gap:6px;align-items:center}
 #chatBox input{flex:1;padding:8px 10px;border-radius:7px;border:1px solid #546e7a;background:#0f161d;color:#fff;font-size:13px;touch-action:auto;-webkit-user-select:text;user-select:text}
@@ -92,12 +105,35 @@ canvas{display:block;width:100vw;height:100vh}
 .lobby-actions button:active{transform:translateY(2px);box-shadow:0 2px 0 #704715}
 .lobby-actions button.sec{border-color:#8be9ff66;background:linear-gradient(180deg,#25465b,#142b3c);color:#eafaff;box-shadow:0 4px 0 #07121d;font-size:11px;padding:9px}
 #voicePTT:active{background:#b3261e} #voicePTT.voice-active{background:#b3261e;border-color:#ffb5ae}</style>
+
+<style>
+#hudEditor{display:none;position:fixed;inset:0;z-index:80;background:transparent;pointer-events:none;color:#fff;font:12px Arial}
+#hudEditor .hud-tools{pointer-events:auto;position:absolute;left:50%;top:8px;transform:translateX(-50%);width:min(96vw,560px);max-height:62vh;overflow:auto;background:#101d2af2;border:1px solid #69dfff;border-radius:14px;padding:10px 10px 76px;box-shadow:0 8px 30px #0009}#hudSaveReturn{position:fixed!important;left:50%!important;bottom:14px!important;top:auto!important;transform:translateX(-50%)!important;z-index:120!important;width:min(92vw,420px)!important;min-height:48px!important;background:linear-gradient(180deg,#ffe08b,#d58b20)!important;color:#17202a!important;border:2px solid #fff0b5!important;border-radius:12px!important;font-size:15px!important;font-weight:900!important;box-shadow:0 5px 18px #000b!important;pointer-events:auto!important}
+#hudEditor .hud-tools button,#hudEditor select{background:#1d3a50;color:#fff;border:1px solid #79dfff;border-radius:8px;padding:7px;margin:3px;font-weight:bold}
+#hudEditor .hud-tools input{width:100%;touch-action:pan-x}
+#hudEditor .hud-target{outline:2px dashed #ffd54f!important;filter:drop-shadow(0 0 5px #ffd54f)!important}
+#hudEditor .hud-tools .line{display:grid;grid-template-columns:1fr 1fr;gap:8px;align-items:center}
+#graphicsPanel{position:fixed;display:none;inset:0;z-index:79;background:#050b12e8;align-items:center;justify-content:center;pointer-events:auto}
+#graphicsPanel>div{width:min(90vw,390px);background:#101d2af5;border:1px solid #69dfff;border-radius:16px;padding:20px;text-align:center;box-shadow:0 12px 50px #000}
+#graphicsPanel button{display:block;width:100%;padding:13px;margin:8px 0;border-radius:10px;border:1px solid #79dfff;background:#1d3a50;color:white;font-weight:bold}
+#splashScreen:after{content:"";position:absolute;inset:0;pointer-events:none;background:repeating-linear-gradient(115deg,transparent 0 35px,#ffffff05 36px 37px);animation:splashSweep 12s linear infinite}
+@keyframes splashSweep{to{transform:translateX(45px)}}
+</style>
+
 </head>
 <body>
 <div id="rot">↻ Gire o celular para o modo deitado</div>
 <canvas id="c"></canvas>
 
-<div id="intro">
+<div id="splashScreen" style="position:fixed;inset:0;z-index:45;display:flex;align-items:center;justify-content:center;text-align:center;padding:24px;background:radial-gradient(ellipse at 50% 65%,#244b61 0%,#101e30 48%,#050a12 100%);pointer-events:auto">
+  <div style="width:min(92vw,620px);padding:32px 22px;border:1px solid #72dfff88;border-radius:22px;background:#071522dd;box-shadow:0 20px 80px #000c,inset 0 0 28px #2dd5ff22">
+    <div style="font-size:11px;letter-spacing:5px;color:#7feaff;font-weight:bold;margin-bottom:14px">MUNDO ABERTO</div>
+    <h1 style="font-size:clamp(34px,8vw,66px);line-height:.98;margin:0;background:linear-gradient(#fff,#8beaff 60%,#3987ac);color:transparent;background-clip:text;-webkit-background-clip:text;letter-spacing:2px">DISTRITO X CITY</h1>
+    <p style="color:#c7dce8;letter-spacing:2px;font-size:12px;margin:18px 0 26px">SUA CIDADE. SUAS REGRAS.</p>
+    <button id="splashStartBtn" type="button" style="padding:15px 38px;border:1px solid #ffe08b;border-radius:12px;background:linear-gradient(#ffe08b,#d58b20);color:#15191e;font-weight:1000;font-size:16px;letter-spacing:2px">INICIAR</button>
+  </div>
+</div>
+<div id="intro" style="display:none">
   <div class="lobby-wrap">
     <div class="lobby-left">
       <div class="tag360">↻ ARRASTE PARA GIRAR 360°</div>
@@ -110,8 +146,8 @@ canvas{display:block;width:100vw;height:100vh}
     </div>
     <div class="lobby-right">
       <div class="lobby-title">
-        <h1>GTA X</h1>
-        <span>CRIAR PERSONAGEM</span>
+        <h1>DISTRITO X CITY</h1>
+        <span>MUNDO ABERTO · CRIAR PERSONAGEM</span>
       </div>
       <div class="cust-group">
         <label>NOME DO PERSONAGEM:</label>
@@ -134,7 +170,7 @@ canvas{display:block;width:100vw;height:100vh}
         <div class="swatches" id="hairSwatches"></div>
       </div>
       <div class="lobby-actions">
-        <button id="playBtn" type="button">▶ &nbsp; ENTRAR NA CIDADE</button>
+        <button id="playBtn" type="button">▶ &nbsp; INICIAR JOGO</button>
         <button id="menuServersBtn" class="sec" type="button">🌐 &nbsp; SERVIDOR 1 / SERVIDOR 2</button>
       </div>
     </div>
@@ -142,7 +178,7 @@ canvas{display:block;width:100vw;height:100vh}
 </div>
 
 <div id="ui">
-  <div id="stats">GTA X<br><span id="cash">$500</span> · <span id="name">Rafa</span><br><span id="weapon">Pistola 12/12</span></div>
+  <div id="stats">DISTRITO X CITY<br><span id="cash">$500</span> · <span id="name">Rafa</span><br><span id="weaponStatus">Pistola 12/12</span></div>
   <div id="mission">MISSÃO: Primeiro Assalto</div>
   <div id="safeZoneBadge">🛡️ ZONA SEGURA · PRAÇA</div><button id="voicePTT" type="button" style="position:fixed;left:50%;bottom:4%;transform:translateX(-50%);z-index:30;pointer-events:auto;border:2px solid #d7e8ff;border-radius:30px;background:#17283ddd;color:#fff;padding:12px 18px;font-weight:bold">🎙️ FALAR</button>
   <div id="clock">16:28</div>
@@ -161,29 +197,32 @@ canvas{display:block;width:100vw;height:100vh}
 </div>
 
 <div id="buttons">
-  <button class="b" data="fire" data-foot>ATIRAR</button>
-  <button class="b" data="run" data-foot>CORRER</button>
-  <button class="b" data="crouch" data-foot>AGACHAR</button>
-  <button class="b" data="jump" data-foot>PULAR</button>
-  <button class="b" data="car" data-foot>ENTRAR</button>
-  <button class="b" data="passenger" data-foot style="display:none">PASSAGEIRO</button>
-  <button class="b" data="elevator" data-foot style="display:none">ELEVADOR</button>
+  <button id="fire" class="b" data="fire" data-foot>ATIRAR</button>
+  <button id="weapon" class="b weapon-button" data="weapon" data-foot aria-label="Trocar arma">🔫 TROCAR ARMA</button>
+  <button id="run" class="b" data="run" data-foot>CORRER</button>
+  <button id="crouch" class="b" data="crouch" data-foot>AGACHAR</button>
+  <button id="jump" class="b" data="jump" data-foot>PULAR</button>
+  <button id="carFoot" class="b" data="car" data-foot>ENTRAR</button>
+  <button id="passenger" class="b" data="passenger" data-foot style="display:none">PASSAGEIRO</button>
+  <button id="elevator" class="b" data="elevator" data-foot style="display:none">ELEVADOR</button>
   
-  <button class="b" data="weapon" data-foot>ARMA</button>
-  <button class="b" data="swap" data-foot>TROCAR</button>
-  <button class="b" data="accelerate" data-vehicle style="display:none">ACELERAR</button>
-  <button class="b" data="brake" data-vehicle style="display:none">RÉ / FREIO</button>
-  <button class="b" data="car" data-vehicle style="display:none">SAIR</button>
+  <button id="accelerate" class="b" data="accelerate" data-vehicle style="display:none">ACELERAR</button>
+  <button id="brake" class="b" data="brake" data-vehicle style="display:none">RÉ / FREIO</button>
+  <button id="carExit" class="b" data="car" data-vehicle style="display:none">SAIR</button>
 </div>
 
+<div id="hudEditor"><div class="hud-tools"><b>EDITOR DE HUD — ESTILO FREE FIRE</b><div style="margin:6px 0">Escolha o perfil: <select id="hudProfile"><option value="foot">Personagem a pé</option><option value="vehicle">Veículo</option></select></div><div class="line"><label>Tamanho <input id="hudEditSize" type="range" min="55" max="160" value="100"></label><label>Transparência <input id="hudEditOpacity" type="range" min="20" max="100" value="100"></label></div><div id="hudButtonList"></div><button id="hudSave">SALVAR HUD</button><button id="hudSaveReturn">SALVAR E VOLTAR AO JOGO</button><button id="hudReset">RESTAURAR</button><button id="hudEditorClose">VOLTAR SEM SALVAR</button><small style="display:block;color:#b9dce9">Toque em um botão para selecionar e arraste para mudar sua posição.</small></div></div>
+<div id="graphicsPanel"><div><h2>QUALIDADE GRÁFICA</h2><p>Escolha o desempenho do seu celular</p><button data-quality="low">SUPER LEVE · até 2,5 GB</button><button data-quality="medium">MÉDIO · 3 a 4 GB</button><button data-quality="high">ULTRA · 5 GB ou mais</button><button id="graphicsAuto">AUTOMÁTICO</button><button id="graphicsClose">FECHAR</button><small id="graphicsCurrent"></small></div></div>
 <button id="pause" type="button">Ⅱ</button>
 
 <div id="modal">
   <div>
-    <h2>GTA X — PAUSADO</h2>
+    <h2>DISTRITO X CITY — PAUSADO</h2>
     <p>Toque em continuar para voltar ao jogo.</p>
     <button id="resume" type="button">CONTINUAR</button>
     <button id="lobbyBtn" type="button">EDITAR PERSONAGEM</button>
+    <button id="pauseHudEdit" type="button">EDITAR HUD / CONTROLES</button>
+    <button id="pauseGraphics" type="button">GRÁFICOS</button>
     <button id="restartBtn" type="button">REINICIAR</button>
   </div>
 </div>
@@ -215,7 +254,7 @@ canvas{display:block;width:100vw;height:100vh}
 
 <div id="mpModal">
   <div>
-    <h3>GTA X — Conexão Multiplayer</h3>
+    <h3>DISTRITO X CITY — ESCOLHA DO SERVIDOR</h3>
     <label style="font-size:12px;display:block;text-align:left">Seu nome (nick):</label>
     <input id="mpNickInput" type="text" maxlength="16" placeholder="Ex.: EliasX7">
     <label style="font-size:12px;display:block;text-align:left">Escolha um dos dois servidores:</label>
@@ -340,6 +379,7 @@ function adjustCameraZoom(direction){cameraZoom=cl(cameraZoom*(direction<0?1/1.1
 let joy={x:0,y:0},held={},msg='',msgT=0,shootT=0,punchT=0,anim=0,pph=0,pamp=0;
 let tod=.68,weather=0,flash=0,steer=0,dayL=1,night=false,nightAmount=0,cloudRain=0;
 let vx=0,vz=0,hudT=0,jy=0,jv=0,landT=0,ca=0,sink=0;
+let sprintMode=false;
 let wheelOpen=false,wheelHover=-1,wheelPointerId=null;
 let myBubbleText='',myBubbleT=0;
 let sitting=false,seatSpot=null,sitBlend=0;
@@ -771,7 +811,7 @@ function hurt(v){
 function triggerDeath(reason){
   if(isDead)return;
   isDead=true;
-  held.up=held.brake=held.run=held.fire=false;
+  held.up=held.brake=held.run=held.fire=false;sprintMode=false;
   joy.x=joy.y=0;
   if(cur){
     cur.driverId=null;cur.spd=0;cur.altitude=0;cur.pitch=0;
@@ -781,7 +821,7 @@ function triggerDeath(reason){
   sfx.engine(0,0,false);
   syncControls();
   const desc=$('deathDesc');
-  if(desc)desc.textContent=(reason||'Você foi eliminado!')+' Toque em reviver para voltar na praça mais próxima.';
+  if(desc)desc.textContent=(reason||'Você foi eliminado!')+' Sua vida acabou. Toque em REVIVER para reaparecer na praça mais próxima, dentro da zona segura.';
   $('deathModal').style.display='flex';
 }
 
@@ -799,7 +839,7 @@ function revivePlayer(){
   isDead=false;
   $('deathModal').style.display='none';
   syncControls();
-  say('Você reviveu na praça mais próxima! (Zona Segura)');
+  say('Você voltou ao respawn da praça! Zona Segura ativada.');
 }
 
 function stage(){
@@ -858,7 +898,7 @@ function syncControls(){
   if(elevatorButton){elevatorButton.style.display=(!inside&&(playerElevation>0||getElevatorTarget()))?'':'none';elevatorButton.textContent=playerElevation>0?'DESCER':'ELEVADOR';}
   const seatBtn=document.querySelector('[data="seat"]');if(seatBtn)seatBtn.style.display="none";
   const passBtn=document.querySelector('[data="passenger"]');if(passBtn){const candidate=getPassengerTarget();passBtn.style.display=(!inside&&candidate)?'':'none'}
-  held.up=false;held.brake=false;held.run=false;held.fire=false;
+  held.up=false;held.brake=false;held.run=sprintMode;held.fire=false;
   document.querySelectorAll('.b').forEach(b=>b.classList.remove('active'));
 }
 
@@ -920,7 +960,7 @@ function action(a){
   if(isDead)return;
   if(a==='accelerate')held.up=true;
   else if(a==='fire')held.fire=true;
-  else if(a==='run')held.run=true;
+  else if(a==='run'){sprintMode=!sprintMode;held.run=sprintMode;const runBtn=document.querySelector('[data="run"]');if(runBtn){runBtn.classList.toggle('active',sprintMode);runBtn.textContent='CORRER'};}
   else if(a==='brake')held.brake=true;
   else if(a==='car')enterCar();
   else if(a==='passenger')enterPassenger();
@@ -1048,7 +1088,7 @@ function update(dt){
     let jx=joy.x*norm,jyAxis=joy.y*norm;
     let mx=jx*cos(camYaw)-jyAxis*sin(camYaw);
     let mz=-jx*sin(camYaw)-jyAxis*cos(camYaw);
-    let sp=(prone?.9:crouch?1.8:(held.run||keyRun)?6.5:3.4)*[1,1.15,.9][chr];
+    let sp=(prone?.9:crouch?1.8:(held.run||keyRun)?7.475:2.9)*[1,1.15,.9][chr];
     let on=mag>.15,ac=Math.min(1,(jy>0?3:12)*dt);
     vx+=((on?mx*sp:0)-vx)*ac;
     vz+=((on?mz*sp:0)-vz)*ac;
@@ -1080,7 +1120,7 @@ function update(dt){
 
     if(jy<=0&&v>0.55){
       playerStepDist+=v*dt;
-      const strideLen=(held.run||keyRun)?2.55:(crouch?1.55:2.05);
+      const strideLen=(held.run||keyRun)?2.85:(crouch?1.55:2.05);
       if(playerStepDist>=strideLen){
         playerStepDist=0;
         sfx.step(0,!!held.run,!!crouch,false);
@@ -1102,12 +1142,12 @@ function update(dt){
     if(b.owner==='local'&&window.mpRemotePlayers){
       window.mpRemotePlayers.forEach(rp=>{
         if(hitRemote||!rp)return;
-        if(Math.hypot(b.x-rp.x,b.z-rp.z)<0.95){
+        if(Math.hypot(b.x-rp.x,b.z-rp.z)<1.25){
           hitRemote=true;
           for(let k=0;k<5;k++){
             particles.push({x:rp.x,y:1.2,z:rp.z,vx:rnd(-2,2),vy:rnd(1,4),vz:rnd(-2,2),life:.45});
           }
-          if(!isInSafeZone(rp.x,rp.z)&&window.mpSocket&&window.mpSocket.connected){
+          if(!isInSafeZone(player.x,player.z)&&!isInSafeZone(rp.x,rp.z)&&window.mpSocket&&window.mpSocket.connected){
             window.mpSocket.emit('player:hit',{targetId:rp.id,dmg:b.dmg||20});
           }
         }
@@ -1130,7 +1170,7 @@ function update(dt){
   const seatBtn=document.querySelector('[data="seat"]');if(seatBtn)seatBtn.style.display="none";
   $('cash').textContent='$'+Math.floor(money);
   $('name').textContent=(window.getMpNick&&window.getMpNick())||names[chr];
-  $('weapon').textContent=weapon<0?'Desarmado (Punhos)':(wn[weapon]+' '+ammo[weapon]+'/'+maxAmmo[weapon]);
+  $('weaponStatus').textContent=weapon<0?'Desarmado (Punhos)':(wn[weapon]+' '+ammo[weapon]+'/'+maxAmmo[weapon]);
   $('stars').textContent='★'.repeat(wanted)+'☆'.repeat(5-wanted);
   let hr=tod*24;
   $('clock').textContent=String(Math.floor(hr)).padStart(2,'0')+':'+String(Math.floor(hr%1*60)).padStart(2,'0');
@@ -2275,6 +2315,7 @@ function render(){
     const getRemoteState=window.remoteRenderState||(function(p){return {x:p.x||0,z:p.z||0,yaw:p.yaw||0}});
     window.mpRemotePlayers.forEach(rp=>{
       if(!rp)return;
+      g.save();g.globalAlpha=1;g.globalCompositeOperation='source-over';
       const visual=getRemoteState(rp,remoteNow);
       const rx=Number.isFinite(visual.x)?visual.x:(rp.x||0);
       const rz=Number.isFinite(visual.z)?visual.z:(rp.z||0);
@@ -2286,6 +2327,7 @@ function render(){
         person(rx,rz,ryaw,SHIRT_PAL[rLook.shirt%SHIRT_PAL.length],SKIN[rLook.skin%SKIN.length],11,1.75,0,rWp,rp.ph||0,rp.amp||0,rp.amp>0.5?0.8:0,0,0,0,0,'remote',0,elev,rLook);
       }
       drawBubbleAbove(rx,(rp.inCarId?2.6:2.15)+elev,'🌐 '+(rp.name||'Jogador'),rp.bubbleT>0?rp.bubble:'',rz);
+      g.restore();
     });
   }
 
@@ -2452,9 +2494,20 @@ function frame(t){
     if(voiceBtn){voiceBtn.classList.remove('voice-active');voiceBtn.textContent='🎙️ FALAR'}
   }
   if(voiceBtn){
-    voiceBtn.addEventListener('pointerdown',e=>{e.preventDefault();voiceStart()});
-    ['pointerup','pointercancel','pointerleave'].forEach(ev=>voiceBtn.addEventListener(ev,voiceStop));
+    // Push-to-talk confiável em telas touch: captura o ponteiro para que
+    // arrastar o dedo para fora do botão não encerre a transmissão.
+    voiceBtn.addEventListener('pointerdown',e=>{
+      if(e.button!==undefined && e.button!==0)return;
+      e.preventDefault();
+      try{voiceBtn.setPointerCapture(e.pointerId)}catch(_){ }
+      voiceStart();
+    });
+    voiceBtn.addEventListener('pointerup',e=>{e.preventDefault();voiceStop()});
+    voiceBtn.addEventListener('pointercancel',voiceStop);
+    voiceBtn.addEventListener('lostpointercapture',voiceStop);
     voiceBtn.addEventListener('contextmenu',e=>e.preventDefault());
+    window.addEventListener('blur',voiceStop);
+    document.addEventListener('visibilitychange',()=>{if(document.hidden)voiceStop()});
   }
 
   window.mpRemotePlayers=remotePlayers;
@@ -2496,7 +2549,7 @@ function frame(t){
     while(chatLog.children.length>50)chatLog.removeChild(chatLog.firstChild);
     // A mensagem mais recente fica visível; as anteriores sobem na lista.
     chatLog.scrollTop=chatLog.scrollHeight;
-    setTimeout(()=>{if(row.parentNode){row.style.transition='opacity .22s ease, transform .22s ease';row.style.opacity='0';row.style.transform='translateY(-5px)';setTimeout(()=>row.remove(),240)}},3000);
+    setTimeout(()=>{if(row.parentNode){row.style.transition='opacity .22s ease, transform .22s ease';row.style.opacity='0';row.style.transform='translateY(-5px)';setTimeout(()=>row.remove(),240)}},20000);
   }
 
   function setMpStatus(t){if(mpStatusText)mpStatusText.textContent=t}
@@ -2835,10 +2888,10 @@ function refreshKeyInput(){
   }
 }
 function releaseAllInputs(){
-  keysDown.clear();keyUp=keyDown=keyRun=keyFire=false;held.up=held.brake=held.run=held.fire=false;
+  keysDown.clear();keyUp=keyDown=keyRun=keyFire=false;held.up=held.brake=held.run=held.fire=false;sprintMode=false;
   joy.x=joy.y=0;joyId=camId=null;
   if(knob)knob.style.transform='';
-  document.querySelectorAll('.b.active').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.b.active').forEach(b=>{if(b.getAttribute('data')!=='run')b.classList.remove('active')});
 }
 window.addEventListener('blur',releaseAllInputs);
 document.addEventListener('visibilitychange',()=>{if(document.hidden)releaseAllInputs()});
@@ -2866,6 +2919,8 @@ function selectWheelAt(px,py){updateWheelHover(px,py)}
 document.querySelectorAll('.b').forEach(b=>{
   let a=b.getAttribute('data');
   b.onpointerdown=e=>{
+    // No modo de edição, tocar/arrastar um controle nunca executa sua ação de jogo.
+    if($('hudEditor')&&$('hudEditor').style.display==='block'){e.preventDefault();e.stopImmediatePropagation();return}
     e.preventDefault();unlockAudio();b.classList.add('active');
     try{b.setPointerCapture(e.pointerId)}catch(_){}
     if(a==='weapon'){wheelPointerId=e.pointerId;openWeaponWheel();return}
@@ -2875,7 +2930,7 @@ document.querySelectorAll('.b').forEach(b=>{
   let up=e=>{
     b.classList.remove('active');
     if(a==='weapon'&&wheelOpen&&(!e||e.pointerId===wheelPointerId)){closeWeaponWheel();return}
-    if(a==='fire')held.fire=false;if(a==='run')held.run=false;if(a==='brake')held.brake=false;if(a==='accelerate')held.up=false;
+    if(a==='fire')held.fire=false;if(a==='run')held.run=sprintMode;if(a==='brake')held.brake=false;if(a==='accelerate')held.up=false;
   };
   b.onpointerup=up;b.onpointercancel=up;b.onlostpointercapture=up;
 });
@@ -2929,22 +2984,68 @@ addEventListener('keydown',e=>{
 addEventListener('keyup',e=>{keysDown.delete(e.key.toLowerCase());refreshKeyInput()});
 
 let gameStarted=false;
+const splash=$('splashScreen'),intro=$('intro');
+$('splashStartBtn').onclick=()=>{
+  $('mpNickInput').value=(localStorage.getItem('gtax_mp_nick')||'');
+  $('mpServerSelect').value=localStorage.getItem('gtax_selected_server')||'1';
+  $('mpUrlInput').value=localStorage.getItem('gtax_server_'+$('mpServerSelect').value)||DEFAULT_SERVER_URL;
+  $('mpModal').style.display='flex';
+  splash.style.display='none';
+};
+// Configurações ficam dentro do menu de pausa; nada extra fica fixo na tela do jogo.
+$('pauseHudEdit').onclick=()=>{paused=false;$('modal').style.display='none';openHudEditor()};
+$('pauseGraphics').onclick=()=>{$('graphicsPanel').style.display='flex'};
+
+// Editor de HUD: todos os controles visíveis podem ser movidos, inclusive zoom agrupado e voz.
+const hudProfiles={foot:['joy','fire','weapon','run','crouch','jump','carFoot','passenger','elevator','zoomControls','voicePTT','chatOpenBtn'],vehicle:['joy','accelerate','brake','carExit','zoomControls','voicePTT','chatOpenBtn']};
+let hudProfile='foot',hudSelected=null,hudDragging=null,hudStart=null,hudPointerId=null,hudDisplayBefore={};
+const hudDraggableIds=[...new Set(hudProfiles.foot.concat(hudProfiles.vehicle))];
+function hudStore(){try{return JSON.parse(localStorage.getItem('dxc_hud_v2')||'{}')}catch(e){return {}}}
+function hudSetPosition(el,v){if(!el||!v)return;el.style.setProperty('position','fixed','important');el.style.setProperty('left',v.left,'important');el.style.setProperty('top',v.top,'important');el.style.setProperty('right','auto','important');el.style.setProperty('bottom','auto','important');el.style.setProperty('transform','none','important');if(v.width)el.style.setProperty('width',v.width,'important');if(v.height)el.style.setProperty('height',v.height,'important');el.style.scale=String(v.scale||1);el.style.opacity=String(v.opacity||1)}
+function applyHudProfile(profile){const all=hudStore();(hudProfiles[profile]||[]).forEach(id=>{const el=$(id);if(el&&all[profile]&&all[profile][id])hudSetPosition(el,all[profile][id])})}
+function openHudEditor(){const ed=$('hudEditor');hudProfile=$('hudProfile').value||'foot';$('hudProfile').value=hudProfile;hudDisplayBefore={};hudDraggableIds.forEach(id=>{const el=$(id);if(!el)return;hudDisplayBefore[id]=el.style.display;if((hudProfiles[hudProfile]||[]).includes(id)){el.style.display=(id==='zoomControls'?'grid':'');el.style.setProperty('z-index','96','important');el.style.setProperty('pointer-events','auto','important')}});applyHudProfile(hudProfile);buildHudList();ed.style.display='block';hudSelected=null;}
+function buildHudList(){const list=$('hudButtonList');list.innerHTML='';(hudProfiles[hudProfile]||[]).forEach(id=>{const el=$(id);if(!el)return;const b=document.createElement('button');b.type='button';b.textContent=({zoomControls:'ZOOM + / − (MOVER JUNTOS)',voicePTT:'BOTÃO FALAR',chatOpenBtn:'CHAT'}[id]||(el.textContent||id).trim().slice(0,22)||id);b.onclick=()=>selectHud(el);list.appendChild(b)})}
+function selectHud(el){if(!el)return;hudSelected=el;document.querySelectorAll('.hud-target').forEach(x=>x.classList.remove('hud-target'));el.classList.add('hud-target');const data=hudStore()[hudProfile]?.[el.id]||{};$('hudEditSize').value=Math.round((data.scale||Number(el.style.scale)||1)*100);$('hudEditOpacity').value=Math.round((data.opacity||Number(el.style.opacity)||1)*100)}
+function hudSaveAll(){const all=hudStore();all[hudProfile]=all[hudProfile]||{};(hudProfiles[hudProfile]||[]).forEach(id=>{const el=$(id);if(!el)return;const r=el.getBoundingClientRect();if(r.width&&r.height)all[hudProfile][id]={left:Math.round(r.left)+'px',top:Math.round(r.top)+'px',width:Math.round(el.offsetWidth)+'px',height:Math.round(el.offsetHeight)+'px',scale:Number(el.style.scale)||1,opacity:Number(el.style.opacity)||1}});localStorage.setItem('dxc_hud_v2',JSON.stringify(all))}
+$('hudProfile').onchange=()=>{hudProfile=$('hudProfile').value;hudSelected=null;applyHudProfile(hudProfile);buildHudList()};
+$('hudEditSize').oninput=()=>{if(hudSelected)hudSelected.style.scale=String(Number($('hudEditSize').value)/100)};
+$('hudEditOpacity').oninput=()=>{if(hudSelected)hudSelected.style.opacity=String(Number($('hudEditOpacity').value)/100)};
+$('hudSave').onclick=()=>{hudSaveAll();say('HUD salvo!')};
+$('hudSaveReturn').onclick=()=>{hudSaveAll();$('hudEditorClose').click();say('HUD salvo! Voltando ao jogo.')};
+$('hudReset').onclick=()=>{const all=hudStore();delete all[hudProfile];localStorage.setItem('dxc_hud_v2',JSON.stringify(all));(hudProfiles[hudProfile]||[]).forEach(id=>{const el=$(id);if(el){['left','top','right','bottom','width','height','scale','opacity','transform'].forEach(k=>el.style.removeProperty(k))}});hudSelected=null;document.querySelectorAll('.hud-target').forEach(x=>x.classList.remove('hud-target'));say('HUD restaurado')};
+$('hudEditorClose').onclick=()=>{$('hudEditor').style.display='none';hudDraggableIds.forEach(id=>{const el=$(id);if(el){el.style.removeProperty('z-index');el.style.removeProperty('pointer-events')}});document.querySelectorAll('.hud-target').forEach(x=>x.classList.remove('hud-target'));hudSelected=null;hudDragging=null;hudStart=null;hudPointerId=null;Object.keys(hudDisplayBefore).forEach(id=>{const el=$(id);if(el)el.style.display=hudDisplayBefore[id]});hudDisplayBefore={}};
+// Captura o toque antes dos handlers normais: no modo edição, nenhum botão executa sua ação.
+hudDraggableIds.forEach(id=>{const el=$(id);if(!el)return;el.style.touchAction='none';el.addEventListener('pointerdown',e=>{if($('hudEditor').style.display!=='block')return;e.preventDefault();e.stopImmediatePropagation();selectHud(el);hudDragging=el;hudPointerId=e.pointerId;const r=el.getBoundingClientRect();hudStart={x:e.clientX,y:e.clientY,left:r.left,top:r.top};if(!el.dataset.hudBaseWidth){el.dataset.hudBaseWidth=String(el.offsetWidth);el.dataset.hudBaseHeight=String(el.offsetHeight)}el.style.setProperty('width',el.dataset.hudBaseWidth+'px','important');el.style.setProperty('height',el.dataset.hudBaseHeight+'px','important');try{el.setPointerCapture(e.pointerId)}catch(_){}},true);el.addEventListener('pointermove',e=>{if(hudDragging!==el||!hudStart||e.pointerId!==hudPointerId)return;e.preventDefault();e.stopImmediatePropagation();const r=el.getBoundingClientRect();const x=Math.max(0,Math.min(innerWidth-r.width,hudStart.left+e.clientX-hudStart.x));const y=Math.max(0,Math.min(innerHeight-r.height,hudStart.top+e.clientY-hudStart.y));el.style.setProperty('position','fixed','important');el.style.setProperty('left',x+'px','important');el.style.setProperty('top',y+'px','important');el.style.setProperty('right','auto','important');el.style.setProperty('bottom','auto','important');el.style.setProperty('transform','none','important')},true);const finish=e=>{if(hudDragging===el&&(!e||e.pointerId===hudPointerId)){if(e){e.preventDefault();e.stopImmediatePropagation()}hudDragging=null;hudStart=null;hudPointerId=null}};el.addEventListener('pointerup',finish,true);el.addEventListener('pointercancel',finish,true)});
+// Modos gráficos ajustam resolução interna do mundo e qualidade de renderização.
+const qualityDefaults={low:.58,medium:.78,high:1};
+function setGraphics(mode){if(mode==='auto')mode=isLowRamDevice?'low':((navigator.deviceMemory||4)>=5?'high':'medium');const val=qualityDefaults[mode]||.78;q=val;size();localStorage.setItem('dxc_graphics',mode);$('graphicsCurrent').textContent='Modo atual: '+({low:'SUPER LEVE',medium:'MÉDIO',high:'ULTRA'}[mode]||mode);document.body.dataset.graphics=mode}
+
+$('graphicsClose').onclick=()=>{$('graphicsPanel').style.display='none'};
+document.querySelectorAll('[data-quality]').forEach(b=>b.onclick=()=>{setGraphics(b.dataset.quality);$('graphicsPanel').style.display='none'});
+$('graphicsAuto').onclick=()=>{setGraphics('auto');$('graphicsPanel').style.display='none'};
+setGraphics(localStorage.getItem('dxc_graphics')||'auto');
+applyHudProfile('foot');
+function ensureRunButton(){const runEl=$('run');if(!runEl)return;runEl.style.display='flex';runEl.style.boxSizing='border-box';runEl.style.flex='none';}
+ensureRunButton();
+window.addEventListener('resize',ensureRunButton);
+
 initLobbyCustomizer();
 $('playBtn').onclick=()=>{
   unlockAudio();
   const nickVal=($('lobbyNickInput')&&$('lobbyNickInput').value.trim())||'';
   if(nickVal&&window.setMpNick)window.setMpNick(nickVal);
   gameStarted=true;
+  $('splashScreen').style.display='none';
   $('intro').style.display='none';
   if(window.gtaxConnectNow)window.gtaxConnectNow(false);
-  say('Bem-vindo ao GTA X!');
+  say('Seja bem-vindo ao Distrito X City!');
 };
 $('menuServersBtn').onclick=()=>{ $('mpOpenBtn').click(); };
-$('mpCloseBtn').addEventListener('click',()=>{if(!gameStarted)$('intro').style.display='flex'});
-$('mpConnectBtn').addEventListener('click',()=>{if(!gameStarted){gameStarted=true;$('intro').style.display='none'}});
+$('mpCloseBtn').addEventListener('click',()=>{if(!gameStarted){$('intro').style.display='none';$('splashScreen').style.display='flex'}});
+$('mpConnectBtn').addEventListener('click',()=>{if(!gameStarted){$('splashScreen').style.display='none';$('intro').style.display='flex'}});
 stage();
 syncControls();
-say('Bem-vindo ao GTA X!');
+say('Seja bem-vindo ao Distrito X City!');
 requestAnimationFrame(frame);
 })();
 </script>
