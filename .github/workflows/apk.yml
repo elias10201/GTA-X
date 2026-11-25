@@ -49,9 +49,9 @@ jobs:
           import sys
 
           preferidos = [
-              "GTA-X-RGB-Chat-Aeroporto-BANCOS-CORRIGIDOS.html",
-              "index.html",
               "Index.html",
+              "index.html",
+              "GTA-X-RGB-Chat-Aeroporto-BANCOS-CORRIGIDOS.html",
               "GTA-X-RGB-Chat-Aeroporto.html",
               "GTA-X-Neon-RGB-Leve-1.html",
               "GTA-X-Neon-RGB-Leve.html",
