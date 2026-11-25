@@ -3,6 +3,9 @@ name: Gerar APK Distrito X ADM
 on:
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -30,20 +33,32 @@ jobs:
           cordova create adm com.distritox.adm "Distrito X ADM"
           rm -rf adm/www/*
           cp painel.html adm/www/index.html
+          mkdir -p adm/res
+          test -s adm-icon.png
+          cp adm-icon.png adm/res/icon.png
           cd adm
           cordova platform add android@13.0.0
 
-      - name: Configurar acesso de rede
+      - name: Configurar acesso de rede e ícone ADM
         run: |
           python3 - <<'PY'
           from pathlib import Path
-          p=Path('adm/config.xml')
-          s=p.read_text(encoding='utf-8')
-          additions=['    <access origin="*" />','    <allow-navigation href="*" />','    <allow-intent href="http://*/*" />','    <allow-intent href="https://*/*" />']
-          for line in additions:
-              if line.strip().split()[0] not in s:
-                  s=s.replace('</widget>',line+'\n</widget>')
-          p.write_text(s,encoding='utf-8')
+          import re
+          p = Path('adm/config.xml')
+          s = p.read_text(encoding='utf-8')
+          additions = [
+              ('origin="*"', '    <access origin="*" />'),
+              ('href="*"', '    <allow-navigation href="*" />'),
+              ('href="http://*/*"', '    <allow-intent href="http://*/*" />'),
+              ('href="https://*/*"', '    <allow-intent href="https://*/*" />')
+          ]
+          for marker, line in additions:
+              if marker not in s:
+                  s = s.replace('</widget>', line + '\n</widget>')
+          # Remove the starter Cordova icon so the ADM icon is the one used.
+          s = re.sub(r'^\s*<icon\b[^>]*/>\s*$', '', s, flags=re.MULTILINE)
+          s = s.replace('</widget>', '    <icon src="res/icon.png" />\n</widget>')
+          p.write_text(s, encoding='utf-8')
           PY
 
       - name: Compilar APK ADM
