@@ -181,7 +181,7 @@ canvas{display:block;width:100vw;height:100vh}
 </div>
 
 <div id="ui">
-  <div id="stats">DISTRITO X CITY<br><span id="cash">$500</span> · <span id="name">Rafa</span><br><span id="weaponStatus">Pistola 12/12</span></div>
+  <div id="stats">DISTRITO X CITY<br><span id="cash">$500</span> · <span id="name">Rafa</span><br><span id="weaponStatus">Pistola 12/12</span><br><span id="playerIdLabel" style="color:#8be9ff;font-size:10px">ID: conectando...</span><br><span id="combatStats" style="font-size:10px;color:#ffd986">DANO: 0 · RECEBIDO: 0 · KILLS: 0</span></div>
   <div id="mission">MISSÃO: Primeiro Assalto</div>
   <div id="safeZoneBadge">🛡️ ZONA SEGURA · PRAÇA</div><button id="voicePTT" type="button" style="position:fixed;left:50%;bottom:4%;transform:translateX(-50%);z-index:30;pointer-events:auto;border:2px solid #d7e8ff;border-radius:30px;background:#17283ddd;color:#fff;padding:12px 18px;font-weight:bold">🎙️ FALAR</button>
   <div id="clock">16:28</div>
@@ -254,6 +254,7 @@ canvas{display:block;width:100vw;height:100vh}
 <div id="mpBar">
   <button id="mpOpenBtn" class="mp-pill warn" type="button">🌐 ONLINE: CONECTANDO...</button>
   <button id="chatOpenBtn" class="mp-pill" type="button">💬 CHAT</button>
+  <button id="botVoiceToggle" class="mp-pill" type="button">🔊 VOZ IA: OFF</button>
   <span id="mpCountBadge" class="mp-pill" style="cursor:default">1 PLAYER</span>
 </div>
 
@@ -2619,7 +2620,7 @@ function render(){
       if(!rp.inCarId){
         person(rx,rz,ryaw,SHIRT_PAL[rLook.shirt%SHIRT_PAL.length],SKIN[rLook.skin%SKIN.length],11,1.75,0,rWp,rp.ph||0,rp.amp||0,rp.amp>0.5?0.8:0,0,0,0,0,'remote',0,elev,rLook);
       }
-      drawBubbleAbove(rx,(rp.inCarId?2.6:2.15)+elev,'🌐 '+(rp.name||'Jogador'),rp.bubbleT>0?rp.bubble:'',rz);
+      drawBubbleAbove(rx,(rp.inCarId?2.6:2.15)+elev,'🌐 '+(rp.verified?'✓ ':'')+(rp.name||'Jogador'),rp.bubbleT>0?rp.bubble:'',rz);
       g.restore();
     });
   }
@@ -2822,6 +2823,11 @@ function frame(t){
   let mpConnected=false;
   let mpConnecting=false;
   let mpNick=(localStorage.getItem('gtax_mp_nick')||'').trim()||('Player_'+Math.floor(100+Math.random()*899));
+  let playerClientKey=localStorage.getItem('distrito_x_client_key')||'';
+  if(!playerClientKey){try{playerClientKey=crypto.randomUUID()}catch(_){playerClientKey='dx-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2)}localStorage.setItem('distrito_x_client_key',playerClientKey)}
+  let permanentPlayerId=localStorage.getItem('distrito_x_player_id')||'---';
+  let damageDealtStat=0,damageReceivedStat=0,killsStat=0,deathsStat=0,verifiedSelf=false;
+  function refreshCombatStats(){const el=$('combatStats');if(el)el.textContent='DANO: '+damageDealtStat+' · RECEBIDO: '+damageReceivedStat+' · KILLS: '+killsStat+' · MORTES: '+deathsStat;}
   let selectedServer=localStorage.getItem('gtax_selected_server')||'1';
   const fallbackUrl=DEFAULT_SERVER_URL.trim();
   let serverUrls={
@@ -2843,6 +2849,14 @@ function frame(t){
   const chatLog=$('chatLog');
   const chatBox=$('chatBox');
   const chatInput=$('chatInput');
+  let botVoiceEnabled=localStorage.getItem('distrito_x_bot_voice')==='1';
+  const botVoiceBtn=$('botVoiceToggle');
+  function updateBotVoiceButton(){if(botVoiceBtn){botVoiceBtn.textContent='🔊 VOZ IA: '+(botVoiceEnabled?'ON':'OFF');botVoiceBtn.classList.toggle('active',botVoiceEnabled);}}
+  function speakBotMessage(text){
+    if(!botVoiceEnabled||!window.speechSynthesis||!window.SpeechSynthesisUtterance)return;
+    try{window.speechSynthesis.cancel();const utter=new SpeechSynthesisUtterance(String(text||''));utter.lang='pt-BR';utter.rate=0.98;utter.pitch=1;const voices=window.speechSynthesis.getVoices();const voice=voices.find(v=>/pt-BR/i.test(v.lang))||voices.find(v=>/^pt/i.test(v.lang));if(voice)utter.voice=voice;window.speechSynthesis.speak(utter);}catch(_){ }
+  }
+  if(botVoiceBtn){updateBotVoiceButton();botVoiceBtn.onclick=()=>{botVoiceEnabled=!botVoiceEnabled;localStorage.setItem('distrito_x_bot_voice',botVoiceEnabled?'1':'0');if(!botVoiceEnabled&&window.speechSynthesis)window.speechSynthesis.cancel();updateBotVoiceButton();say(botVoiceEnabled?'Voz dos bots ativada':'Voz dos bots desativada');};}
 
   function appendChatLine(author,text){
     if(!chatLog)return;
@@ -2860,12 +2874,14 @@ function frame(t){
 
   function setMpStatus(t){if(mpStatusText)mpStatusText.textContent=t}
   function updateBadge(){
-    const total=mpConnected?(1+remotePlayers.size):1;
+    const humans=mpConnected?1+Array.from(remotePlayers.values()).filter(rp=>!rp.isBot).length:1;
+    const botCount=mpConnected?Array.from(remotePlayers.values()).filter(rp=>rp.isBot).length:0;
+    const total=humans;
     if(mpOpenBtn){
       mpOpenBtn.textContent=mpConnected?'🌐 ONLINE: CONECTADO':'🌐 ONLINE: OFFLINE';
       mpOpenBtn.className='mp-pill '+(mpConnected?'active':'warn');
     }
-    if(mpCountBadge)mpCountBadge.textContent=total+(total===1?' PLAYER':' PLAYERS');
+    if(mpCountBadge)mpCountBadge.textContent=total+(total===1?' PLAYER':' PLAYERS')+(botCount?' · '+botCount+' IA':'');
     if($('name'))$('name').textContent=mpNick;
   }
 
@@ -2930,7 +2946,7 @@ function frame(t){
       remotePlayers.clear();
 
       const target=mpServerUrl||undefined;
-      const socket=ioFn(target,{transports:['websocket','polling'],reconnection:true,reconnectionDelay:2000});
+      const socket=ioFn(target,{transports:['websocket','polling'],reconnection:true,reconnectionDelay:2000,query:{server:selectedServer,clientKey:playerClientKey,nick:mpNick}});
       window.mpSocket=socket;
 
       socket.on('connect',()=>{
@@ -2939,6 +2955,7 @@ function frame(t){
         setMpStatus('Conectado como '+mpNick);
         socket.emit('player:join',{
           name:mpNick,
+          clientKey:playerClientKey,
           x:player.x,
           y:player.z,
           angle:player.yaw,
@@ -2964,6 +2981,7 @@ function frame(t){
         setMpStatus('Offline ('+(err&&err.message?err.message:'sem resposta')+')');
       });
 
+      socket.on('server:banned',data=>{say((data&&data.message)||'Você está banido deste servidor.');setMpStatus((data&&data.message)||'Banido deste servidor.');});
       socket.on('server:full',data=>{
         mpConnected=false;mpConnecting=false;
         updateBadge();
@@ -2980,11 +2998,11 @@ function frame(t){
             const nowT=performance.now();
             const px=Number(p.x)||0,pz=Number(p.y!=null?p.y:p.z)||0,pyaw=Number(p.angle!=null?p.angle:p.yaw)||0;
             remotePlayers.set(p.id,{
-              id:p.id,name:p.name||'Jogador',
+              id:p.id,playerId:p.playerId||'',name:p.name||'Jogador',
               x:px,z:pz,yaw:pyaw,
               prevX:px,prevZ:pz,prevYaw:pyaw,targetX:px,targetZ:pz,targetYaw:pyaw,
               vx:0,vz:0,lastNetAt:nowT,netInterval:90,
-              hp:Number(p.hp)||100,inCarId:p.inCarId||null,
+              hp:Number(p.hp)||200,isBot:!!p.isBot,verified:!!p.verified,inCarId:p.inCarId||null,
               elevation:Number(p.elevation)||0,
               look:p.look||{skin:0,shirt:1,pant:0,hair:0},
               weapon:typeof p.weapon==='number'?p.weapon:-1,
@@ -3004,18 +3022,18 @@ function frame(t){
         const nowT=performance.now();
         const px=Number(p.x)||0,pz=Number(p.y!=null?p.y:p.z)||0,pyaw=Number(p.angle!=null?p.angle:p.yaw)||0;
         remotePlayers.set(p.id,{
-          id:p.id,name:p.name||'Jogador',
+          id:p.id,playerId:p.playerId||'',name:p.name||'Jogador',
           x:px,z:pz,yaw:pyaw,
           prevX:px,prevZ:pz,prevYaw:pyaw,targetX:px,targetZ:pz,targetYaw:pyaw,
           vx:0,vz:0,lastNetAt:nowT,netInterval:90,
-          hp:Number(p.hp)||100,inCarId:p.inCarId||null,
+          hp:Number(p.hp)||200,isBot:!!p.isBot,verified:!!p.verified,inCarId:p.inCarId||null,
           elevation:Number(p.elevation)||0,
           look:p.look||{skin:0,shirt:1,pant:0,hair:0},
           weapon:typeof p.weapon==='number'?p.weapon:-1,
           ph:0,amp:0,bubble:'',bubbleT:0,lastStepT:0
         });
         updateBadge();
-        say((p.name||'Um jogador')+' entrou na cidade');
+        if(!p.isBot)say((p.name||'Um jogador')+' entrou na cidade');
       });
 
       socket.on('player:moved',p=>{
@@ -3025,7 +3043,7 @@ function frame(t){
         const nowT=performance.now();
         let rp=remotePlayers.get(p.id);
         if(!rp){
-          rp={id:p.id,name:p.name||'Jogador',x:nx,z:nz,yaw:nyaw,prevX:nx,prevZ:nz,prevYaw:nyaw,targetX:nx,targetZ:nz,targetYaw:nyaw,vx:0,vz:0,lastNetAt:nowT,netInterval:90,hp:100,inCarId:null,elevation:0,look:{skin:0,shirt:1,pant:0,hair:0},weapon:-1,ph:0,amp:0,bubble:'',bubbleT:0,lastStepT:0};
+          rp={id:p.id,playerId:p.playerId||'',name:p.name||'Jogador',x:nx,z:nz,yaw:nyaw,prevX:nx,prevZ:nz,prevYaw:nyaw,targetX:nx,targetZ:nz,targetYaw:nyaw,vx:0,vz:0,lastNetAt:nowT,netInterval:90,hp:200,isBot:!!p.isBot,verified:!!p.verified,inCarId:null,elevation:0,look:{skin:0,shirt:1,pant:0,hair:0},weapon:-1,ph:0,amp:0,bubble:'',bubbleT:0,lastStepT:0};
           remotePlayers.set(p.id,rp);
           updateBadge();
         }
@@ -3045,6 +3063,9 @@ function frame(t){
         const dist=Math.hypot(nx-curVis.x,nz-curVis.z);
         rp.x=nx;rp.z=nz;rp.yaw=nyaw;
         if(p.name)rp.name=p.name;
+        if(p.playerId)rp.playerId=p.playerId;
+        if(typeof p.hp==='number')rp.hp=p.hp;
+        rp.isBot=!!p.isBot;rp.verified=!!p.verified;
         if(p.look)rp.look=p.look;
         if(typeof p.weapon==='number')rp.weapon=p.weapon;
         if(p.inCarId!==undefined)rp.inCarId=p.inCarId;
@@ -3085,24 +3106,35 @@ function frame(t){
         if(distToMe<65)sfx.gun(0,distToMe);
       });
 
+      socket.on('player:identity',data=>{
+        if(!data)return;
+        if(data.playerId){permanentPlayerId=String(data.playerId);localStorage.setItem('distrito_x_player_id',permanentPlayerId);}
+        verifiedSelf=!!data.verified;
+        const idLabel=$('playerIdLabel');if(idLabel)idLabel.textContent='ID: '+permanentPlayerId+(verifiedSelf?' · ✓ VERIFICADO':'');
+      });
+      socket.on('player:verification',data=>{
+        if(!data)return;
+        if(data.playerId===permanentPlayerId){verifiedSelf=!!data.verified;const idLabel=$('playerIdLabel');if(idLabel)idLabel.textContent='ID: '+permanentPlayerId+(verifiedSelf?' · ✓ VERIFICADO':'');}
+        remotePlayers.forEach(rp=>{if(rp.playerId===data.playerId)rp.verified=!!data.verified;});
+      });
       socket.on('player:damaged',data=>{
         if(!data)return;
+        if(data.attackerId===socket.id&&data.targetId!==socket.id){damageDealtStat+=Number(data.dmg)||0;refreshCombatStats();}
         if(data.targetId===socket.id){
           if(isInSafeZone(player.x,player.z))return;
-          const amount=Number(data.dmg)||20;
-          if(typeof data.hp==='number'&&data.hp<=0){
-            hp[chr]=0;
-            triggerDeath('Você foi atingido!');
-          }else{
-            hurt(amount);
-          }
-          for(let k=0;k<5;k++){
-            particles.push({x:player.x,y:1.2,z:player.z,vx:rnd(-2,2),vy:rnd(1,4),vz:rnd(-2,2),life:.45});
-          }
+          const amount=Number(data.dmg)||20;damageReceivedStat+=amount;refreshCombatStats();
+          if(typeof data.hp==='number')hp[chr]=Math.max(0,Math.min(200,data.hp));
+          sfx.hurt();
+          if(typeof data.hp==='number'&&data.hp<=0){hp[chr]=0;triggerDeath('Você foi atingido!');}
+          for(let k=0;k<5;k++)particles.push({x:player.x,y:1.2,z:player.z,vx:rnd(-2,2),vy:rnd(1,4),vz:rnd(-2,2),life:.45});
         }else if(remotePlayers.has(data.targetId)){
-          const rp=remotePlayers.get(data.targetId);
-          if(typeof data.hp==='number')rp.hp=data.hp;
+          const rp=remotePlayers.get(data.targetId);if(typeof data.hp==='number')rp.hp=data.hp;
         }
+      });
+      socket.on('player:eliminated',data=>{
+        if(!data)return;
+        if(data.attackerId===socket.id){killsStat++;refreshCombatStats();}
+        if(data.targetId===socket.id){deathsStat++;refreshCombatStats();}
       });
 
       socket.on('chat:message',data=>{
@@ -3111,6 +3143,7 @@ function frame(t){
         const txt=String(data.text||'').slice(0,120);
         if(!txt)return;
         appendChatLine(author,txt);
+        if(data.isBot)speakBotMessage(txt);
         if(data.id&&data.id!==socket.id&&remotePlayers.has(data.id)){
           const rp=remotePlayers.get(data.id);
           rp.bubble=txt;rp.bubbleT=6;
@@ -3146,6 +3179,7 @@ function frame(t){
       x:player.x,
       y:player.z,
       angle:player.yaw,
+      hp:hp[chr],
       inCarId:cur?cur.id:null,
       elevation:playerElevation,
       look:customLook,
@@ -3213,6 +3247,7 @@ function frame(t){
   };
 
   updateBadge();
+  refreshCombatStats();
   setTimeout(()=>connectMp(mpServerUrl),400);
 })();
 
