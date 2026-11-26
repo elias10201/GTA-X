@@ -1841,18 +1841,31 @@ function drawWeaponModel(wp,x0,y0,z0,x1,y1,z1){
     sg(px(.15),py(.15)-.02,pz(.15),px(.18),py(.18)-.12,pz(.18),.048,wood);
     sg(px(.8),py(.8),pz(.8),px(1.12),py(1.12),pz(1.12),.04,steel);
   }else if(wp===2){
+    // Escopeta: coronha, guarda-mão, cano duplo visual e empunhadura.
     sg(px(-.28),py(-.28)-.04,pz(-.28),px(.22),py(.22),pz(.22),.075,wood);
     sg(px(.18),py(.18)+.01,pz(.18),x1,y1,z1,.065,steel);
     sg(px(.48),py(.48)-.03,pz(.48),px(.76),py(.76)-.03,pz(.76),.072,wood);
+    sg(px(.48),py(.48)+.055,pz(.48),px(1.02),py(1.02)+.055,pz(1.02),.025,0xffaeb8c2);
+    sg(px(.48),py(.48)-.055,pz(.48),px(1.02),py(1.02)-.055,pz(1.02),.025,0xffaeb8c2);
+    sg(px(.31),py(.31)-.02,pz(.31),px(.37),py(.37)-.16,pz(.37),.047,gn);
   }else if(wp===3){
+    // Fuzil: corpo central, carregador, mira superior e cano.
     sg(px(-.3),py(-.3)-.03,pz(-.3),px(.15),py(.15),pz(.15),.075,wood);
     sg(px(.1),py(.1),pz(.1),px(.75),py(.75),pz(.75),.078,gn);
     sg(px(.42),py(.42)-.03,pz(.42),px(.52),py(.52)-.21,pz(.52)+.04,.048,steel);
     sg(px(.72),py(.72),pz(.72),px(1.12),py(1.12),pz(1.12),.042,steel);
+    sg(px(.40),py(.40)-.04,pz(.40),px(.46),py(.46)-.25,pz(.46),.035,0xff252b32);
+    sg(px(.34),py(.34)+.09,pz(.34),px(.57),py(.57)+.09,pz(.57),.026,0xff8d99a5);
+    sg(px(.52),py(.52)+.08,pz(.52),px(.62),py(.62)+.08,pz(.62),.018,0xffc4d1dc);
   }else if(wp===4){
+    // Sniper: coronha longa, cano fino e luneta destacada.
     sg(px(-.34),py(-.34)-.03,pz(-.34),px(.45),py(.45),pz(.45),.078,wood);
     sg(px(.4),py(.4),pz(.4),px(1.18),py(1.18),pz(1.18),.04,steel);
     sg(px(.22),py(.22)+.075,pz(.22),px(.58),py(.58)+.075,pz(.58),.052,0xff12151a);
+    sg(px(.25),py(.25)+.15,pz(.25),px(.65),py(.65)+.15,pz(.65),.052,0xff202a34);
+    sg(px(.29),py(.29)+.15,pz(.29),px(.29),py(.29)+.23,pz(.29),.06,0xff9eabb7);
+    sg(px(.62),py(.62)+.15,pz(.62),px(.62),py(.62)+.23,pz(.62),.06,0xff9eabb7);
+    sg(px(.48),py(.48)-.04,pz(.48),px(.54),py(.54)-.22,pz(.54),.027,0xff252b32);
   }
 }
 
@@ -1911,8 +1924,9 @@ function person(x,z,yaw,tc,sk,seed,height,pose,wp,ph,amp,r,aim,ci,jy,jv,role,pun
     }else if(isHeavyWeapon){
       const bobY=sin(4*PI*u0)*(.025+.03*r)*am;
       const swayZ=cos(2*PI*u0)*(.03+.03*r)*am;
-      const rHandX=tx2+.13,rHandY=sy-.22+bobY,rHandZ=zs+.26+swayZ;
-      const lHandX=tx2-.13,lHandY=sy-.14+bobY,lHandZ=zs+.36+swayZ;
+      const runBob=cl(r,0,1)*.018;
+      const rHandX=tx2+.13,rHandY=sy-.22+bobY-runBob,rHandZ=zs+.26+swayZ;
+      const lHandX=tx2-.13,lHandY=sy-.14+bobY-runBob,lHandZ=zs+.36+swayZ;
       arm(1,tx2+.24,sy-.24,zs+.08,rHandX,rHandY,rHandZ);
       arm(-1,tx2-.22,sy-.20,zs+.16,lHandX,lHandY,lHandZ);
       const dirX=lHandX-rHandX,dirY=lHandY-rHandY,dirZ=lHandZ-rHandZ;
@@ -2631,7 +2645,7 @@ function render(){
 
   // Veículos e Personagem renderizados direto em gMain (100% nítidos!)
   const actorItems=[];
-  cars.forEach(q=>{if((q.x-cx)**2+(q.z-cz)**2<22500)actorItems.push({depth:cameraDepth(q.x,q.z,(q.altitude||0)+.8),fn:()=>car(q)})});
+  cars.forEach(q=>{if((q.x-cx)**2+(q.z-cz)**2<22500){const flying=q.type===8&&(Number(q.altitude)||0)>35;if(flying||hasSceneLineOfSight(q.x,q.z))actorItems.push({depth:cameraDepth(q.x,q.z,(q.altitude||0)+.8),fn:()=>car(q)})}});
   const drawCurrentPlayer=()=>person(player.x,player.z,player.yaw,SHIRT_PAL[customLook.shirt],SKIN[customLook.skin],1,1.75,sitBlend,(sitting||sitBlend>.1)?-1:weapon,pph,sitting?0:pamp,
     cl((Math.hypot(vx,vz)-3.6)/2.8,0,1),(held.fire||keyFire||shootT>.06)?1:0,ca,jy,jv,'player',punchT,playerElevation+groundLift,customLook);
   if(!cur&&!passengerCar&&playerElevation<=0){
@@ -2652,8 +2666,8 @@ function render(){
     const localColor=localOwner?`hsl(${(localHue+35)%360},100%,68%)`:localVip?`hsl(${(localHue+260)%360},95%,72%)`:localRainbow?`hsl(${localHue},100%,65%)`:NAME_PALETTE[localNameColor]||'#ffffff';
     const localX=cur&&Number.isFinite(cur.x)?cur.x:player.x;
     const localZ=cur&&Number.isFinite(cur.z)?cur.z:player.z;
-    if(localOwner||localVerified||localVip)drawIdentityAura(localX,localZ,localOwner?'owner':localVerified?'verified':'vip');
-    const localHeight=(cur||passengerCar)?2.85:2.15;
+    if(localOwner||localVerified||localVip){const auraPoint=project(localX,playerElevation+.08,localZ);if(auraPoint){const hue=(performance.now()/12+(localOwner?0:localVerified?130:245))%360;g.save();g.translate(auraPoint[0],auraPoint[1]);g.scale(1,.42);g.strokeStyle=`hsla(${hue},100%,67%,.82)`;g.shadowColor=`hsl(${hue},100%,60%)`;g.shadowBlur=localOwner?18:12;g.lineWidth=localOwner?3:2;g.beginPath();g.ellipse(0,0,Math.max(10,auraPoint[3]*(localOwner?1.05:.82)),Math.max(5,auraPoint[3]*(localOwner?.52:.4)),0,0,Math.PI*2);g.stroke();g.restore();}}
+    const localHeight=(cur||passengerCar)?2.85:2.15+playerElevation;
     drawBubbleAbove(localX,localHeight,localNick,myBubbleT>0?myBubbleText:'',localZ,localColor,localOwner,localOwner?'DONO':localVerified?'VERIFICADO':localVip?'VIP':'');
   }else if(myBubbleT>0&&myBubbleText){
     drawBubbleAbove(player.x,(cur||passengerCar)?2.6:2.25,'',myBubbleText,player.z);
