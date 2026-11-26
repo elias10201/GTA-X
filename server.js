@@ -140,6 +140,59 @@ function safeZoneAt(x, z, elevation=0) {
   return false;
 }
 
+
+function botNearestCityCell(ix, iz) {
+  let best = CITY_CENTERS[0], d2 = Infinity;
+  for (const c of CITY_CENTERS) { const d=(ix-c.ix)**2+(iz-c.iz)**2; if(d<d2){d2=d;best=c;} }
+  return { city:best, distance:Math.sqrt(d2) };
+}
+function botIsAirportLot(ix, iz) { return Math.abs(ix-14)<=3 && Math.abs(iz-13)<=2; }
+function botZone(ix, iz) { if(botIsAirportLot(ix,iz))return 1;const q=botNearestCityCell(ix,iz);return q.distance<=q.city.r?0:1; }
+function botIsCoastalPlazaLot(ix, iz) {
+  if(botZone(ix,iz)!==1||botIsAirportLot(ix,iz))return false;
+  const q=botNearestCityCell(ix,iz);return q.distance>q.city.r&&q.distance<=q.city.r+8&&hashCell(ix+271,iz-91)%131===0;
+}
+function botIsHouseLot(ix, iz) {
+  if(botZone(ix,iz)!==1||botIsAirportLot(ix,iz)||botIsCoastalPlazaLot(ix,iz)||hashCell(ix+83,iz-47)%100>=20)return false;
+  const q=botNearestCityCell(ix,iz);return q.distance<=q.city.r+8;
+}
+function botSolid(x,z) {
+  if(Math.abs(x-AIRPORT_X)<158&&Math.abs(z-AIRPORT_Z)<18)return false;
+  const ix0=Math.round(x/P),iz0=Math.round(z/P);
+  for(let di=-1;di<=1;di++)for(let dj=-1;dj<=1;dj++){
+    const ix=ix0+di,iz=iz0+dj,zn=botZone(ix,iz);
+    const tower=(ix===1&&iz===-1)||(ix===2&&iz===-1);
+    if(tower&&Math.abs(x-ix*P)<15.6&&Math.abs(z-iz*P)<15.6)return true;
+    if(zn===0&&hashCell(ix,iz)%6!==0&&Math.abs(x-ix*P)<15.6&&Math.abs(z-iz*P)<15.6)return true;
+    if(zn===0){const px=ix*P+17.5,pz=iz*P+17.5;if(Math.hypot(x-px,z-pz)<.95)return true;}
+    if(zn===1&&botIsHouseLot(ix,iz)&&Math.abs(x-ix*P)<11.2&&Math.abs(z-iz*P)<10.2)return true;
+  }
+  return false;
+}
+function botCarBlocked(x,z,room) {
+  if(!room||!Array.isArray(room.cars))return false;
+  for(const car of room.cars){
+    if(!car)continue;
+    if(car.type===8&&(Number(car.altitude)||0)>1.6)continue;
+    const dx=x-car.x,dz=z-car.y,a=Number(car.angle)||0,ca=Math.cos(a),sa=Math.sin(a);
+    const lx=dx*ca-dz*sa,lz=dx*sa+dz*ca;
+    // Área aproximada da carroceria, com margem para o corpo do bot.
+    const halfWidth=(car.type===8?1.7:1.55)+.72;
+    const halfLength=(car.type===8?3.4:3.0)+.72;
+    if(Math.abs(lx)<halfWidth&&Math.abs(lz)<halfLength)return true;
+  }
+  return false;
+}
+function botPositionBlocked(x,z,room) {
+  const r=.72;
+  return botSolid(x,z)||botSolid(x-r,z)||botSolid(x+r,z)||botSolid(x,z-r)||botSolid(x,z+r)||botCarBlocked(x,z,room);
+}
+function botHasLineOfSight(ax,az,bx,bz) {
+  const dx=bx-ax,dz=bz-az,dist=Math.hypot(dx,dz),steps=Math.min(36,Math.ceil(dist/3));
+  for(let i=1;i<steps;i++){const t=i/steps;if(botSolid(ax+dx*t,az+dz*t))return false;}
+  return true;
+}
+
 function createInitialCars() {
   const cars = [
     { id: 'carro_1', x: 24, y: 50, angle: 0, speed: 0, driverId: null },
@@ -162,8 +215,13 @@ function createBot(roomId, index) {
   const radius = Math.max(2, city.r - 2) * P;
   const home = { x: city.ix * P + 32, z: city.iz * P + 32, radius };
   const spawnRadius = radius * (0.28 + ((index * 7) % 5) * 0.075);
-  const x = home.x + Math.cos(angle) * spawnRadius;
-  const z = home.z + Math.sin(angle) * spawnRadius;
+  let x = home.x + Math.cos(angle) * spawnRadius;
+  let z = home.z + Math.sin(angle) * spawnRadius;
+  if(botPositionBlocked(x,z)){
+    let found=false;
+    for(let n=0;n<24;n++){const a=angle+n*2.399963229728653,r=spawnRadius+(n%4)*P*.35;const tx=home.x+Math.cos(a)*r,tz=home.z+Math.sin(a)*r;if(!botPositionBlocked(tx,tz)){x=tx;z=tz;found=true;break;}}
+    if(!found){x=home.x;z=home.z;}
+  }
   const goalAngle = angle + 1.7, goalRadius = radius * (0.2 + Math.random() * 0.45);
   return { id, name: BOT_NAMES[index%BOT_NAMES.length], x, y:z, angle:Math.random()*Math.PI*2, inCarId:null, seatRole:'foot', elevation:0,
     look:{skin:index%5,shirt:index%8,pant:index%6,hair:index%6}, weapon:index%5, hp:200, deaths:0, kills:0, safeZone:safeZoneAt(x,z), verified:false, isBot:true,
@@ -217,6 +275,14 @@ function botReply(bot, sender, text) {
 }
 function botThink(roomId, bot, room, now) {
   if(!room.botsEnabled || bot.active===false)return;
+  if(bot.hp<=0){
+    if(!bot.respawnAt)bot.respawnAt=now+2200;
+    if(now<bot.respawnAt)return;
+    const home=bot.home||{x:32,z:32,radius:180};let placed=false;
+    for(let i=0;i<20;i++){const a=Math.random()*Math.PI*2,r=12+Math.random()*Math.min(55,home.radius*.35),x=home.x+Math.cos(a)*r,z=home.z+Math.sin(a)*r;if(!botPositionBlocked(x,z,room)){bot.x=x;bot.y=z;placed=true;break;}}
+    if(!placed){bot.x=home.x;bot.y=home.z;}
+    bot.hp=200;bot.respawnAt=0;bot.combatTarget=null;bot.goal={x:home.x,z:home.z,until:now+4000};botBroadcastMove(roomId,bot);
+  }
   if(bot.weapon<0&&bot.memory.previousWeapon!==undefined&&now>(bot.memory.noHostilityExpiry||0)){bot.weapon=bot.memory.previousWeapon;delete bot.memory.previousWeapon;}
 
   // Decisões de IA em intervalo estável; movimento físico continua em passos curtos.
@@ -274,7 +340,18 @@ function botThink(roomId, bot, room, now) {
   const response=Math.min(1,dt*7.5);
   bot.vx=(Number(bot.vx)||0)+(desiredX-(Number(bot.vx)||0))*response;
   bot.vy=(Number(bot.vy)||0)+(desiredY-(Number(bot.vy)||0))*response;
-  if(Math.hypot(bot.vx,bot.vy)>.08){bot.x+=bot.vx*dt;bot.y+=bot.vy*dt;bot.angle=Math.atan2(bot.vx,bot.vy);}
+  if(Math.hypot(bot.vx,bot.vy)>.08){
+    const nx=bot.x+bot.vx*dt,nz=bot.y+bot.vy*dt;
+    let moved=false;
+    if(!botPositionBlocked(nx,bot.y,room)){bot.x=nx;moved=true;}else{bot.vx=0;}
+    if(!botPositionBlocked(bot.x,nz,room)){bot.y=nz;moved=true;}else{bot.vy=0;}
+    if(moved)bot.angle=Math.atan2(bot.vx,bot.vy);
+    if(!moved||(!bot.vx&&!bot.vy)){
+      const home=bot.home||{x:32,z:32,radius:300};let found=false;
+      for(let tries=0;tries<10;tries++){const a=Math.random()*Math.PI*2,r=Math.random()*home.radius*.65,gx=home.x+Math.cos(a)*r,gz=home.z+Math.sin(a)*r;if(!botPositionBlocked(gx,gz,room)){bot.goal={x:gx,z:gz,until:now+5000+Math.random()*7000};found=true;break;}}
+      if(!found)bot.goal.until=now+1200;
+    }
+  }
   bot.safeZone=safeZoneAt(bot.x,bot.y,bot.elevation);
   bot.hp=Math.max(0,Math.min(200,bot.hp));
   if(now-(bot.lastBroadcast||0)>=80){bot.lastBroadcast=now;botBroadcastMove(roomId,bot);}
@@ -286,10 +363,25 @@ function botSocialThink(roomId,room,bot,now){
 }
 function botThinkCombatBots(roomId, room, bot, now) {
   if(safeZoneAt(bot.x,bot.y,bot.elevation))return;
-  const others=room.bots.filter(o=>o!==bot&&o.active!==false&&!safeZoneAt(o.x,o.y,o.elevation));
-  const rival=others.filter(o=>Math.hypot(o.x-bot.x,o.y-bot.y)<30).sort((a,b)=>Math.hypot(a.x-bot.x,a.y-bot.y)-Math.hypot(b.x-bot.x,b.y-bot.y))[0];
-  if(rival&&Math.random()<.22){rival.hp=Math.max(0,rival.hp-10);io.to('srv_'+roomId).emit('player:damaged',{targetId:rival.id,attackerId:bot.id,attackerName:bot.name,dmg:10,hp:rival.hp,damageSource:'bot'});if(rival.hp<=0){rival.hp=200;rival.deaths=(rival.deaths||0)+1;bot.kills=(bot.kills||0)+1;io.to('srv_'+roomId).emit('player:eliminated',{targetId:rival.id,attackerId:bot.id,attackerName:bot.name,targetName:rival.name});botSay(roomId,bot,`Foi mal, ${rival.name}. Foi uma briga boba.`);}}
+  let rival=room.bots.filter(o=>o!==bot&&o.active!==false&&o.hp>0&&!safeZoneAt(o.x,o.y,o.elevation))
+    .map(o=>({o,d:Math.hypot(o.x-bot.x,o.y-bot.y)}))
+    .filter(v=>v.d<38&&botHasLineOfSight(bot.x,bot.y,v.o.x,v.o.y))
+    .sort((a,b)=>a.d-b.d)[0];
+  if(!rival)return;
+  if(now-(bot.lastRivalAttack||0)<1500)return;
+  bot.lastRivalAttack=now;
+  const target=rival.o,damage=24+Math.floor(Math.random()*13);
+  target.hp=Math.max(0,(Number(target.hp)||200)-damage);
+  io.to('srv_'+roomId).emit('player:damaged',{targetId:target.id,attackerId:bot.id,attackerName:bot.name,dmg:damage,hp:target.hp,damageSource:'bot'});
+  if(target.hp<=0){
+    target.deaths=(target.deaths||0)+1;bot.kills=(bot.kills||0)+1;
+    io.to('srv_'+roomId).emit('player:eliminated',{targetId:target.id,attackerId:bot.id,attackerName:bot.name,targetName:target.name});
+    botSay(roomId,bot,`${target.name} foi eliminado!`);
+    target.respawnAt=now+2200;
+    botBroadcastMove(roomId,target);
+  }
 }
+
 function botsApplyCount(room) {
   room.bots.forEach((b,i)=>{b.active=i<room.botTargetCount;});
   room.botsEnabled=room.botTargetCount>0;
