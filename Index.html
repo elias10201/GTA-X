@@ -2622,9 +2622,9 @@ function render(){
     const localColor=localOwner?`hsl(${(localHue+35)%360},100%,68%)`:localVerified?`hsl(${(localHue+175)%360},95%,70%)`:localVip?`hsl(${(localHue+260)%360},95%,72%)`:localRainbow?`hsl(${localHue},100%,65%)`:NAME_PALETTE[localNameColor]||'#ffffff';
     const localX=cur&&Number.isFinite(cur.x)?cur.x:player.x;
     const localZ=cur&&Number.isFinite(cur.z)?cur.z:player.z;
-    if(localOwner||verifiedSelf||vipSelf)drawIdentityAura(localX,localZ,localOwner?'owner':verifiedSelf?'verified':'vip');
+    if(localOwner||localVerified||localVip)drawIdentityAura(localX,localZ,localOwner?'owner':localVerified?'verified':'vip');
     const localHeight=(cur||passengerCar)?2.85:2.15;
-    drawBubbleAbove(localX,localHeight,localOwner?'✦ DONO '+localNick:verifiedSelf?'✧ '+localNick:vipSelf?'◆ VIP '+localNick:localNick,myBubbleT>0?myBubbleText:'',localZ,localColor,localOwner,localOwner?'DONO':verifiedSelf?'VERIFICADO':vipSelf?'VIP':'');
+    drawBubbleAbove(localX,localHeight,localOwner?'✦ DONO '+localNick:localVerified?'✧ '+localNick:localVip?'◆ VIP '+localNick:localNick,myBubbleT>0?myBubbleText:'',localZ,localColor,localOwner,localOwner?'DONO':localVerified?'VERIFICADO':localVip?'VIP':'');
   }else if(myBubbleT>0&&myBubbleText){
     drawBubbleAbove(player.x,(cur||passengerCar)?2.6:2.25,'',myBubbleText,player.z);
   }
