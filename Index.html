@@ -14,7 +14,7 @@ canvas{display:block;width:100vw;height:100vh}
 #mission{position:absolute;left:50%;top:3%;transform:translateX(-50%);font-size:clamp(11px,1.6vw,17px);background:#10151acc;padding:8px 13px;border-radius:8px;white-space:nowrap;max-width:42vw;overflow:hidden;text-overflow:ellipsis}
 #safeZoneBadge{display:none;position:absolute;left:50%;top:9.5%;transform:translateX(-50%);background:rgba(24,122,62,0.92);border:1px solid #80e27e;color:#e8fff0;padding:4px 12px;border-radius:99px;font-size:11px;font-weight:bold;letter-spacing:1px}
 #clock{position:absolute;right:calc(2% + 46px);top:3%;font-weight:bold;font-size:clamp(12px,1.8vw,17px)}
-#stars{position:absolute;top:8.5%;left:50%;transform:translateX(-50%);color:#ffd600;letter-spacing:5px;font-size:clamp(14px,2vw,20px)}
+#stars{display:none!important}
 #health{position:absolute;bottom:3%;left:50%;transform:translateX(-50%);width:min(32vw,280px);height:13px;border:1px solid #fff;border-radius:9px;background:#222;overflow:hidden}
 #hp{height:100%;background:#55cf65;width:100%;transition:width .12s}
 #msg{position:absolute;left:50%;top:17%;transform:translateX(-50%);font-weight:bold;color:#ffe082;text-align:center;font-size:clamp(12px,1.8vw,18px);max-width:75vw}
@@ -289,15 +289,15 @@ canvas{display:block;width:100vw;height:100vh}
   <button id="chatOpenBtn" class="mp-pill" type="button">💬 CHAT</button>
   <button id="botVoiceToggle" class="mp-pill" type="button">🔊 VOZ IA: OFF</button>
   <span id="mpCountBadge" class="mp-pill" style="cursor:default">1 PLAYER</span>
-  <button id="ownerAnnounceBtn" class="mp-pill" type="button" style="display:none;border-color:#39dfff;color:#bffaff">✦ ANÚNCIO</button><button id="ownerPanelBtn" class="mp-pill" type="button" style="display:none;border-color:#ffd76a;color:#fff0b2">✧ PAINEL DONO</button><button id="rankingOpenBtn" class="mp-pill" type="button">🏆 RANKING</button><button id="myProfileBtn" class="mp-pill" type="button">👤 MEU PERFIL</button>
+  <button id="ownerPanelBtn" class="mp-pill" type="button" style="display:none;border-color:#ffd76a;color:#fff0b2">✧ PAINEL DONO</button><button id="rankingOpenBtn" class="mp-pill" type="button">🏆 RANKING</button><button id="myProfileBtn" class="mp-pill" type="button">👤 MEU PERFIL</button>
 </div>
 
 <div id="announcementToast" aria-live="polite"></div><style>#announcementToast{display:none;position:fixed;left:50%;top:15%;transform:translateX(-50%);z-index:110;width:min(92vw,560px);padding:13px 18px;border:1px solid #ffe28a;border-radius:13px;background:linear-gradient(110deg,#101a2af5,#25133af5);color:#fff;text-align:center;font-weight:900;letter-spacing:.4px;box-shadow:0 0 18px #ffcf5a99,0 12px 35px #000b;text-shadow:0 2px 4px #000;animation:announceIn .25s ease-out}#announcementToast b{display:block;color:#ffe28a;font-size:10px;letter-spacing:2px;margin-bottom:4px}@keyframes announceIn{from{opacity:0;transform:translate(-50%,-10px)}to{opacity:1;transform:translate(-50%,0)}}</style>
-<div id="ownerPanelModal" class="dx-panel-modal"><div class="dx-panel-card"><div class="dx-panel-head"><b>✦ CENTRAL DO DONO</b><button type="button" id="ownerPanelClose">FECHAR ✕</button></div><div class="dx-panel-scroll"><section><h3>📢 Anúncio global</h3><textarea id="ownerAnnounceInput" maxlength="180" placeholder="Escreva um aviso para todos os jogadores..."></textarea><button id="ownerAnnounceSend">ENVIAR PARA TODOS</button></section><section><h3>👤 Jogador / perfil</h3><input id="ownerTargetId" maxlength="12" placeholder="ID DX-000000"><div class="dx-panel-actions"><button id="ownerLookup">VER PERFIL</button><button id="ownerVerify">DAR / RETIRAR VERIFICADO</button><button id="ownerVip">DAR / RETIRAR VIP</button><button id="ownerPull">PUXAR ATÉ MIM</button></div><div id="ownerProfileResult" class="dx-panel-result">Digite um ID para consultar o perfil.</div></section><section><h3>🛡️ Proteção e velocidade</h3><div class="dx-panel-actions"><button id="ownerInvulnerable">INVULNERABILIDADE: OFF</button><button id="ownerSpeed">VELOCIDADE +30%: OFF</button></div></section><section><h3>🤖 Controle de bots</h3><label>Servidor <select id="ownerBotRoom"><option value="1">Servidor 1</option><option value="2">Servidor 2</option></select></label><label>Quantidade <input id="ownerBotAmount" type="number" min="0" max="30" value="1"></label><div class="dx-panel-actions"><button id="ownerBotAdd">ADICIONAR</button><button id="ownerBotRemove">RETIRAR</button><button id="ownerBotSet">DEFINIR TOTAL</button></div><div id="ownerBotStatus" class="dx-panel-result"></div></section></div></div></div>
+<div id="ownerPanelModal" class="dx-panel-modal"><div class="dx-panel-card"><div class="dx-panel-head"><b>✦ CENTRAL DO DONO</b><button type="button" id="ownerPanelClose">FECHAR ✕</button></div><div class="dx-panel-scroll"><section><h3>📢 Anúncio global</h3><textarea id="ownerAnnounceInput" maxlength="180" placeholder="Escreva um aviso para todos os jogadores..."></textarea><button id="ownerAnnounceSend">ENVIAR PARA TODOS</button></section><section><h3>👥 Jogadores e bots online</h3><p style="font-size:11px;color:#b9dce9;margin:0 0 7px">Lista do servidor em que você está conectado. Toque em um jogador para selecionar o ID.</p><button id="ownerRefreshPlayers" type="button">↻ ATUALIZAR LISTA</button><div id="ownerPlayerList" class="dx-owner-player-list"><div class="dx-panel-result">Abra o painel e atualize a lista.</div></div></section><section><h3>👤 Jogador / perfil</h3><input id="ownerTargetId" maxlength="12" placeholder="ID DX-000000"><div class="dx-panel-actions"><button id="ownerLookup">VER PERFIL</button><button id="ownerVerify">DAR / RETIRAR VERIFICADO</button><button id="ownerVip">DAR / RETIRAR VIP</button><button id="ownerPull">PUXAR ATÉ MIM</button></div><div id="ownerProfileResult" class="dx-panel-result">Selecione um jogador da lista ou digite um ID.</div></section><section><h3>🛡️ Proteção e velocidade</h3><div class="dx-panel-actions"><button id="ownerInvulnerable">INVULNERABILIDADE: OFF</button><button id="ownerSpeed">VELOCIDADE +30%: OFF</button></div></section><section><h3>🤖 Controle de bots</h3><label>Servidor <select id="ownerBotRoom"><option value="1">Servidor 1</option><option value="2">Servidor 2</option></select></label><label>Quantidade <input id="ownerBotAmount" type="number" min="0" max="30" value="1"></label><div class="dx-panel-actions"><button id="ownerBotAdd">ADICIONAR</button><button id="ownerBotRemove">RETIRAR</button><button id="ownerBotSet">DEFINIR TOTAL</button></div><div id="ownerBotStatus" class="dx-panel-result"></div></section></div></div></div>
 <div id="playerProfileModal" class="dx-panel-modal"><div class="dx-panel-card"><div class="dx-panel-head"><b>👤 PERFIL DO JOGADOR</b><button type="button" id="playerProfileClose">FECHAR ✕</button></div><div class="dx-panel-scroll"><div id="publicProfileContent" class="dx-panel-result">Carregando perfil...</div><section><h3>✍️ Minha descrição</h3><textarea id="myProfileBio" maxlength="100" placeholder="Escreva uma frase para aparecer no seu perfil..."></textarea><button id="saveProfileBio">SALVAR DESCRIÇÃO</button></section></div></div></div>
 <div id="rankingModal" class="dx-panel-modal"><div class="dx-panel-card"><div class="dx-panel-head"><b>🏆 RANKING DO DISTRITO X</b><button type="button" id="rankingClose">FECHAR ✕</button></div><div class="dx-panel-scroll"><div class="dx-panel-actions"><button data-rank="1">SERVIDOR 1</button><button data-rank="2">SERVIDOR 2</button><button data-rank="global">GLOBAL</button></div><div id="rankingResults" class="dx-panel-result">Carregando ranking...</div></div></div></div>
 <style>
-.dx-panel-modal{display:none;position:fixed;inset:0;z-index:95;background:#000d;align-items:center;justify-content:center;padding:12px;pointer-events:auto}.dx-panel-card{width:min(94vw,520px);max-height:90vh;background:linear-gradient(145deg,#101d2b,#080f18);border:1px solid #4edcff;border-radius:16px;box-shadow:0 0 24px #00cfff55,0 18px 50px #000;overflow:hidden;text-align:left}.dx-panel-head{display:flex;align-items:center;justify-content:space-between;padding:13px 15px;background:linear-gradient(90deg,#12324b,#21183d);color:#d9faff;border-bottom:1px solid #39dfff}.dx-panel-head button,.dx-panel-card button{border:1px solid #67dfff;background:linear-gradient(145deg,#1a4560,#122536);color:#e8fbff;border-radius:8px;padding:9px;font-weight:800}.dx-panel-scroll{padding:12px;overflow:auto;max-height:calc(90vh - 52px)}.dx-panel-scroll section{padding:10px;margin-bottom:10px;border:1px solid #294a60;border-radius:12px;background:#0c1925}.dx-panel-scroll h3{margin:0 0 9px;color:#ffe29b;font-size:14px}.dx-panel-scroll input,.dx-panel-scroll textarea,.dx-panel-scroll select{width:100%;padding:10px;margin:4px 0 8px;border:1px solid #41657a;border-radius:8px;background:#07111a;color:#fff;font:13px Arial;touch-action:auto;user-select:text}.dx-panel-scroll textarea{min-height:76px;resize:vertical}.dx-panel-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}.dx-panel-result{font-size:12px;line-height:1.5;color:#d4eefa;padding:9px;background:#07131d;border-radius:8px;margin-top:8px;white-space:pre-wrap}.dx-rank-row{padding:8px;border-bottom:1px solid #29465b}.dx-owner-tag{display:inline-block;padding:2px 7px;border:1px solid #fff;border-radius:5px;background:linear-gradient(90deg,#ffcf5a,#fff,#9d6bff);color:#15121d;font-size:9px;font-weight:1000;letter-spacing:1px;box-shadow:0 0 12px #ffe26b;animation:dxOwnerTag 1.4s ease-in-out infinite alternate}@keyframes dxOwnerTag{to{filter:hue-rotate(130deg) brightness(1.3);box-shadow:0 0 18px #65eaff}}
+.dx-panel-modal{display:none;position:fixed;inset:0;z-index:95;background:#000d;align-items:center;justify-content:center;padding:12px;pointer-events:auto}.dx-panel-card{width:min(94vw,520px);max-height:90vh;background:linear-gradient(145deg,#101d2b,#080f18);border:1px solid #4edcff;border-radius:16px;box-shadow:0 0 24px #00cfff55,0 18px 50px #000;overflow:hidden;text-align:left}.dx-panel-head{display:flex;align-items:center;justify-content:space-between;padding:13px 15px;background:linear-gradient(90deg,#12324b,#21183d);color:#d9faff;border-bottom:1px solid #39dfff}.dx-panel-head button,.dx-panel-card button{border:1px solid #67dfff;background:linear-gradient(145deg,#1a4560,#122536);color:#e8fbff;border-radius:8px;padding:9px;font-weight:800}.dx-panel-scroll{padding:12px;overflow:auto;max-height:calc(90vh - 52px)}.dx-panel-scroll section{padding:10px;margin-bottom:10px;border:1px solid #294a60;border-radius:12px;background:#0c1925}.dx-panel-scroll h3{margin:0 0 9px;color:#ffe29b;font-size:14px}.dx-panel-scroll input,.dx-panel-scroll textarea,.dx-panel-scroll select{width:100%;padding:10px;margin:4px 0 8px;border:1px solid #41657a;border-radius:8px;background:#07111a;color:#fff;font:13px Arial;touch-action:auto;user-select:text}.dx-panel-scroll textarea{min-height:76px;resize:vertical}.dx-panel-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}.dx-panel-result{font-size:12px;line-height:1.5;color:#d4eefa;padding:9px;background:#07131d;border-radius:8px;margin-top:8px;white-space:pre-wrap}.dx-rank-row{padding:8px;border-bottom:1px solid #29465b}.dx-owner-player-list{display:grid;gap:5px;margin-top:8px}.dx-owner-player-row{display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%;padding:8px;border:1px solid #31536a;border-radius:8px;background:#0a1a27;color:#eafaff;text-align:left;font-size:11px}.dx-owner-player-row small{display:block;color:#9fc7d8;margin-top:2px}.dx-owner-player-row.bot{border-color:#705a32}.dx-owner-player-row:active{filter:brightness(1.35)}.dx-owner-tag{display:inline-block;padding:2px 7px;border:1px solid #fff;border-radius:5px;background:linear-gradient(90deg,#ffcf5a,#fff,#9d6bff);color:#15121d;font-size:9px;font-weight:1000;letter-spacing:1px;box-shadow:0 0 12px #ffe26b;animation:dxOwnerTag 1.4s ease-in-out infinite alternate}@keyframes dxOwnerTag{to{filter:hue-rotate(130deg) brightness(1.3);box-shadow:0 0 18px #65eaff}}
 </style>
 <div id="mpModal">
   <div>
@@ -1343,7 +1343,7 @@ function update(dt){
   $('cash').textContent='$'+Math.floor(money);
   $('name').textContent=(window.getMpNick&&window.getMpNick())||names[chr];
   $('weaponStatus').textContent=weapon<0?'Desarmado (Punhos)':(wn[weapon]+' '+ammo[weapon]+'/'+maxAmmo[weapon]);
-  $('stars').textContent='★'.repeat(wanted)+'☆'.repeat(5-wanted);
+  const starsHud=$('stars');if(starsHud)starsHud.style.display='none';
   let hr=tod*24;
   $('clock').textContent=String(Math.floor(hr)).padStart(2,'0')+':'+String(Math.floor(hr%1*60)).padStart(2,'0')+(weather===1?' 🌧️':'');
   $('hp').style.width=cl(hp[chr]/200*100,0,100)+'%';
@@ -2955,11 +2955,37 @@ function frame(t){
   window.mpOwnerSelf=ownerSelf;window.mpOwnerSpeedBoost=ownerSpeedBoost;
   function refreshCombatStats(){const el=$('combatStats');if(el)el.textContent='DANO: '+damageDealtStat+' · RECEBIDO: '+damageReceivedStat+' · KILLS: '+killsStat+' · MORTES: '+deathsStat;}
   function refreshNameColorChoices(){const sel=$('nameColorSelect');if(!sel)return;sel.innerHTML='';for(let i=0;i<unlockedNameColors;i++){const op=document.createElement('option');op.value=String(i);op.textContent='Cor '+(i+1)+(i===selectedNameColor?' · selecionada':'');op.style.color=NAME_PALETTE[i];sel.appendChild(op)}sel.value=String(Math.min(selectedNameColor,unlockedNameColors-1));sel.style.display=mpConnected?'inline-block':'none';}
-  function refreshOwnerControls(){const allowed=!!ownerSelf&&!!mpConnected;['ownerAnnounceBtn','ownerPanelBtn'].forEach(id=>{const b=$(id);if(b){b.style.display=allowed?'inline-block':'none';b.disabled=!allowed;}});const modal=$('ownerPanelModal');if(modal){modal.setAttribute('aria-hidden',allowed?'false':'true');if(!allowed)modal.style.display='none';}}
-  const openOwnerPanel=()=>{if(!ownerSelf||!mpConnected){const m=$('ownerPanelModal');if(m)m.style.display='none';return;}const m=$('ownerPanelModal');if(m){m.setAttribute('aria-hidden','false');m.style.display='flex';}};
-  const ownerAnnounceBtn=$('ownerAnnounceBtn');if(ownerAnnounceBtn)ownerAnnounceBtn.onclick=openOwnerPanel;
+  function refreshOwnerControls(){const allowed=!!ownerSelf&&!!mpConnected;['ownerPanelBtn'].forEach(id=>{const b=$(id);if(b){b.style.display=allowed?'inline-block':'none';b.disabled=!allowed;}});const modal=$('ownerPanelModal');if(modal){modal.setAttribute('aria-hidden',allowed?'false':'true');if(!allowed)modal.style.display='none';}}
+  const openOwnerPanel=()=>{if(!ownerSelf||!mpConnected){const m=$('ownerPanelModal');if(m)m.style.display='none';return;}const m=$('ownerPanelModal');if(m){m.setAttribute('aria-hidden','false');m.style.display='flex';}refreshOwnerPlayerList();};
   if($('ownerPanelBtn'))$('ownerPanelBtn').onclick=openOwnerPanel;if($('ownerPanelClose'))$('ownerPanelClose').onclick=()=>{$('ownerPanelModal').style.display='none';$('ownerPanelModal').setAttribute('aria-hidden','true');};
   function ownerEmit(event,payload={}){if(!ownerSelf||!window.mpSocket||!window.mpSocket.connected){say('Painel disponível somente para o dono conectado.');return;}window.mpSocket.emit(event,payload);}
+  function refreshOwnerPlayerList(){
+    const box=$('ownerPlayerList');if(!box)return;
+    if(!ownerSelf||!mpConnected){box.textContent='Painel disponível somente para o dono.';return;}
+    const rows=[{id:'self',playerId:permanentPlayerId,name:mpNick||'Você',kills:killsStat||0,isBot:false,verified:verifiedSelf,owner:true,self:true}];
+    remotePlayers.forEach(rp=>{if(!rp)return;rows.push({id:rp.id,playerId:rp.playerId||'',name:rp.name||'Jogador',kills:Number(rp.kills)||0,isBot:!!rp.isBot,verified:!!rp.verified,owner:!!rp.owner});});
+    rows.sort((a,b)=>(a.isBot-b.isBot)||a.name.localeCompare(b.name,'pt-BR'));
+    box.replaceChildren();
+    const humans=rows.filter(r=>!r.isBot).length,bots=rows.filter(r=>r.isBot).length;
+    const summary=document.createElement('div');summary.className='dx-panel-result';summary.textContent=`${humans} jogador(es) · ${bots} bot(s) · ${rows.length} no total`;box.appendChild(summary);
+    rows.forEach(r=>{
+      const btn=document.createElement('button');btn.type='button';btn.className='dx-owner-player-row'+(r.isBot?' bot':'');
+      const left=document.createElement('span');left.textContent=(r.isBot?'🤖 ':'👤 ')+r.name+(r.self?' (VOCÊ)':'');
+      const sub=document.createElement('small');sub.textContent=(r.isBot?'BOT':(r.playerId||'ID indisponível'))+(r.verified?' · ✓ VERIFICADO':'')+(r.owner?' · DONO':'');left.appendChild(sub);
+      const right=document.createElement('b');right.textContent='⚔ '+r.kills+' kills';btn.append(left,right);
+      btn.addEventListener('click',()=>{
+        if(r.isBot||!r.playerId){const result=$('ownerProfileResult');if(result)result.textContent=`${r.name} · BOT
+Kills: ${r.kills}
+Bots não possuem ID permanente e não recebem verificado.`;return;}
+        const input=$('ownerTargetId');if(input)input.value=r.playerId;
+        const result=$('ownerProfileResult');if(result)result.textContent=`Jogador selecionado: ${r.name} · ${r.playerId}
+Kills na lista: ${r.kills}
+Toque em VER PERFIL para consultar os dados completos.`;
+      });
+      box.appendChild(btn);
+    });
+  }
+  if($('ownerRefreshPlayers'))$('ownerRefreshPlayers').onclick=refreshOwnerPlayerList;
   if($('ownerAnnounceSend'))$('ownerAnnounceSend').onclick=()=>{const text=$('ownerAnnounceInput').value.trim();if(text){ownerEmit('owner:announce',{text});$('ownerAnnounceInput').value='';}};
   if($('ownerLookup'))$('ownerLookup').onclick=()=>ownerEmit('owner:panel:profile',{playerId:$('ownerTargetId').value.trim()});if($('ownerVerify'))$('ownerVerify').onclick=()=>ownerEmit('owner:panel:toggle-verify',{playerId:$('ownerTargetId').value.trim()});if($('ownerVip'))$('ownerVip').onclick=()=>ownerEmit('owner:panel:toggle-vip',{playerId:$('ownerTargetId').value.trim()});if($('ownerPull'))$('ownerPull').onclick=()=>ownerEmit('owner:panel:pull',{playerId:$('ownerTargetId').value.trim()});
   if($('ownerInvulnerable'))$('ownerInvulnerable').onclick=()=>ownerEmit('owner:panel:invulnerable',{enabled:!ownerInvulnerable});if($('ownerSpeed'))$('ownerSpeed').onclick=()=>ownerEmit('owner:panel:speed',{enabled:!ownerSpeedBoost});
@@ -3189,19 +3215,21 @@ function frame(t){
           updateBadge();
         }
         const curVis=window.remoteRenderState?window.remoteRenderState(rp,nowT):{x:rp.x,z:rp.z,yaw:rp.yaw};
-        const rawDt=(nowT-(rp.lastNetAt||nowT))/1000;
-        const netDt=cl(rawDt>0.01?rawDt:0.09,0.03,0.28);
-        rp.prevX=curVis.x;
-        rp.prevZ=curVis.z;
-        rp.prevYaw=curVis.yaw;
-        rp.vx=cl((nx-curVis.x)/netDt,-18,18);
-        rp.vz=cl((nz-curVis.z)/netDt,-18,18);
-        rp.targetX=nx;
-        rp.targetZ=nz;
-        rp.targetYaw=nyaw;
-        rp.lastNetAt=nowT;
-        rp.netInterval=netDt*1000;
         const dist=Math.hypot(nx-curVis.x,nz-curVis.z);
+        // Guarda posições recebidas para renderizar com atraso fixo e sem extrapolação agressiva.
+        if(!Array.isArray(rp.snapshots)||!rp.snapshots.length){
+          rp.snapshots=[{t:nowT-90,x:Number(rp.x)||nx,z:Number(rp.z)||nz,yaw:Number(rp.yaw)||nyaw}];
+        }
+        const lastSnap=rp.snapshots[rp.snapshots.length-1];
+        const snapGap=nowT-(lastSnap&&lastSnap.t||nowT);
+        const snapJump=lastSnap?Math.hypot(nx-lastSnap.x,nz-lastSnap.z):0;
+        if(!lastSnap||snapJump>45||snapGap>1200){
+          rp.snapshots=[{t:nowT,x:nx,z:nz,yaw:nyaw}];
+        }else{
+          rp.snapshots.push({t:nowT,x:nx,z:nz,yaw:nyaw});
+          if(rp.snapshots.length>12)rp.snapshots.splice(0,rp.snapshots.length-12);
+        }
+        rp.lastNetAt=nowT;
         rp.x=nx;rp.z=nz;rp.yaw=nyaw;
         if(p.name)rp.name=p.name;
         if(p.playerId)rp.playerId=p.playerId;
@@ -3304,9 +3332,9 @@ function frame(t){
         const txt=String(data.text||'').slice(0,120);
         if(!txt)return;
         appendChatLine(author,txt);
+        if(data.id&&window.mpSocket&&data.id===window.mpSocket.id){myBubbleText=txt;myBubbleT=4.5;}
+        else if(data.id&&remotePlayers.has(data.id)){const speaker=remotePlayers.get(data.id);speaker.bubble=txt;speaker.bubbleT=4.5;}
         if(data.isBot)speakBotMessage(txt);
-        // Mensagens do chat aparecem somente dentro da janela do chat,
-        // nunca como balões flutuando sobre os personagens.
       });
     }catch(err){
       mpConnected=false;mpConnecting=false;
@@ -3317,19 +3345,22 @@ function frame(t){
 
   window.remoteRenderState=function(rp,nowT){
     if(!rp)return {x:0,z:0,yaw:0};
-    const t0=rp.lastNetAt||nowT;
-    const span=Math.max(45,Math.min(260,rp.netInterval||90));
-    const elapsed=Math.max(0,nowT-t0);
-    const alpha=Math.min(1,elapsed/span);
-    const extra=Math.min(0.10,Math.max(0,(elapsed-span)/1000));
-    const baseX=(rp.prevX!==undefined?rp.prevX:rp.x)+((rp.targetX!==undefined?rp.targetX:rp.x)-(rp.prevX!==undefined?rp.prevX:rp.x))*alpha;
-    const baseZ=(rp.prevZ!==undefined?rp.prevZ:rp.z)+((rp.targetZ!==undefined?rp.targetZ:rp.z)-(rp.prevZ!==undefined?rp.prevZ:rp.z))*alpha;
-    const x=baseX+(rp.vx||0)*extra;
-    const z=baseZ+(rp.vz||0)*extra;
-    const y0=rp.prevYaw!==undefined?rp.prevYaw:rp.yaw;
-    const y1=rp.targetYaw!==undefined?rp.targetYaw:rp.yaw;
-    const dy=Math.atan2(sin(y1-y0),cos(y1-y0));
-    return {x,z,yaw:y0+dy*alpha};
+    const snaps=Array.isArray(rp.snapshots)?rp.snapshots:null;
+    if(!snaps||!snaps.length)return {x:Number(rp.x)||0,z:Number(rp.z)||0,yaw:Number(rp.yaw)||0};
+    // Atraso curto para garantir que exista um ponto futuro e evitar correções para trás.
+    const renderAt=nowT-120;
+    if(renderAt<=snaps[0].t)return {x:snaps[0].x,z:snaps[0].z,yaw:snaps[0].yaw};
+    for(let i=0;i<snaps.length-1;i++){
+      const a=snaps[i],b=snaps[i+1];
+      if(renderAt<=b.t){
+        const span=Math.max(1,b.t-a.t);
+        const alpha=cl((renderAt-a.t)/span,0,1);
+        const dy=Math.atan2(sin(b.yaw-a.yaw),cos(b.yaw-a.yaw));
+        return {x:a.x+(b.x-a.x)*alpha,z:a.z+(b.z-a.z)*alpha,yaw:a.yaw+dy*alpha};
+      }
+    }
+    const last=snaps[snaps.length-1];
+    return {x:last.x,z:last.z,yaw:last.yaw};
   };
 
   setInterval(()=>{
@@ -3619,7 +3650,7 @@ addEventListener('blur',()=>{keys={};resetJoy();held={up:false,brake:false,run:s
 let gfxMode=localStorage.getItem('dx_gfx_mode')||'auto';
 let hudEditorOpen=false,hudProfileMode='foot',hudSelected=null;
 const hudStoreKey='dx_hud_profiles_v1';
-const HUD_IDS=['joy','aim','fire','weapon','run','crouch','jump','carFoot','passenger','elevator','accelerate','brake','carExit','voicePTT','chatOpenBtn','mpOpenBtn','botVoiceToggle','ownerAnnounceBtn','ownerPanelBtn','rankingOpenBtn','myProfileBtn','pause','zoomIn','zoomOut'];
+const HUD_IDS=['joy','aim','fire','weapon','run','crouch','jump','carFoot','passenger','elevator','accelerate','brake','carExit','voicePTT','chatOpenBtn','mpOpenBtn','botVoiceToggle','ownerPanelBtn','rankingOpenBtn','myProfileBtn','pause','zoomIn','zoomOut'];
 let hudStore={};
 try{hudStore=JSON.parse(localStorage.getItem(hudStoreKey)||'{}')}catch(_){}
 if(!hudStore.foot)hudStore.foot={};
@@ -3637,8 +3668,8 @@ function applyGfx(mode){
 }
 
 function getHudTargetList(prof){
-  const ids=prof==='vehicle'?['joy','accelerate','brake','carExit','voicePTT','chatOpenBtn','mpOpenBtn','botVoiceToggle','ownerAnnounceBtn','ownerPanelBtn','rankingOpenBtn','myProfileBtn','pause','zoomIn','zoomOut']:['joy','aim','fire','weapon','run','crouch','jump','carFoot','passenger','elevator','voicePTT','chatOpenBtn','mpOpenBtn','botVoiceToggle','ownerAnnounceBtn','ownerPanelBtn','rankingOpenBtn','myProfileBtn','pause','zoomIn','zoomOut'];
-  return ids.filter(id=>!['ownerAnnounceBtn','ownerPanelBtn'].includes(id)||!!window.mpOwnerSelf);
+  const ids=prof==='vehicle'?['joy','accelerate','brake','carExit','voicePTT','chatOpenBtn','mpOpenBtn','botVoiceToggle','ownerPanelBtn','rankingOpenBtn','myProfileBtn','pause','zoomIn','zoomOut']:['joy','aim','fire','weapon','run','crouch','jump','carFoot','passenger','elevator','voicePTT','chatOpenBtn','mpOpenBtn','botVoiceToggle','ownerPanelBtn','rankingOpenBtn','myProfileBtn','pause','zoomIn','zoomOut'];
+  return ids.filter(id=>!['ownerPanelBtn'].includes(id)||!!window.mpOwnerSelf);
 }
 
 function applyHudProfile(prof){
