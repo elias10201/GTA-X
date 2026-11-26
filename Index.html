@@ -2925,7 +2925,7 @@ function frame(t){
     chatLog.appendChild(row);
     while(chatLog.children.length>50)chatLog.removeChild(chatLog.firstChild);
     chatLog.scrollTop=chatLog.scrollHeight;
-    setTimeout(()=>{if(row.parentNode){row.style.transition='opacity .22s ease, transform .22s ease';row.style.opacity='0';row.style.transform='translateY(-5px)';setTimeout(()=>row.remove(),240)}},20000);
+    // As mensagens ficam guardadas no histórico do painel; não desaparecem sozinhas.
   }
 
   function setMpStatus(t){if(mpStatusText)mpStatusText.textContent=t}
@@ -3211,10 +3211,8 @@ function frame(t){
         if(!txt)return;
         appendChatLine(author,txt);
         if(data.isBot)speakBotMessage(txt);
-        if(data.id&&data.id!==socket.id&&remotePlayers.has(data.id)){
-          const rp=remotePlayers.get(data.id);
-          rp.bubble=txt;rp.bubbleT=6;
-        }
+        // Mensagens do chat aparecem somente dentro da janela do chat,
+        // nunca como balões flutuando sobre os personagens.
       });
     }catch(err){
       mpConnected=false;mpConnecting=false;
@@ -3260,13 +3258,17 @@ function frame(t){
     chatBox.style.display='flex';
     if(chatInput){chatInput.value='';setTimeout(()=>chatInput.focus(),30)}
   }
-  function closeChat(){if(chatBox)chatBox.style.display='none';}
+  function closeChat(){
+    if(chatBox)chatBox.style.display='none';
+    if(chatLog)chatLog.classList.remove('chat-open');
+    const chatBtn=$('chatOpenBtn');
+    if(chatBtn)chatBtn.textContent='💬 CHAT';
+  }
   function sendChat(){
     if(!chatInput)return;
     const txt=chatInput.value.trim();
     closeChat();
     if(!txt)return;
-    myBubbleText=txt;myBubbleT=6;
     if(window.mpSocket&&window.mpSocket.connected){
       window.mpSocket.emit('chat:send',{text:txt});
     }else{
