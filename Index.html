@@ -59,7 +59,8 @@ canvas{display:block;width:100vw;height:100vh}
 .mp-pill.active{background:#1f7a3e;border-color:#80e27e}
 .mp-pill.warn{background:#8d5b0c;border-color:#ffd54f}
 
-#chatLog{position:fixed;left:2%;top:calc(2% + var(--ms) + 12px);bottom:auto;transform:none;z-index:18;pointer-events:auto;width:min(340px,38vw);max-height:min(30vh,230px);overflow-y:auto;overflow-x:hidden;display:flex;flex-direction:column;gap:5px;align-items:stretch;padding:3px 5px 3px 0;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:#25dfff88 #10151a66}
+#chatLog{position:fixed;left:2%;top:calc(2% + var(--ms) + 12px);bottom:auto;transform:none;z-index:18;pointer-events:auto;width:min(340px,38vw);max-height:min(30vh,230px);overflow-y:auto;overflow-x:hidden;display:flex;flex-direction:column;gap:5px;align-items:stretch;padding:3px 5px 3px 0;display:none;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:#25dfff88 #10151a66}
+#chatLog.chat-open{display:flex;left:auto;right:2%;top:calc(2% + var(--ms) + 12px);width:min(92vw,380px);max-height:min(42vh,320px);background:#07131df2;border:1px solid #39dfff;border-radius:12px;padding:9px;box-shadow:0 10px 28px #000b}
 #chatLog::-webkit-scrollbar{width:6px}
 #chatLog::-webkit-scrollbar-track{background:#10151a66;border-radius:8px}
 #chatLog::-webkit-scrollbar-thumb{background:#25dfff99;border-radius:8px}
@@ -256,9 +257,16 @@ canvas{display:block;width:100vw;height:100vh}
   <button id="chatOpenBtn" class="mp-pill" type="button">💬 CHAT</button>
   <button id="botVoiceToggle" class="mp-pill" type="button">🔊 VOZ IA: OFF</button>
   <span id="mpCountBadge" class="mp-pill" style="cursor:default">1 PLAYER</span>
-  <button id="ownerAnnounceBtn" class="mp-pill" type="button" style="display:none;border-color:#39dfff;color:#bffaff">✦ AVISO DO DONO</button>
+  <button id="ownerAnnounceBtn" class="mp-pill" type="button" style="display:none;border-color:#39dfff;color:#bffaff">✦ ANÚNCIO</button><button id="ownerPanelBtn" class="mp-pill" type="button" style="display:none;border-color:#ffd76a;color:#fff0b2">✧ PAINEL DONO</button><button id="rankingOpenBtn" class="mp-pill" type="button">🏆 RANKING</button><button id="myProfileBtn" class="mp-pill" type="button">👤 MEU PERFIL</button>
 </div>
 
+<div id="announcementToast" aria-live="polite"></div><style>#announcementToast{display:none;position:fixed;left:50%;top:15%;transform:translateX(-50%);z-index:110;width:min(92vw,560px);padding:13px 18px;border:1px solid #ffe28a;border-radius:13px;background:linear-gradient(110deg,#101a2af5,#25133af5);color:#fff;text-align:center;font-weight:900;letter-spacing:.4px;box-shadow:0 0 18px #ffcf5a99,0 12px 35px #000b;text-shadow:0 2px 4px #000;animation:announceIn .25s ease-out}#announcementToast b{display:block;color:#ffe28a;font-size:10px;letter-spacing:2px;margin-bottom:4px}@keyframes announceIn{from{opacity:0;transform:translate(-50%,-10px)}to{opacity:1;transform:translate(-50%,0)}}</style>
+<div id="ownerPanelModal" class="dx-panel-modal"><div class="dx-panel-card"><div class="dx-panel-head"><b>✦ CENTRAL DO DONO</b><button type="button" id="ownerPanelClose">FECHAR ✕</button></div><div class="dx-panel-scroll"><section><h3>📢 Anúncio global</h3><textarea id="ownerAnnounceInput" maxlength="180" placeholder="Escreva um aviso para todos os jogadores..."></textarea><button id="ownerAnnounceSend">ENVIAR PARA TODOS</button></section><section><h3>👤 Jogador / perfil</h3><input id="ownerTargetId" maxlength="12" placeholder="ID DX-000000"><div class="dx-panel-actions"><button id="ownerLookup">VER PERFIL</button><button id="ownerVerify">DAR / RETIRAR VERIFICADO</button><button id="ownerVip">DAR / RETIRAR VIP</button><button id="ownerPull">PUXAR ATÉ MIM</button></div><div id="ownerProfileResult" class="dx-panel-result">Digite um ID para consultar o perfil.</div></section><section><h3>🛡️ Proteção e velocidade</h3><div class="dx-panel-actions"><button id="ownerInvulnerable">INVULNERABILIDADE: OFF</button><button id="ownerSpeed">VELOCIDADE +30%: OFF</button></div></section><section><h3>🤖 Controle de bots</h3><label>Servidor <select id="ownerBotRoom"><option value="1">Servidor 1</option><option value="2">Servidor 2</option></select></label><label>Quantidade <input id="ownerBotAmount" type="number" min="0" max="30" value="1"></label><div class="dx-panel-actions"><button id="ownerBotAdd">ADICIONAR</button><button id="ownerBotRemove">RETIRAR</button><button id="ownerBotSet">DEFINIR TOTAL</button></div><div id="ownerBotStatus" class="dx-panel-result"></div></section></div></div></div>
+<div id="playerProfileModal" class="dx-panel-modal"><div class="dx-panel-card"><div class="dx-panel-head"><b>👤 PERFIL DO JOGADOR</b><button type="button" id="playerProfileClose">FECHAR ✕</button></div><div class="dx-panel-scroll"><div id="publicProfileContent" class="dx-panel-result">Carregando perfil...</div><section><h3>✍️ Minha descrição</h3><textarea id="myProfileBio" maxlength="100" placeholder="Escreva uma frase para aparecer no seu perfil..."></textarea><button id="saveProfileBio">SALVAR DESCRIÇÃO</button></section></div></div></div>
+<div id="rankingModal" class="dx-panel-modal"><div class="dx-panel-card"><div class="dx-panel-head"><b>🏆 RANKING DO DISTRITO X</b><button type="button" id="rankingClose">FECHAR ✕</button></div><div class="dx-panel-scroll"><div class="dx-panel-actions"><button data-rank="1">SERVIDOR 1</button><button data-rank="2">SERVIDOR 2</button><button data-rank="global">GLOBAL</button></div><div id="rankingResults" class="dx-panel-result">Carregando ranking...</div></div></div></div>
+<style>
+.dx-panel-modal{display:none;position:fixed;inset:0;z-index:95;background:#000d;align-items:center;justify-content:center;padding:12px;pointer-events:auto}.dx-panel-card{width:min(94vw,520px);max-height:90vh;background:linear-gradient(145deg,#101d2b,#080f18);border:1px solid #4edcff;border-radius:16px;box-shadow:0 0 24px #00cfff55,0 18px 50px #000;overflow:hidden;text-align:left}.dx-panel-head{display:flex;align-items:center;justify-content:space-between;padding:13px 15px;background:linear-gradient(90deg,#12324b,#21183d);color:#d9faff;border-bottom:1px solid #39dfff}.dx-panel-head button,.dx-panel-card button{border:1px solid #67dfff;background:linear-gradient(145deg,#1a4560,#122536);color:#e8fbff;border-radius:8px;padding:9px;font-weight:800}.dx-panel-scroll{padding:12px;overflow:auto;max-height:calc(90vh - 52px)}.dx-panel-scroll section{padding:10px;margin-bottom:10px;border:1px solid #294a60;border-radius:12px;background:#0c1925}.dx-panel-scroll h3{margin:0 0 9px;color:#ffe29b;font-size:14px}.dx-panel-scroll input,.dx-panel-scroll textarea,.dx-panel-scroll select{width:100%;padding:10px;margin:4px 0 8px;border:1px solid #41657a;border-radius:8px;background:#07111a;color:#fff;font:13px Arial;touch-action:auto;user-select:text}.dx-panel-scroll textarea{min-height:76px;resize:vertical}.dx-panel-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}.dx-panel-result{font-size:12px;line-height:1.5;color:#d4eefa;padding:9px;background:#07131d;border-radius:8px;margin-top:8px;white-space:pre-wrap}.dx-rank-row{padding:8px;border-bottom:1px solid #29465b}.dx-owner-tag{display:inline-block;padding:2px 7px;border:1px solid #fff;border-radius:5px;background:linear-gradient(90deg,#ffcf5a,#fff,#9d6bff);color:#15121d;font-size:9px;font-weight:1000;letter-spacing:1px;box-shadow:0 0 12px #ffe26b;animation:dxOwnerTag 1.4s ease-in-out infinite alternate}@keyframes dxOwnerTag{to{filter:hue-rotate(130deg) brightness(1.3);box-shadow:0 0 18px #65eaff}}
+</style>
 <div id="mpModal">
   <div>
     <h3>DISTRITO X CITY — ESCOLHA DO SERVIDOR</h3>
@@ -485,7 +493,7 @@ let cars=[
   {id:'moto_1',x:50,z:34,yaw:PI/2,spd:0,col:0xffc62828,type:7,driverId:null,wheelRot:0},
   {id:'aviao_aeroporto',x:14*P+32-76,z:13*P+32,yaw:PI/2,spd:0,col:0xffe8edf2,type:8,driverId:null,altitude:0,pitch:0,roll:0,prop:0}
 ];
-let bullets=[],particles=[];
+let bullets=[],particles=[],damageFloaters=[];
 
 const h=(a,b)=>{
   let v=(a*73856093^b*19349663)|0;
@@ -1217,7 +1225,7 @@ function update(dt){
     // puxar para trás (jyAxis < 0) recua!
     let mx=jx*cos(camYaw)+jyAxis*sin(camYaw);
     let mz=-jx*sin(camYaw)+jyAxis*cos(camYaw);
-    let sp=(prone?.9:crouch?1.8:(held.run||keyRun)?7.475:2.9)*[1,1.15,.9][chr];
+    let sp=(prone?.9:crouch?1.8:(held.run||keyRun)?7.475:2.9)*[1,1.15,.9][chr];if(ownerSelf&&ownerSpeedBoost)sp*=1.30;
     let on=mag>.15,ac=Math.min(1,(jy>0?3:12)*dt);
     vx+=((on?mx*sp:0)-vx)*ac;
     vz+=((on?mz*sp:0)-vz)*ac;
@@ -2226,7 +2234,9 @@ function hasSceneLineOfSight(x,z){
   return true;
 }
 
-function drawBubbleAbove(x,yTop,label,bubble,zPos,labelColor,ownerGlow=false){
+function drawIdentityAura(x,z,kind='owner'){const p=project(x,.08,z);if(!p)return;const hue=(performance.now()/12+(kind==='verified'?130:kind==='vip'?245:0))%360;g.save();g.translate(p[0],p[1]);g.scale(1,.42);g.strokeStyle=`hsla(${hue},100%,67%,${kind==='owner'?.95:.72})`;g.shadowColor=`hsl(${hue},100%,60%)`;g.shadowBlur=kind==='owner'?18:12;g.lineWidth=kind==='owner'?3:2;g.beginPath();g.ellipse(0,0,Math.max(10,p[3]*(kind==='owner'?1.05:.82)),Math.max(5,p[3]*(kind==='owner'?.52:.4)),0,0,Math.PI*2);g.stroke();g.restore();}
+
+function drawBubbleAbove(x,yTop,label,bubble,zPos,labelColor,ownerGlow=false,badgeText=''){
   const p3=project(x,yTop,zPos!==undefined?zPos:0);
   if(!p3)return;
   g.save();
@@ -2247,6 +2257,7 @@ function drawBubbleAbove(x,yTop,label,bubble,zPos,labelColor,ownerGlow=false){
   }
   if(label){
     const pulse=0.72+0.28*Math.sin(performance.now()/210);
+    if(ownerGlow||badgeText){const hue=(performance.now()/12+(badgeText==='VIP'?245:badgeText==='VERIFICADO'?130:0))%360,bw=Math.min(170,g.measureText(label).width+26),bx=p3[0]-bw/2,by=p3[1]-31;g.save();g.shadowColor=`hsl(${hue},100%,65%)`;g.shadowBlur=(ownerGlow?18:12)*pulse;g.fillStyle='rgba(8,14,24,.96)';g.strokeStyle=`hsl(${hue},100%,70%)`;g.lineWidth=ownerGlow?2:1.5;g.beginPath();if(g.roundRect)g.roundRect(bx,by,bw,17,5);else g.rect(bx,by,bw,17);g.fill();g.stroke();g.fillStyle=`hsl(${(hue+75)%360},100%,82%)`;g.font='900 9px Arial';g.fillText(ownerGlow?'✦ PROPRIETÁRIO ✦':badgeText==='VERIFICADO'?'✧ VERIFICADO ✧':'◆ VIP ◆',p3[0],by+8.5);g.restore();}
     g.strokeStyle='rgba(0,0,0,.96)';
     g.lineWidth=ownerGlow?4:3;
     if(ownerGlow){
@@ -2598,11 +2609,13 @@ function render(){
     const localNick=(window.getMpNick&&window.getMpNick())||'Jogador';
     const localOwner=!!window.mpOwnerSelf;
     const localHue=(performance.now()/18)%360;
-    const localColor=localOwner?`hsl(${(localHue+35)%360},100%,68%)`:'#ffffff';
+    const localRainbow=killsStat>=100000;
+    const localColor=localOwner?`hsl(${(localHue+35)%360},100%,68%)`:verifiedSelf?`hsl(${(localHue+175)%360},95%,70%)`:vipSelf?`hsl(${(localHue+260)%360},95%,72%)`:localRainbow?`hsl(${localHue},100%,65%)`:NAME_PALETTE[selectedNameColor]||'#ffffff';
     const localX=cur&&Number.isFinite(cur.x)?cur.x:player.x;
     const localZ=cur&&Number.isFinite(cur.z)?cur.z:player.z;
+    if(localOwner||verifiedSelf||vipSelf)drawIdentityAura(localX,localZ,localOwner?'owner':verifiedSelf?'verified':'vip');
     const localHeight=(cur||passengerCar)?2.85:2.15;
-    drawBubbleAbove(localX,localHeight,localOwner?'✦ DONO '+localNick:localNick,myBubbleT>0?myBubbleText:'',localZ,localColor,localOwner);
+    drawBubbleAbove(localX,localHeight,localOwner?'✦ DONO '+localNick:verifiedSelf?'✧ '+localNick:vipSelf?'◆ VIP '+localNick:localNick,myBubbleT>0?myBubbleText:'',localZ,localColor,localOwner,localOwner?'DONO':verifiedSelf?'VERIFICADO':vipSelf?'VIP':'');
   }else if(myBubbleT>0&&myBubbleText){
     drawBubbleAbove(player.x,(cur||passengerCar)?2.6:2.25,'',myBubbleText,player.z);
   }
@@ -2637,16 +2650,18 @@ function render(){
       const rz=Number.isFinite(visual.z)?visual.z:(rp.z||0);
       const ryaw=Number.isFinite(visual.yaw)?visual.yaw:(rp.yaw||0);
       const elev=Number.isFinite(rp.elevation)?rp.elevation:0;
+      if(rp.owner||rp.verified||rp.vip)drawIdentityAura(rx,rz,rp.owner?'owner':rp.verified?'verified':'vip');
       const rLook=rp.look||{skin:0,shirt:1,pant:0,hair:0};
       const rWp=typeof rp.weapon==='number'?rp.weapon:-1;
       if(!rp.inCarId){
-        person(rx,rz,ryaw,SHIRT_PAL[rLook.shirt%SHIRT_PAL.length],SKIN[rLook.skin%SKIN.length],11,1.75,0,rWp,rp.ph||0,rp.amp||0,rp.amp>0.5?0.8:0,0,0,0,0,'remote',0,elev,rLook);
+        person(rx,rz,ryaw,SHIRT_PAL[rLook.shirt%SHIRT_PAL.length],SKIN[rLook.skin%SKIN.length],11,1.75,0,rWp,rp.ph||0,rp.amp||0,rp.amp>0.2?0.95:0,0,0,0,0,'remote',0,elev,rLook);
       }
-      const isRainbow=(Number(rp.kills)||0)>=100000;const hue=(performance.now()/18)%360;const nameCol=rp.owner?`hsl(${(hue+35)%360},100%,68%)`:rp.verified?`hsl(${(hue+175)%360},95%,70%)`:isRainbow?`hsl(${hue},100%,65%)`:(rp.nameColorHex||'#00e5ff');const roleTag=rp.owner?'✦ DONO ':rp.verified?'✧ VERIFICADO ':'';drawBubbleAbove(rx,(rp.inCarId?2.6:2.15)+elev,roleTag+(rp.name||'Jogador'),rp.bubbleT>0?rp.bubble:'',rz,nameCol,!!rp.owner);
+      const isRainbow=(Number(rp.kills)||0)>=100000;const hue=(performance.now()/18)%360;const nameCol=rp.owner?`hsl(${(hue+35)%360},100%,68%)`:rp.verified?`hsl(${(hue+175)%360},95%,70%)`:rp.vip?`hsl(${(hue+260)%360},95%,72%)`:isRainbow?`hsl(${hue},100%,65%)`:(rp.nameColorHex||'#00e5ff');const roleTag=rp.owner?'✦ DONO ':rp.verified?'✧ VERIFICADO ':rp.vip?'◆ VIP ':'';drawBubbleAbove(rx,(rp.inCarId?2.6:2.15)+elev,roleTag+(rp.name||'Jogador'),rp.bubbleT>0?rp.bubble:'',rz,nameCol,!!rp.owner,rp.owner?'DONO':rp.verified?'VERIFICADO':rp.vip?'VIP':'');
       g.restore();
     });
   }
 
+  damageFloaters=damageFloaters.filter(a=>a.life>0);damageFloaters.forEach(a=>{const p=project(a.x,a.y,a.z);if(p){g.save();g.globalAlpha=Math.min(1,a.life);g.fillStyle='#ff5757';g.strokeStyle='#250000';g.lineWidth=3;g.font='bold 16px Arial';g.textAlign='center';g.strokeText(a.text,p[0],p[1]);g.fillText(a.text,p[0],p[1]);g.restore();a.y+=.025;a.life-=.016;}});
   drawFineRain();
 
   g.fillStyle='rgba(255,176,96,'+((.05+.16*warm)*(1-nightAmount))+')';g.fillRect(0,0,W,H);
@@ -2654,6 +2669,7 @@ function render(){
   let vg=g.createRadialGradient(W/2,H*.5,H*.35,W/2,H*.5,Math.max(W,H)*.75);
   vg.addColorStop(0,'rgba(0,0,0,0)');vg.addColorStop(1,'rgba(0,0,0,.38)');
   g.fillStyle=vg;g.fillRect(0,0,W,H);
+  if(!cur&&!passengerCar){const lock=aimAssistEnabled&&getAimTarget();g.save();g.translate(W/2,H/2);g.strokeStyle=lock?'#ff3434':'#ffffff';g.fillStyle=lock?'#ff3434':'#ffffff';g.lineWidth=2;g.beginPath();g.arc(0,0,5,0,Math.PI*2);g.stroke();g.beginPath();g.moveTo(-10,0);g.lineTo(-4,0);g.moveTo(4,0);g.lineTo(10,0);g.moveTo(0,-10);g.lineTo(0,-4);g.moveTo(0,4);g.lineTo(0,10);g.stroke();g.restore();}
   drawWeaponWheel();
   drawMap();
   if(cur&&cur.type===8){
@@ -2849,12 +2865,21 @@ function frame(t){
   let playerClientKey=localStorage.getItem('distrito_x_client_key')||'';
   if(!playerClientKey){try{playerClientKey=crypto.randomUUID()}catch(_){playerClientKey='dx-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2)}localStorage.setItem('distrito_x_client_key',playerClientKey)}
   let permanentPlayerId=localStorage.getItem('distrito_x_player_id')||'---';
-  let damageDealtStat=0,damageReceivedStat=0,killsStat=0,deathsStat=0,verifiedSelf=false,ownerSelf=false,selectedNameColor=0,unlockedNameColors=1;
+  let damageDealtStat=0,damageReceivedStat=0,killsStat=0,deathsStat=0,verifiedSelf=false,ownerSelf=false,selectedNameColor=0,unlockedNameColors=1,ownerInvulnerable=false,ownerSpeedBoost=false,vipSelf=false;
   function refreshCombatStats(){const el=$('combatStats');if(el)el.textContent='DANO: '+damageDealtStat+' · RECEBIDO: '+damageReceivedStat+' · KILLS: '+killsStat+' · MORTES: '+deathsStat;}
   const NAME_PALETTE=['#ffffff','#d9f3ff','#8be9ff','#4dd0e1','#00bcd4','#80deea','#b2ebf2','#e0f7fa','#c5cae9','#9fa8da','#7986cb','#5c6bc0','#3f51b5','#b39ddb','#9575cd','#7e57c2','#673ab7','#d1c4e9','#f8bbd0','#f48fb1','#ec407a','#e91e63','#f8bbd0','#ffcdd2','#ef9a9a','#e57373','#f44336','#ffccbc','#ffab91','#ff8a65','#ff7043','#ff5722','#ffe0b2','#ffcc80','#ffb74d','#ffa726','#ff9800','#fff9c4','#fff59d','#ffee58','#ffeb3b','#dcedc8','#c5e1a5','#aed581','#8bc34a','#a5d6a7','#81c784','#66bb6a','#4caf50','#80cbc4'];
   function refreshNameColorChoices(){const sel=$('nameColorSelect');if(!sel)return;sel.innerHTML='';for(let i=0;i<unlockedNameColors;i++){const op=document.createElement('option');op.value=String(i);op.textContent='Cor '+(i+1)+(i===selectedNameColor?' · selecionada':'');op.style.color=NAME_PALETTE[i];sel.appendChild(op)}sel.value=String(Math.min(selectedNameColor,unlockedNameColors-1));sel.style.display=mpConnected?'inline-block':'none';}
-  function refreshOwnerControls(){const b=$('ownerAnnounceBtn');if(b)b.style.display=ownerSelf&&mpConnected?'inline-block':'none';}
-  const ownerAnnounceBtn=$('ownerAnnounceBtn');if(ownerAnnounceBtn)ownerAnnounceBtn.onclick=()=>{const message=prompt('Aviso global para todos os jogadores:');if(message&&window.mpSocket&&window.mpSocket.connected)window.mpSocket.emit('owner:announce',{text:message.slice(0,180)});};
+  function refreshOwnerControls(){['ownerAnnounceBtn','ownerPanelBtn'].forEach(id=>{const b=$(id);if(b)b.style.display=ownerSelf&&mpConnected?'inline-block':'none';});}
+  const ownerAnnounceBtn=$('ownerAnnounceBtn');if(ownerAnnounceBtn)ownerAnnounceBtn.onclick=()=>{const m=$('ownerPanelModal');if(m)m.style.display='flex';};
+  if($('ownerPanelBtn'))$('ownerPanelBtn').onclick=()=>{$('ownerPanelModal').style.display='flex'};if($('ownerPanelClose'))$('ownerPanelClose').onclick=()=>{$('ownerPanelModal').style.display='none'};
+  function ownerEmit(event,payload={}){if(!ownerSelf||!window.mpSocket||!window.mpSocket.connected){say('Painel disponível somente para o dono conectado.');return;}window.mpSocket.emit(event,payload);}
+  if($('ownerAnnounceSend'))$('ownerAnnounceSend').onclick=()=>{const text=$('ownerAnnounceInput').value.trim();if(text){ownerEmit('owner:announce',{text});$('ownerAnnounceInput').value='';}};
+  if($('ownerLookup'))$('ownerLookup').onclick=()=>ownerEmit('owner:panel:profile',{playerId:$('ownerTargetId').value.trim()});if($('ownerVerify'))$('ownerVerify').onclick=()=>ownerEmit('owner:panel:toggle-verify',{playerId:$('ownerTargetId').value.trim()});if($('ownerVip'))$('ownerVip').onclick=()=>ownerEmit('owner:panel:toggle-vip',{playerId:$('ownerTargetId').value.trim()});if($('ownerPull'))$('ownerPull').onclick=()=>ownerEmit('owner:panel:pull',{playerId:$('ownerTargetId').value.trim()});
+  if($('ownerInvulnerable'))$('ownerInvulnerable').onclick=()=>ownerEmit('owner:panel:invulnerable',{enabled:!ownerInvulnerable});if($('ownerSpeed'))$('ownerSpeed').onclick=()=>ownerEmit('owner:panel:speed',{enabled:!ownerSpeedBoost});
+  function ownerBotChange(action){const count=Math.max(0,Math.min(30,Math.floor(Number($('ownerBotAmount').value)||0)));ownerEmit('owner:panel:bots',{room:$('ownerBotRoom').value,count,action});}if($('ownerBotAdd'))$('ownerBotAdd').onclick=()=>ownerBotChange('add');if($('ownerBotRemove'))$('ownerBotRemove').onclick=()=>ownerBotChange('remove');if($('ownerBotSet'))$('ownerBotSet').onclick=()=>ownerBotChange('set');
+  function requestRanking(scope){if(window.mpSocket&&window.mpSocket.connected)window.mpSocket.emit('ranking:request',{scope});else say('Conecte-se ao multiplayer para ver o ranking.');}if($('myProfileBtn'))$('myProfileBtn').onclick=()=>{if(!permanentPlayerId||permanentPlayerId==='---')return;$('playerProfileModal').style.display='flex';$('publicProfileContent').textContent='Carregando seu perfil...';if(window.mpSocket&&window.mpSocket.connected)window.mpSocket.emit('profile:request',{playerId:permanentPlayerId});};if($('playerProfileClose'))$('playerProfileClose').onclick=()=>{$('playerProfileModal').style.display='none'};if($('saveProfileBio'))$('saveProfileBio').onclick=()=>{if(window.mpSocket&&window.mpSocket.connected)window.mpSocket.emit('profile:bio:update',{bio:$('myProfileBio').value.trim()});};
+  C.addEventListener('pointerup',ev=>{if(!window.mpRemotePlayers||!window.mpSocket||!window.mpSocket.connected||!isInSafeZone(player.x,player.z))return;let best=null,bd=42;window.mpRemotePlayers.forEach(rp=>{if(!rp||!rp.playerId||!isInSafeZone(rp.x,rp.z))return;const q=project(rp.x,2.1+(rp.elevation||0),rp.z);if(!q)return;const d=Math.hypot(ev.clientX-q[0],ev.clientY-q[1]);if(d<bd){bd=d;best=rp;}});if(best){$('playerProfileModal').style.display='flex';$('publicProfileContent').textContent='Carregando '+(best.name||'jogador')+'...';window.mpSocket.emit('profile:request',{playerId:best.playerId});}});
+  if($('rankingOpenBtn'))$('rankingOpenBtn').onclick=()=>{$('rankingModal').style.display='flex';requestRanking('global');};if($('rankingClose'))$('rankingClose').onclick=()=>{$('rankingModal').style.display='none'};document.querySelectorAll('[data-rank]').forEach(b=>b.onclick=()=>requestRanking(b.dataset.rank));
   const nameColorSelect=$('nameColorSelect');if(nameColorSelect)nameColorSelect.onchange=()=>{selectedNameColor=Number(nameColorSelect.value)||0;if(window.mpSocket&&window.mpSocket.connected)window.mpSocket.emit('player:name-color',{index:selectedNameColor});};
   let selectedServer=localStorage.getItem('gtax_selected_server')||'1';
   const fallbackUrl=DEFAULT_SERVER_URL.trim();
@@ -3031,7 +3056,7 @@ function frame(t){
               x:px,z:pz,yaw:pyaw,
               prevX:px,prevZ:pz,prevYaw:pyaw,targetX:px,targetZ:pz,targetYaw:pyaw,
               vx:0,vz:0,lastNetAt:nowT,netInterval:90,
-              hp:Number(p.hp)||200,isBot:!!p.isBot,verified:!!p.verified,owner:!!p.owner,kills:Number(p.kills)||0,nameColor:Number(p.nameColor)||0,nameColorHex:NAME_PALETTE[Number(p.nameColor)||0],inCarId:p.inCarId||null,
+              hp:Number(p.hp)||200,isBot:!!p.isBot,verified:!!p.verified,vip:!!p.vip,owner:!!p.owner,kills:Number(p.kills)||0,nameColor:Number(p.nameColor)||0,nameColorHex:NAME_PALETTE[Number(p.nameColor)||0],inCarId:p.inCarId||null,
               elevation:Number(p.elevation)||0,
               look:p.look||{skin:0,shirt:1,pant:0,hair:0},
               weapon:typeof p.weapon==='number'?p.weapon:-1,
@@ -3055,7 +3080,7 @@ function frame(t){
           x:px,z:pz,yaw:pyaw,
           prevX:px,prevZ:pz,prevYaw:pyaw,targetX:px,targetZ:pz,targetYaw:pyaw,
           vx:0,vz:0,lastNetAt:nowT,netInterval:90,
-          hp:Number(p.hp)||200,isBot:!!p.isBot,verified:!!p.verified,owner:!!p.owner,kills:Number(p.kills)||0,nameColor:Number(p.nameColor)||0,nameColorHex:NAME_PALETTE[Number(p.nameColor)||0],inCarId:p.inCarId||null,
+          hp:Number(p.hp)||200,isBot:!!p.isBot,verified:!!p.verified,vip:!!p.vip,owner:!!p.owner,kills:Number(p.kills)||0,nameColor:Number(p.nameColor)||0,nameColorHex:NAME_PALETTE[Number(p.nameColor)||0],inCarId:p.inCarId||null,
           elevation:Number(p.elevation)||0,
           look:p.look||{skin:0,shirt:1,pant:0,hair:0},
           weapon:typeof p.weapon==='number'?p.weapon:-1,
@@ -3072,7 +3097,7 @@ function frame(t){
         const nowT=performance.now();
         let rp=remotePlayers.get(p.id);
         if(!rp){
-          rp={id:p.id,playerId:p.playerId||'',name:p.name||'Jogador',x:nx,z:nz,yaw:nyaw,prevX:nx,prevZ:nz,prevYaw:nyaw,targetX:nx,targetZ:nz,targetYaw:nyaw,vx:0,vz:0,lastNetAt:nowT,netInterval:90,hp:200,isBot:!!p.isBot,verified:!!p.verified,inCarId:null,elevation:0,look:{skin:0,shirt:1,pant:0,hair:0},weapon:-1,ph:0,amp:0,bubble:'',bubbleT:0,lastStepT:0};
+          rp={id:p.id,playerId:p.playerId||'',name:p.name||'Jogador',x:nx,z:nz,yaw:nyaw,prevX:nx,prevZ:nz,prevYaw:nyaw,targetX:nx,targetZ:nz,targetYaw:nyaw,vx:0,vz:0,lastNetAt:nowT,netInterval:90,hp:200,isBot:!!p.isBot,verified:!!p.verified,vip:!!p.vip,inCarId:null,elevation:0,look:{skin:0,shirt:1,pant:0,hair:0},weapon:-1,ph:0,amp:0,bubble:'',bubbleT:0,lastStepT:0};
           remotePlayers.set(p.id,rp);
           updateBadge();
         }
@@ -3094,14 +3119,14 @@ function frame(t){
         if(p.name)rp.name=p.name;
         if(p.playerId)rp.playerId=p.playerId;
         if(typeof p.hp==='number')rp.hp=p.hp;
-        rp.isBot=!!p.isBot;rp.verified=!!p.verified;rp.owner=!!p.owner;rp.kills=Number(p.kills)||rp.kills||0;rp.nameColor=Number(p.nameColor)||0;rp.nameColorHex=NAME_PALETTE[rp.nameColor]||'#00e5ff';
+        rp.isBot=!!p.isBot;rp.verified=!!p.verified;rp.vip=!!p.vip;rp.owner=!!p.owner;rp.kills=Number(p.kills)||rp.kills||0;rp.nameColor=Number(p.nameColor)||0;rp.nameColorHex=NAME_PALETTE[rp.nameColor]||'#00e5ff';
         if(p.look)rp.look=p.look;
         if(typeof p.weapon==='number')rp.weapon=p.weapon;
         if(p.inCarId!==undefined)rp.inCarId=p.inCarId;
         if(typeof p.elevation==='number')rp.elevation=p.elevation;
         if(dist>0.03&&!rp.inCarId){
           rp.amp=Math.min(1,dist*3.2);
-          rp.ph+=dist*1.65;
+          rp.ph+=dist*1.9;
           if(nowT-(rp.lastStepT||0)>360){
             rp.lastStepT=nowT;
             const dMe=Math.hypot(nx-player.x,nz-player.z);
@@ -3138,11 +3163,18 @@ function frame(t){
       socket.on('player:identity',data=>{
         if(!data)return;
         if(data.playerId){permanentPlayerId=String(data.playerId);localStorage.setItem('distrito_x_player_id',permanentPlayerId);}
-        verifiedSelf=!!data.verified;ownerSelf=!!data.owner;window.mpOwnerSelf=ownerSelf;killsStat=Number(data.kills)||killsStat;selectedNameColor=Number(data.nameColor)||0;unlockedNameColors=Math.max(1,Math.min(50,Number(data.unlockedColors)||1));refreshCombatStats();refreshOwnerControls();refreshNameColorChoices();
+        verifiedSelf=!!data.verified;vipSelf=!!data.vip;ownerSelf=!!data.owner;window.mpOwnerSelf=ownerSelf;ownerInvulnerable=!!data.invulnerable;ownerSpeedBoost=!!data.speedBoost;killsStat=Number(data.kills)||killsStat;selectedNameColor=Number(data.nameColor)||0;unlockedNameColors=Math.max(1,Math.min(50,Number(data.unlockedColors)||1));refreshCombatStats();refreshOwnerControls();refreshNameColorChoices();if($('ownerInvulnerable'))$('ownerInvulnerable').textContent='INVULNERABILIDADE: '+(ownerInvulnerable?'ON':'OFF');if($('ownerSpeed'))$('ownerSpeed').textContent='VELOCIDADE +30%: '+(ownerSpeedBoost?'ON':'OFF');
         const idLabel=$('playerIdLabel');if(idLabel)idLabel.textContent='ID: '+permanentPlayerId+(ownerSelf?' · ✦ DONO':verifiedSelf?' · ✧ VERIFICADO':'');
       });
       socket.on('player:progress',data=>{if(!data)return;killsStat=Number(data.kills)||killsStat;unlockedNameColors=Math.max(1,Math.min(50,Number(data.unlockedColors)||1));selectedNameColor=Number(data.nameColor)||selectedNameColor;refreshCombatStats();refreshNameColorChoices();});
-      socket.on('owner:announcement',data=>{if(!data)return;const text='📢 AVISO GLOBAL · '+String(data.from||'DONO')+': '+String(data.text||'');appendChatLine('DISTRITO X',text);say(text);});
+      socket.on('owner:announcement',data=>{if(!data)return;const text=String(data.text||'');appendChatLine('✦ DONO '+String(data.from||''),text);const toast=$('announcementToast');if(toast){toast.innerHTML='<b>✦ COMUNICADO OFICIAL · DISTRITO X CITY ✦</b>';const line=document.createElement('div');line.textContent=text;toast.appendChild(line);toast.style.display='block';clearTimeout(window.dxAnnounceTimer);window.dxAnnounceTimer=setTimeout(()=>{toast.style.display='none';toast.innerHTML='';},7500);}say('Aviso do dono: '+text);});
+      socket.on('owner:profile:data',data=>{const box=$('ownerProfileResult');if(box)box.textContent=data.error||`${data.name||'Jogador'} · ${data.playerId}\n${data.owner?'DONO · ':''}${data.verified?'VERIFICADO · ':''}${data.vip?'VIP · ':''}${data.online?'ONLINE':'OFFLINE'}\nKills: ${data.kills||0} · Mortes: ${data.deaths||0} · Dano: ${data.damageDealt||0} · MVPs: ${data.mvp||0}\nServidor: ${data.room||'—'}\nBio: ${data.bio||'Sem descrição.'}`;});
+      socket.on('profile:data',data=>{if(!data)return;const box=$('publicProfileContent');if(box)box.textContent=data.error||`${data.name||'Jogador'}${data.owner?' · ✦ DONO':''}${data.verified?' · ✧ VERIFICADO':''}${data.vip?' · ◆ VIP':''}\nID: ${data.playerId}\nKills: ${data.kills||0} · Mortes: ${data.deaths||0} · Dano causado: ${data.damageDealt||0} · MVPs: ${data.mvp||0}\nBio: ${data.bio||'Sem descrição.'}`;if($('myProfileBio')&&data.playerId===permanentPlayerId)$('myProfileBio').value=data.bio||'';});
+      socket.on('profile:bio:saved',data=>{if(data&&$('publicProfileContent'))$('publicProfileContent').textContent+='\nDescrição atualizada.';});
+      socket.on('owner:panel:result',data=>{const box=$('ownerBotStatus');if(box)box.textContent=data.message||'Comando concluído.';});
+      socket.on('owner:state',data=>{ownerInvulnerable=!!data.invulnerable;ownerSpeedBoost=!!data.speedBoost;if($('ownerInvulnerable'))$('ownerInvulnerable').textContent='INVULNERABILIDADE: '+(ownerInvulnerable?'ON':'OFF');if($('ownerSpeed'))$('ownerSpeed').textContent='VELOCIDADE +30%: '+(ownerSpeedBoost?'ON':'OFF');});
+      socket.on('ranking:data',data=>{const box=$('rankingResults');if(!box)return;box.innerHTML='';(data.rows||[]).forEach((r,i)=>{const row=document.createElement('div');row.className='dx-rank-row';row.textContent=`#${i+1} ${r.name||'Jogador'} · ${r.kills||0} kills${r.server?' · Servidor '+r.server:''}${r.vip?' · VIP':''}${r.owner?' · DONO':''}`;box.appendChild(row);});if(!box.children.length)box.textContent='Ainda não há pontuação registrada.';});
+      socket.on('player:vip',data=>{if(!data)return;if(data.playerId===permanentPlayerId)vipSelf=!!data.vip;remotePlayers.forEach(rp=>{if(rp.playerId===data.playerId)rp.vip=!!data.vip;});});
       socket.on('player:verification',data=>{
         if(!data)return;
         if(data.playerId===permanentPlayerId){verifiedSelf=!!data.verified;const idLabel=$('playerIdLabel');if(idLabel)idLabel.textContent='ID: '+permanentPlayerId+(verifiedSelf?' · ✓ VERIFICADO':'');}
@@ -3150,7 +3182,7 @@ function frame(t){
       });
       socket.on('player:damaged',data=>{
         if(!data)return;
-        if(data.attackerId===socket.id&&data.targetId!==socket.id){damageDealtStat+=Number(data.dmg)||0;refreshCombatStats();}
+        if(data.attackerId===socket.id&&data.targetId!==socket.id){damageDealtStat+=Number(data.dmg)||0;refreshCombatStats();const hitTarget=remotePlayers.get(data.targetId);if(hitTarget)damageFloaters.push({x:hitTarget.x,y:2.0,z:hitTarget.z,text:String(Number(data.dmg)||0),life:1});}
         if(data.targetId===socket.id){
           if(isInSafeZone(player.x,player.z))return;
           const amount=Number(data.dmg)||20;damageReceivedStat+=amount;refreshCombatStats();
@@ -3158,6 +3190,7 @@ function frame(t){
           sfx.hurt();
           if(typeof data.hp==='number'&&data.hp<=0){hp[chr]=0;triggerDeath('Você foi atingido!');}
           for(let k=0;k<5;k++)particles.push({x:player.x,y:1.2,z:player.z,vx:rnd(-2,2),vy:rnd(1,4),vz:rnd(-2,2),life:.45});
+          damageFloaters.push({x:player.x,y:2.0,z:player.z,text:'-'+amount,life:1});
         }else if(remotePlayers.has(data.targetId)){
           const rp=remotePlayers.get(data.targetId);if(typeof data.hp==='number')rp.hp=data.hp;
         }
@@ -3224,7 +3257,7 @@ function frame(t){
     chatBox.style.display='flex';
     if(chatInput){chatInput.value='';setTimeout(()=>chatInput.focus(),30)}
   }
-  function closeChat(){if(chatBox)chatBox.style.display='none'}
+  function closeChat(){if(chatBox)chatBox.style.display='none';}
   function sendChat(){
     if(!chatInput)return;
     const txt=chatInput.value.trim();
@@ -3238,7 +3271,7 @@ function frame(t){
     }
   }
 
-  if($('chatOpenBtn'))$('chatOpenBtn').onclick=()=>{unlockAudio();sfx.click();openChat()};
+  if($('chatOpenBtn'))$('chatOpenBtn').onclick=()=>{unlockAudio();sfx.click();if(chatLog){const opened=chatLog.classList.toggle('chat-open');$('chatOpenBtn').textContent=opened?'✕ FECHAR CHAT':'💬 CHAT';if(opened)openChat();else closeChat();}else openChat()};
   if($('chatCloseBtn'))$('chatCloseBtn').onclick=closeChat;
   if($('chatSendBtn'))$('chatSendBtn').onclick=sendChat;
   if(chatInput){
@@ -3487,7 +3520,7 @@ addEventListener('blur',()=>{keys={};resetJoy();held={up:false,brake:false,run:s
 let gfxMode=localStorage.getItem('dx_gfx_mode')||'auto';
 let hudEditorOpen=false,hudProfileMode='foot',hudSelected=null;
 const hudStoreKey='dx_hud_profiles_v1';
-const HUD_IDS=['joy','aim','fire','weapon','run','crouch','jump','carFoot','passenger','elevator','accelerate','brake','carExit','voicePTT','chatOpenBtn'];
+const HUD_IDS=['joy','aim','fire','weapon','run','crouch','jump','carFoot','passenger','elevator','accelerate','brake','carExit','voicePTT','chatOpenBtn','mpOpenBtn','botVoiceToggle','ownerAnnounceBtn','ownerPanelBtn','rankingOpenBtn','myProfileBtn','pause','zoomIn','zoomOut'];
 let hudStore={};
 try{hudStore=JSON.parse(localStorage.getItem(hudStoreKey)||'{}')}catch(_){}
 if(!hudStore.foot)hudStore.foot={};
@@ -3505,7 +3538,7 @@ function applyGfx(mode){
 }
 
 function getHudTargetList(prof){
-  return prof==='vehicle'?['joy','accelerate','brake','carExit','voicePTT','chatOpenBtn']:['joy','aim','fire','weapon','run','crouch','jump','carFoot','passenger','elevator','voicePTT','chatOpenBtn'];
+  return prof==='vehicle'?['joy','accelerate','brake','carExit','voicePTT','chatOpenBtn','mpOpenBtn','botVoiceToggle','ownerAnnounceBtn','ownerPanelBtn','rankingOpenBtn','myProfileBtn','pause','zoomIn','zoomOut']:['joy','aim','fire','weapon','run','crouch','jump','carFoot','passenger','elevator','voicePTT','chatOpenBtn','mpOpenBtn','botVoiceToggle','ownerAnnounceBtn','ownerPanelBtn','rankingOpenBtn','myProfileBtn','pause','zoomIn','zoomOut'];
 }
 
 function applyHudProfile(prof){
