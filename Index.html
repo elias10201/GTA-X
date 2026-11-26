@@ -2226,7 +2226,7 @@ function hasSceneLineOfSight(x,z){
   return true;
 }
 
-function drawBubbleAbove(x,yTop,label,bubble,zPos,labelColor){
+function drawBubbleAbove(x,yTop,label,bubble,zPos,labelColor,ownerGlow=false){
   const p3=project(x,yTop,zPos!==undefined?zPos:0);
   if(!p3)return;
   g.save();
@@ -2246,9 +2246,21 @@ function drawBubbleAbove(x,yTop,label,bubble,zPos,labelColor){
     g.fillText(bubble,p3[0],by+bh/2);
   }
   if(label){
-    g.fillStyle=labelColor||'#00e5ff';
-    g.strokeStyle='#000';
-    g.lineWidth=3;
+    const pulse=0.72+0.28*Math.sin(performance.now()/210);
+    g.strokeStyle='rgba(0,0,0,.96)';
+    g.lineWidth=ownerGlow?4:3;
+    if(ownerGlow){
+      g.shadowColor=labelColor||'#ffd76a';
+      g.shadowBlur=13*pulse;
+      const grad=g.createLinearGradient(p3[0]-72,p3[1]-8,p3[0]+72,p3[1]-8);
+      grad.addColorStop(0,'#fff2b0');
+      grad.addColorStop(.48,labelColor||'#ffd76a');
+      grad.addColorStop(1,'#fff');
+      g.fillStyle=grad;
+    }else{
+      g.shadowBlur=0;
+      g.fillStyle=labelColor||'#00e5ff';
+    }
     g.strokeText(label,p3[0],p3[1]-4);
     g.fillText(label,p3[0],p3[1]-4);
   }
@@ -2582,7 +2594,16 @@ function render(){
   actorItems.sort((a,b)=>b.depth-a.depth).forEach(it=>it.fn());
   if(!cur&&!passengerCar&&playerElevation>0)drawCurrentPlayer();
 
-  if(myBubbleT>0&&myBubbleText){
+  if(window.mpSocket&&window.mpSocket.connected){
+    const localNick=(window.getMpNick&&window.getMpNick())||'Jogador';
+    const localOwner=!!window.mpOwnerSelf;
+    const localHue=(performance.now()/18)%360;
+    const localColor=localOwner?`hsl(${(localHue+35)%360},100%,68%)`:'#ffffff';
+    const localX=cur&&Number.isFinite(cur.x)?cur.x:player.x;
+    const localZ=cur&&Number.isFinite(cur.z)?cur.z:player.z;
+    const localHeight=(cur||passengerCar)?2.85:2.15;
+    drawBubbleAbove(localX,localHeight,localOwner?'✦ DONO '+localNick:localNick,myBubbleT>0?myBubbleText:'',localZ,localColor,localOwner);
+  }else if(myBubbleT>0&&myBubbleText){
     drawBubbleAbove(player.x,(cur||passengerCar)?2.6:2.25,'',myBubbleText,player.z);
   }
 
@@ -2621,7 +2642,7 @@ function render(){
       if(!rp.inCarId){
         person(rx,rz,ryaw,SHIRT_PAL[rLook.shirt%SHIRT_PAL.length],SKIN[rLook.skin%SKIN.length],11,1.75,0,rWp,rp.ph||0,rp.amp||0,rp.amp>0.5?0.8:0,0,0,0,0,'remote',0,elev,rLook);
       }
-      const isRainbow=(Number(rp.kills)||0)>=100000;const hue=(performance.now()/18)%360;const nameCol=rp.owner?`hsl(${(hue+35)%360},100%,68%)`:rp.verified?`hsl(${(hue+175)%360},95%,70%)`:isRainbow?`hsl(${hue},100%,65%)`:(rp.nameColorHex||'#00e5ff');const roleTag=rp.owner?'✦ DONO ':rp.verified?'✧ VERIFICADO ':'';drawBubbleAbove(rx,(rp.inCarId?2.6:2.15)+elev,'🌐 '+roleTag+(rp.name||'Jogador'),rp.bubbleT>0?rp.bubble:'',rz,nameCol);
+      const isRainbow=(Number(rp.kills)||0)>=100000;const hue=(performance.now()/18)%360;const nameCol=rp.owner?`hsl(${(hue+35)%360},100%,68%)`:rp.verified?`hsl(${(hue+175)%360},95%,70%)`:isRainbow?`hsl(${hue},100%,65%)`:(rp.nameColorHex||'#00e5ff');const roleTag=rp.owner?'✦ DONO ':rp.verified?'✧ VERIFICADO ':'';drawBubbleAbove(rx,(rp.inCarId?2.6:2.15)+elev,roleTag+(rp.name||'Jogador'),rp.bubbleT>0?rp.bubble:'',rz,nameCol,!!rp.owner);
       g.restore();
     });
   }
@@ -2821,6 +2842,7 @@ function frame(t){
   }
 
   window.mpRemotePlayers=remotePlayers;
+  window.mpOwnerSelf=false;
   let mpConnected=false;
   let mpConnecting=false;
   let mpNick=(localStorage.getItem('gtax_mp_nick')||'').trim()||('Player_'+Math.floor(100+Math.random()*899));
@@ -2974,7 +2996,7 @@ function frame(t){
       });
 
       socket.on('disconnect',()=>{
-        mpConnected=false;mpConnecting=false;ownerSelf=false;
+        mpConnected=false;mpConnecting=false;ownerSelf=false;window.mpOwnerSelf=false;
         remotePlayers.clear();
         for(const id of Array.from(voicePeers.keys()))voiceClosePeer(id);
         cars.forEach(c=>{if(!cur||cur.id!==c.id)c.driverId=null});
@@ -3116,7 +3138,7 @@ function frame(t){
       socket.on('player:identity',data=>{
         if(!data)return;
         if(data.playerId){permanentPlayerId=String(data.playerId);localStorage.setItem('distrito_x_player_id',permanentPlayerId);}
-        verifiedSelf=!!data.verified;ownerSelf=!!data.owner;killsStat=Number(data.kills)||killsStat;selectedNameColor=Number(data.nameColor)||0;unlockedNameColors=Math.max(1,Math.min(50,Number(data.unlockedColors)||1));refreshCombatStats();refreshOwnerControls();refreshNameColorChoices();
+        verifiedSelf=!!data.verified;ownerSelf=!!data.owner;window.mpOwnerSelf=ownerSelf;killsStat=Number(data.kills)||killsStat;selectedNameColor=Number(data.nameColor)||0;unlockedNameColors=Math.max(1,Math.min(50,Number(data.unlockedColors)||1));refreshCombatStats();refreshOwnerControls();refreshNameColorChoices();
         const idLabel=$('playerIdLabel');if(idLabel)idLabel.textContent='ID: '+permanentPlayerId+(ownerSelf?' · ✦ DONO':verifiedSelf?' · ✧ VERIFICADO':'');
       });
       socket.on('player:progress',data=>{if(!data)return;killsStat=Number(data.kills)||killsStat;unlockedNameColors=Math.max(1,Math.min(50,Number(data.unlockedColors)||1));selectedNameColor=Number(data.nameColor)||selectedNameColor;refreshCombatStats();refreshNameColorChoices();});
