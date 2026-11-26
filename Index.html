@@ -2311,6 +2311,8 @@ function drawWeaponWheel(){
   g.restore();
 }
 
+  const NAME_PALETTE=['#ffffff','#d9f3ff','#8be9ff','#4dd0e1','#00bcd4','#80deea','#b2ebf2','#e0f7fa','#c5cae9','#9fa8da','#7986cb','#5c6bc0','#3f51b5','#b39ddb','#9575cd','#7e57c2','#673ab7','#d1c4e9','#f8bbd0','#f48fb1','#ec407a','#e91e63','#f8bbd0','#ffcdd2','#ef9a9a','#e57373','#f44336','#ffccbc','#ffab91','#ff8a65','#ff7043','#ff5722','#ffe0b2','#ffcc80','#ffb74d','#ffa726','#ff9800','#fff9c4','#fff59d','#ffee58','#ffeb3b','#dcedc8','#c5e1a5','#aed581','#8bc34a','#a5d6a7','#81c784','#66bb6a','#4caf50','#80cbc4'];
+
 function render(){
   // PASSO 1: Desenhar APENAS a cidade e o céu na camada gCity (que reduz resolução no Super Leve)
   g=gCity;
@@ -2876,7 +2878,6 @@ function frame(t){
   let damageDealtStat=0,damageReceivedStat=0,killsStat=0,deathsStat=0,verifiedSelf=false,ownerSelf=false,selectedNameColor=0,unlockedNameColors=1,ownerInvulnerable=false,ownerSpeedBoost=false,vipSelf=false;
   window.mpOwnerSelf=ownerSelf;window.mpOwnerSpeedBoost=ownerSpeedBoost;
   function refreshCombatStats(){const el=$('combatStats');if(el)el.textContent='DANO: '+damageDealtStat+' · RECEBIDO: '+damageReceivedStat+' · KILLS: '+killsStat+' · MORTES: '+deathsStat;}
-  const NAME_PALETTE=['#ffffff','#d9f3ff','#8be9ff','#4dd0e1','#00bcd4','#80deea','#b2ebf2','#e0f7fa','#c5cae9','#9fa8da','#7986cb','#5c6bc0','#3f51b5','#b39ddb','#9575cd','#7e57c2','#673ab7','#d1c4e9','#f8bbd0','#f48fb1','#ec407a','#e91e63','#f8bbd0','#ffcdd2','#ef9a9a','#e57373','#f44336','#ffccbc','#ffab91','#ff8a65','#ff7043','#ff5722','#ffe0b2','#ffcc80','#ffb74d','#ffa726','#ff9800','#fff9c4','#fff59d','#ffee58','#ffeb3b','#dcedc8','#c5e1a5','#aed581','#8bc34a','#a5d6a7','#81c784','#66bb6a','#4caf50','#80cbc4'];
   function refreshNameColorChoices(){const sel=$('nameColorSelect');if(!sel)return;sel.innerHTML='';for(let i=0;i<unlockedNameColors;i++){const op=document.createElement('option');op.value=String(i);op.textContent='Cor '+(i+1)+(i===selectedNameColor?' · selecionada':'');op.style.color=NAME_PALETTE[i];sel.appendChild(op)}sel.value=String(Math.min(selectedNameColor,unlockedNameColors-1));sel.style.display=mpConnected?'inline-block':'none';}
   function refreshOwnerControls(){['ownerAnnounceBtn','ownerPanelBtn'].forEach(id=>{const b=$(id);if(b)b.style.display=ownerSelf&&mpConnected?'inline-block':'none';});}
   const ownerAnnounceBtn=$('ownerAnnounceBtn');if(ownerAnnounceBtn)ownerAnnounceBtn.onclick=()=>{const m=$('ownerPanelModal');if(m)m.style.display='flex';};
