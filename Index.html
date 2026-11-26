@@ -2678,21 +2678,16 @@ function render(){
   let vg=g.createRadialGradient(W/2,H*.5,H*.35,W/2,H*.5,Math.max(W,H)*.75);
   vg.addColorStop(0,'rgba(0,0,0,0)');vg.addColorStop(1,'rgba(0,0,0,.38)');
   g.fillStyle=vg;g.fillRect(0,0,W,H);
-  if(!cur&&!passengerCar){
-    const lock=aimAssistEnabled&&getAimTarget(),reticleColor=lock?'#ff4545':'#f7fbff';
-    const pulse=lock?(0.8+Math.sin(performance.now()*0.012)*0.12):1;
-    g.save();g.translate(W/2,H/2);g.scale(pulse,pulse);g.lineWidth=2;g.lineCap='round';g.strokeStyle=reticleColor;g.fillStyle=reticleColor;g.shadowColor=lock?'#ff2525':'#8bdcff';g.shadowBlur=lock?10:5;
-    // Mira fixa no centro da tela, inspirada no HUD de tiro do Free Fire.
-    const gap=7,arm=8,offset=13;
-    g.beginPath();
-    g.moveTo(-offset-arm,-offset);g.lineTo(-offset,-offset);g.lineTo(-offset,-offset-arm);
-    g.moveTo(offset+arm,-offset);g.lineTo(offset,-offset);g.lineTo(offset,-offset-arm);
-    g.moveTo(-offset-arm,offset);g.lineTo(-offset,offset);g.lineTo(-offset,offset+arm);
-    g.moveTo(offset+arm,offset);g.lineTo(offset,offset);g.lineTo(offset,offset+arm);
-    g.stroke();g.beginPath();g.arc(0,0,2.2,0,Math.PI*2);g.fill();
-    if(lock){g.beginPath();g.arc(0,0,18,0,Math.PI*2);g.stroke();}
-    g.restore();
-  }
+  // Ponto de mira: um único ponto pequeno, fixo exatamente no centro da tela.
+  g.save();
+  g.setTransform(dpr,0,0,dpr,0,0);
+  g.fillStyle='#ffffff';
+  g.shadowColor='rgba(0,0,0,.9)';
+  g.shadowBlur=2;
+  g.beginPath();
+  g.arc(W/2,H/2,1.8,0,Math.PI*2);
+  g.fill();
+  g.restore();
   drawWeaponWheel();
   drawMap();
   if(cur&&cur.type===8){
