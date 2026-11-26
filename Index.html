@@ -118,7 +118,25 @@ canvas{display:block;width:100vw;height:100vh}
 .lobby-actions button{width:100%;padding:11px 12px;border:1px solid #ffdb8a;border-radius:10px;background:linear-gradient(180deg,#ffe08b,#d58b20);color:#1a2027;font-weight:900;font-size:13px;letter-spacing:1.1px;box-shadow:0 4px 0 #704715;cursor:pointer}
 .lobby-actions button:active{transform:translateY(2px);box-shadow:0 2px 0 #704715}
 .lobby-actions button.sec{border-color:#8be9ff66;background:linear-gradient(180deg,#25465b,#142b3c);color:#eafaff;box-shadow:0 4px 0 #07121d;font-size:11px;padding:9px}
-#voicePTT:active{background:#b3261e} #voicePTT.voice-active{background:#b3261e;border-color:#ffb5ae}</style>
+#voicePTT:active{background:#b3261e} #voicePTT.voice-active{background:#b3261e;border-color:#ffb5ae}
+/* Celebração especial ao receber o selo verificado */
+#verifiedCelebration{position:fixed;inset:0;z-index:9999;display:none;align-items:center;justify-content:center;padding:20px;background:radial-gradient(circle at 50% 45%,rgba(28,76,120,.48),rgba(3,7,18,.88) 68%);backdrop-filter:blur(7px);pointer-events:auto;text-shadow:none}
+#verifiedCelebration.show{display:flex;animation:verifiedFadeIn .45s ease both}
+#verifiedCelebration .vc-card{position:relative;width:min(440px,92vw);padding:32px 24px 25px;text-align:center;border:1px solid rgba(116,224,255,.8);border-radius:24px;background:linear-gradient(145deg,rgba(12,31,58,.98),rgba(22,12,55,.98) 58%,rgba(7,28,43,.98));box-shadow:0 0 18px #42dfff99,0 0 55px #8b5cff66,inset 0 0 28px #48dfff20;overflow:hidden;animation:verifiedCardIn .65s cubic-bezier(.18,.9,.25,1.2) both}
+#verifiedCelebration .vc-card:before{content:"";position:absolute;inset:-60%;background:conic-gradient(from 0deg,transparent 0 35%,#62eaff33 43%,transparent 52%,#c27aff33 62%,transparent 72%);animation:verifiedSpin 9s linear infinite;pointer-events:none}
+#verifiedCelebration .vc-content{position:relative;z-index:1}
+#verifiedCelebration .vc-emblem{width:88px;height:88px;margin:0 auto 15px;border-radius:50%;display:grid;place-items:center;font-size:48px;color:#eafcff;background:radial-gradient(circle,#b9f7ff 0,#38bde9 32%,#3156bb 68%,#17205b 100%);border:3px solid #e4fcff;box-shadow:0 0 12px #7ceaff,0 0 30px #3acbff,0 0 55px #9272ff;animation:verifiedPulse 1.8s ease-in-out infinite}
+#verifiedCelebration .vc-kicker{font-size:11px;letter-spacing:3px;font-weight:900;color:#9ceeff;margin-bottom:8px}
+#verifiedCelebration .vc-title{font-size:clamp(25px,6vw,34px);font-weight:1000;letter-spacing:1px;color:#fff;text-shadow:0 0 8px #66eaff,0 0 22px #477dff;margin:0 0 10px}
+#verifiedCelebration .vc-name{font-size:17px;font-weight:900;color:#ffe58a;margin:0 0 10px;text-shadow:0 0 12px #ffc94c99}
+#verifiedCelebration .vc-copy{font-size:14px;line-height:1.55;color:#e4f5ff;margin:0 auto 20px;max-width:330px}
+#verifiedCelebration .vc-close{border:1px solid #a8f1ff;border-radius:30px;padding:11px 28px;background:linear-gradient(90deg,#176ca0,#6843b8);color:white;font-weight:900;letter-spacing:1px;box-shadow:0 0 16px #50dfff88;cursor:pointer}
+#verifiedCelebration .vc-spark{position:absolute;color:#fff6a8;font-size:18px;filter:drop-shadow(0 0 7px #ffe66b);animation:verifiedSpark 2.2s ease-in-out infinite}
+#verifiedCelebration .vc-s1{left:12%;top:18%}#verifiedCelebration .vc-s2{right:13%;top:23%;animation-delay:.5s}#verifiedCelebration .vc-s3{left:19%;bottom:18%;animation-delay:1s}#verifiedCelebration .vc-s4{right:18%;bottom:20%;animation-delay:1.4s}
+@keyframes verifiedFadeIn{from{opacity:0}to{opacity:1}}@keyframes verifiedCardIn{from{opacity:0;transform:translateY(25px) scale(.82)}to{opacity:1;transform:translateY(0) scale(1)}}@keyframes verifiedSpin{to{transform:rotate(360deg)}}@keyframes verifiedPulse{50%{transform:scale(1.08);box-shadow:0 0 20px #7ceaff,0 0 45px #3acbff,0 0 75px #9272ff}}@keyframes verifiedSpark{50%{transform:translateY(-9px) scale(1.35);opacity:.55}}
+@media(prefers-reduced-motion:reduce){#verifiedCelebration *,#verifiedCelebration:before{animation:none!important}}
+
+</style>
 
 <style>
 #hudEditor{display:none;position:fixed;inset:0;z-index:80;background:transparent;pointer-events:none;color:#fff;font:12px Arial}
@@ -204,6 +222,8 @@ canvas{display:block;width:100vw;height:100vh}
   <div id="health"><div id="hp"></div></div>
 </div>
 
+
+<div id="verifiedCelebration" role="dialog" aria-modal="true" aria-labelledby="verifiedTitle"><div class="vc-card"><span class="vc-spark vc-s1">✦</span><span class="vc-spark vc-s2">✧</span><span class="vc-spark vc-s3">✦</span><span class="vc-spark vc-s4">✧</span><div class="vc-content"><div class="vc-emblem">✓</div><div class="vc-kicker">DISTRITO X CITY · RECONHECIMENTO OFICIAL</div><h2 class="vc-title" id="verifiedTitle">VOCÊ FOI VERIFICADO!</h2><div class="vc-name" id="verifiedCelebrationName">Jogador</div><p class="vc-copy">Seu perfil agora tem o selo oficial de verificação. Uma conquista especial para destacar sua identidade na cidade!</p><button class="vc-close" id="verifiedCelebrationClose" type="button">CONTINUAR</button></div></div></div>
 <canvas id="map" width="180" height="180"></canvas>
 <div id="joy"><div id="knob"></div></div>
 
@@ -3245,7 +3265,16 @@ function frame(t){
       socket.on('player:vip',data=>{if(!data)return;if(data.playerId===permanentPlayerId)vipSelf=!!data.vip;remotePlayers.forEach(rp=>{if(rp.playerId===data.playerId)rp.vip=!!data.vip;});});
       socket.on('player:verification',data=>{
         if(!data)return;
-        if(data.playerId===permanentPlayerId){verifiedSelf=!!data.verified;window.mpVerifiedSelf=verifiedSelf;const idLabel=$('playerIdLabel');if(idLabel)idLabel.textContent='ID: '+permanentPlayerId+(verifiedSelf?' · ✓ VERIFICADO':'');}
+        if(data.playerId===permanentPlayerId){
+          const wasVerified=verifiedSelf;
+          verifiedSelf=!!data.verified;window.mpVerifiedSelf=verifiedSelf;
+          const idLabel=$('playerIdLabel');if(idLabel)idLabel.textContent='ID: '+permanentPlayerId+(verifiedSelf?' · ✓ VERIFICADO':'');
+          if(verifiedSelf&&!wasVerified){
+            const overlay=$('verifiedCelebration'),nameBox=$('verifiedCelebrationName'),close=$('verifiedCelebrationClose');
+            if(nameBox)nameBox.textContent=$('name')?.textContent||'Jogador';
+            if(overlay){overlay.classList.add('show');if(close)close.onclick=()=>overlay.classList.remove('show');overlay.onclick=e=>{if(e.target===overlay)overlay.classList.remove('show');};}
+          }
+        }
         remotePlayers.forEach(rp=>{if(rp.playerId===data.playerId)rp.verified=!!data.verified;});
       });
       socket.on('player:damaged',data=>{
