@@ -230,7 +230,7 @@ function botThink(roomId, bot, room, now) {
   }
   const dt=Math.max(0.01,Math.min(0.08,Number(bot.frameDt)||0.05));
   const dx=bot.goal.x-bot.x,dz=bot.goal.z-bot.y,dist=Math.hypot(dx,dz);
-  if(bot.moving&&dist>1){const speed=bot.personality==='aventureiro'?4.3:3.0;bot.x+=dx/dist*speed*dt;bot.y+=dz/dist*speed*dt;bot.angle=Math.atan2(dx,dz);}
+  if(bot.moving&&dist>1){const speed=bot.personality==='aventureiro'?6.7:6.2;bot.x+=dx/dist*speed*dt;bot.y+=dz/dist*speed*dt;bot.angle=Math.atan2(dx,dz);}
   bot.safeZone=safeZoneAt(bot.x,bot.y,bot.elevation);
   bot.hp=Math.max(0,Math.min(200,bot.hp));
   if(now-(bot.lastBroadcast||0)>=100){bot.lastBroadcast=now;botBroadcastMove(roomId,bot);}
