@@ -1228,7 +1228,7 @@ function update(dt){
     // puxar para trás (jyAxis < 0) recua!
     let mx=jx*cos(camYaw)+jyAxis*sin(camYaw);
     let mz=-jx*sin(camYaw)+jyAxis*cos(camYaw);
-    let sp=(prone?.9:crouch?1.8:(held.run||keyRun)?7.475:2.9)*[1,1.15,.9][chr];if(ownerSelf&&ownerSpeedBoost)sp*=1.30;
+    let sp=(prone?.9:crouch?1.8:(held.run||keyRun)?7.475:2.9)*[1,1.15,.9][chr];if(window.mpOwnerSelf&&window.mpOwnerSpeedBoost)sp*=1.30;
     let on=mag>.15,ac=Math.min(1,(jy>0?3:12)*dt);
     vx+=((on?mx*sp:0)-vx)*ac;
     vz+=((on?mz*sp:0)-vz)*ac;
@@ -2861,7 +2861,7 @@ function frame(t){
   }
 
   window.mpRemotePlayers=remotePlayers;
-  window.mpOwnerSelf=false;
+  window.mpOwnerSelf=false;window.mpOwnerSpeedBoost=false;
   let mpConnected=false;
   let mpConnecting=false;
   let mpNick=(localStorage.getItem('gtax_mp_nick')||'').trim()||('Player_'+Math.floor(100+Math.random()*899));
@@ -2869,6 +2869,7 @@ function frame(t){
   if(!playerClientKey){try{playerClientKey=crypto.randomUUID()}catch(_){playerClientKey='dx-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2)}localStorage.setItem('distrito_x_client_key',playerClientKey)}
   let permanentPlayerId=localStorage.getItem('distrito_x_player_id')||'---';
   let damageDealtStat=0,damageReceivedStat=0,killsStat=0,deathsStat=0,verifiedSelf=false,ownerSelf=false,selectedNameColor=0,unlockedNameColors=1,ownerInvulnerable=false,ownerSpeedBoost=false,vipSelf=false;
+  window.mpOwnerSelf=ownerSelf;window.mpOwnerSpeedBoost=ownerSpeedBoost;
   function refreshCombatStats(){const el=$('combatStats');if(el)el.textContent='DANO: '+damageDealtStat+' · RECEBIDO: '+damageReceivedStat+' · KILLS: '+killsStat+' · MORTES: '+deathsStat;}
   const NAME_PALETTE=['#ffffff','#d9f3ff','#8be9ff','#4dd0e1','#00bcd4','#80deea','#b2ebf2','#e0f7fa','#c5cae9','#9fa8da','#7986cb','#5c6bc0','#3f51b5','#b39ddb','#9575cd','#7e57c2','#673ab7','#d1c4e9','#f8bbd0','#f48fb1','#ec407a','#e91e63','#f8bbd0','#ffcdd2','#ef9a9a','#e57373','#f44336','#ffccbc','#ffab91','#ff8a65','#ff7043','#ff5722','#ffe0b2','#ffcc80','#ffb74d','#ffa726','#ff9800','#fff9c4','#fff59d','#ffee58','#ffeb3b','#dcedc8','#c5e1a5','#aed581','#8bc34a','#a5d6a7','#81c784','#66bb6a','#4caf50','#80cbc4'];
   function refreshNameColorChoices(){const sel=$('nameColorSelect');if(!sel)return;sel.innerHTML='';for(let i=0;i<unlockedNameColors;i++){const op=document.createElement('option');op.value=String(i);op.textContent='Cor '+(i+1)+(i===selectedNameColor?' · selecionada':'');op.style.color=NAME_PALETTE[i];sel.appendChild(op)}sel.value=String(Math.min(selectedNameColor,unlockedNameColors-1));sel.style.display=mpConnected?'inline-block':'none';}
@@ -3024,7 +3025,7 @@ function frame(t){
       });
 
       socket.on('disconnect',()=>{
-        mpConnected=false;mpConnecting=false;ownerSelf=false;window.mpOwnerSelf=false;
+        mpConnected=false;mpConnecting=false;ownerSelf=false;window.mpOwnerSelf=false;window.mpOwnerSpeedBoost=false;
         remotePlayers.clear();
         for(const id of Array.from(voicePeers.keys()))voiceClosePeer(id);
         cars.forEach(c=>{if(!cur||cur.id!==c.id)c.driverId=null});
@@ -3166,7 +3167,7 @@ function frame(t){
       socket.on('player:identity',data=>{
         if(!data)return;
         if(data.playerId){permanentPlayerId=String(data.playerId);localStorage.setItem('distrito_x_player_id',permanentPlayerId);}
-        verifiedSelf=!!data.verified;vipSelf=!!data.vip;ownerSelf=!!data.owner;window.mpOwnerSelf=ownerSelf;ownerInvulnerable=!!data.invulnerable;ownerSpeedBoost=!!data.speedBoost;killsStat=Number(data.kills)||killsStat;selectedNameColor=Number(data.nameColor)||0;unlockedNameColors=Math.max(1,Math.min(50,Number(data.unlockedColors)||1));refreshCombatStats();refreshOwnerControls();refreshNameColorChoices();if($('ownerInvulnerable'))$('ownerInvulnerable').textContent='INVULNERABILIDADE: '+(ownerInvulnerable?'ON':'OFF');if($('ownerSpeed'))$('ownerSpeed').textContent='VELOCIDADE +30%: '+(ownerSpeedBoost?'ON':'OFF');
+        verifiedSelf=!!data.verified;vipSelf=!!data.vip;ownerSelf=!!data.owner;window.mpOwnerSelf=ownerSelf;ownerInvulnerable=!!data.invulnerable;ownerSpeedBoost=!!data.speedBoost;window.mpOwnerSpeedBoost=ownerSpeedBoost;killsStat=Number(data.kills)||killsStat;selectedNameColor=Number(data.nameColor)||0;unlockedNameColors=Math.max(1,Math.min(50,Number(data.unlockedColors)||1));refreshCombatStats();refreshOwnerControls();refreshNameColorChoices();if($('ownerInvulnerable'))$('ownerInvulnerable').textContent='INVULNERABILIDADE: '+(ownerInvulnerable?'ON':'OFF');if($('ownerSpeed'))$('ownerSpeed').textContent='VELOCIDADE +30%: '+(ownerSpeedBoost?'ON':'OFF');
         const idLabel=$('playerIdLabel');if(idLabel)idLabel.textContent='ID: '+permanentPlayerId+(ownerSelf?' · ✦ DONO':verifiedSelf?' · ✧ VERIFICADO':'');
       });
       socket.on('player:progress',data=>{if(!data)return;killsStat=Number(data.kills)||killsStat;unlockedNameColors=Math.max(1,Math.min(50,Number(data.unlockedColors)||1));selectedNameColor=Number(data.nameColor)||selectedNameColor;refreshCombatStats();refreshNameColorChoices();});
@@ -3175,7 +3176,7 @@ function frame(t){
       socket.on('profile:data',data=>{if(!data)return;const box=$('publicProfileContent');if(box)box.textContent=data.error||`${data.name||'Jogador'}${data.owner?' · ✦ DONO':''}${data.verified?' · ✧ VERIFICADO':''}${data.vip?' · ◆ VIP':''}\nID: ${data.playerId}\nKills: ${data.kills||0} · Mortes: ${data.deaths||0} · Dano causado: ${data.damageDealt||0} · MVPs: ${data.mvp||0}\nBio: ${data.bio||'Sem descrição.'}`;if($('myProfileBio')&&data.playerId===permanentPlayerId)$('myProfileBio').value=data.bio||'';});
       socket.on('profile:bio:saved',data=>{if(data&&$('publicProfileContent'))$('publicProfileContent').textContent+='\nDescrição atualizada.';});
       socket.on('owner:panel:result',data=>{const box=$('ownerBotStatus');if(box)box.textContent=data.message||'Comando concluído.';});
-      socket.on('owner:state',data=>{ownerInvulnerable=!!data.invulnerable;ownerSpeedBoost=!!data.speedBoost;if($('ownerInvulnerable'))$('ownerInvulnerable').textContent='INVULNERABILIDADE: '+(ownerInvulnerable?'ON':'OFF');if($('ownerSpeed'))$('ownerSpeed').textContent='VELOCIDADE +30%: '+(ownerSpeedBoost?'ON':'OFF');});
+      socket.on('owner:state',data=>{ownerInvulnerable=!!data.invulnerable;ownerSpeedBoost=!!data.speedBoost;window.mpOwnerSpeedBoost=ownerSpeedBoost;if($('ownerInvulnerable'))$('ownerInvulnerable').textContent='INVULNERABILIDADE: '+(ownerInvulnerable?'ON':'OFF');if($('ownerSpeed'))$('ownerSpeed').textContent='VELOCIDADE +30%: '+(ownerSpeedBoost?'ON':'OFF');});
       socket.on('ranking:data',data=>{const box=$('rankingResults');if(!box)return;box.innerHTML='';(data.rows||[]).forEach((r,i)=>{const row=document.createElement('div');row.className='dx-rank-row';row.textContent=`#${i+1} ${r.name||'Jogador'} · ${r.kills||0} kills${r.server?' · Servidor '+r.server:''}${r.vip?' · VIP':''}${r.owner?' · DONO':''}`;box.appendChild(row);});if(!box.children.length)box.textContent='Ainda não há pontuação registrada.';});
       socket.on('player:vip',data=>{if(!data)return;if(data.playerId===permanentPlayerId)vipSelf=!!data.vip;remotePlayers.forEach(rp=>{if(rp.playerId===data.playerId)rp.vip=!!data.vip;});});
       socket.on('player:verification',data=>{
