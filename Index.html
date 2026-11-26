@@ -2310,14 +2310,19 @@ function drawBubbleAbove(x,yTop,label,bubble,zPos,labelColor,ownerGlow=false,bad
   g.textAlign='center';
   g.textBaseline='middle';
   if(bubble&&bubble.length){
-    const bw=Math.min(260,g.measureText(bubble).width+18),bh=22;
-    const bx=p3[0]-bw/2,by=p3[1]-bh-20;
-    g.fillStyle='rgba(16,21,28,0.92)';
+    const bw=Math.min(260,g.measureText(bubble).width+18),bh=24;
+    // A conversa fica acima do nome e de todos os distintivos (dono/verificado/VIP).
+    const identityStack=label?(badgeText==='DONO'||badgeText==='VERIFICADO'?112:badgeText?56:38):0;
+    const bx=p3[0]-bw/2,by=p3[1]-identityStack-bh-12;
+    g.fillStyle='rgba(10,17,29,0.96)';
     g.strokeStyle='#ffd54f';
-    g.lineWidth=1.5;
+    g.lineWidth=1.7;
+    g.shadowColor='#ffd54f';
+    g.shadowBlur=8;
     g.beginPath();
-    if(g.roundRect)g.roundRect(bx,by,bw,bh,7);else g.rect(bx,by,bw,bh);
+    if(g.roundRect)g.roundRect(bx,by,bw,bh,8);else g.rect(bx,by,bw,bh);
     g.fill();g.stroke();
+    g.shadowBlur=0;
     g.fillStyle='#fff';
     g.fillText(bubble,p3[0],by+bh/2);
   }
@@ -3332,8 +3337,8 @@ Toque em VER PERFIL para consultar os dados completos.`;
         const txt=String(data.text||'').slice(0,120);
         if(!txt)return;
         appendChatLine(author,txt);
-        if(data.id&&window.mpSocket&&data.id===window.mpSocket.id){myBubbleText=txt;myBubbleT=4.5;}
-        else if(data.id&&remotePlayers.has(data.id)){const speaker=remotePlayers.get(data.id);speaker.bubble=txt;speaker.bubbleT=4.5;}
+        if(data.id&&window.mpSocket&&data.id===window.mpSocket.id){myBubbleText=txt;myBubbleT=10;}
+        else if(data.id&&remotePlayers.has(data.id)){const speaker=remotePlayers.get(data.id);speaker.bubble=txt;speaker.bubbleT=10;}
         if(data.isBot)speakBotMessage(txt);
       });
     }catch(err){
