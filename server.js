@@ -47,6 +47,9 @@ const persisted = readJson(DATA_FILE, { nextPlayerId: 1001, players: {}, verifie
 if (!persisted.players || typeof persisted.players !== 'object') persisted.players = {};
 if (!persisted.verified || typeof persisted.verified !== 'object') persisted.verified = {};
 if (!persisted.banned || typeof persisted.banned !== 'object') persisted.banned = {};
+if (!persisted.kills || typeof persisted.kills !== 'object') persisted.kills = {};
+if (!persisted.nameColors || typeof persisted.nameColors !== 'object') persisted.nameColors = {};
+if (typeof persisted.ownerId !== 'string') persisted.ownerId = null;
 if (!Number.isFinite(persisted.nextPlayerId)) persisted.nextPlayerId = 1001;
 const adminSessions = new Map();
 const loginAttempts = new Map();
@@ -62,6 +65,11 @@ function stablePlayerId(clientKey, nick) {
 }
 function profileById(id) { return Object.values(persisted.players).find(p => p.id === id) || null; }
 function isVerified(id) { return !!persisted.verified[id]; }
+function isOwner(id) { return !!id && persisted.ownerId === id; }
+function killsFor(id) { return Math.max(0, Number(persisted.kills[id]) || 0); }
+const NAME_COLORS = ['#ffffff','#d9f3ff','#8be9ff','#4dd0e1','#00bcd4','#80deea','#b2ebf2','#e0f7fa','#c5cae9','#9fa8da','#7986cb','#5c6bc0','#3f51b5','#b39ddb','#9575cd','#7e57c2','#673ab7','#d1c4e9','#f8bbd0','#f48fb1','#ec407a','#e91e63','#f8bbd0','#ffcdd2','#ef9a9a','#e57373','#f44336','#ffccbc','#ffab91','#ff8a65','#ff7043','#ff5722','#ffe0b2','#ffcc80','#ffb74d','#ffa726','#ff9800','#fff9c4','#fff59d','#ffee58','#ffeb3b','#dcedc8','#c5e1a5','#aed581','#8bc34a','#a5d6a7','#81c784','#66bb6a','#4caf50','#80cbc4'];
+function unlockedColorCount(kills) { return Math.min(50, 1 + Math.floor(Math.max(0,kills)/2000)); }
+function publicHuman(p) { const k=killsFor(p.playerId); return {...p, isBot:false, verified:isVerified(p.playerId), owner:isOwner(p.playerId), kills:k, nameColor:persisted.nameColors[p.playerId]||0, unlockedColors:unlockedColorCount(k)}; }
 function logAdmin(action, details) { persisted.adminLog.unshift({ at: Date.now(), action, details }); persisted.adminLog = persisted.adminLog.slice(0, 100); saveData(); }
 function authToken(req) { const raw = req.headers.authorization || ''; return raw.startsWith('Bearer ') ? raw.slice(7) : ''; }
 function requireAdmin(req, res, next) {
@@ -135,7 +143,7 @@ function createBot(roomId, index) {
 function createRoom(roomId) { return { players:{}, bots:Array.from({length:BOT_TOTAL_PER_ROOM},(_,i)=>createBot(roomId,i)), cars:createInitialCars(), botTargetCount:BOT_TOTAL_PER_ROOM, botAuto:true, chat:[], stats:{damage:0,kills:0}, botsEnabled:true, lastBotChatAt:0 }; }
 const rooms = { '1':createRoom('1'), '2':createRoom('2') };
 function normalizeRoomId(raw) { return String(raw)==='2'?'2':'1'; }
-function combinedPlayers(room) { const all={...room.players}; room.bots.forEach(b=>{ if (b.active!==false) all[b.id]=publicBot(b); }); return all; }
+function combinedPlayers(room) { const all={}; Object.values(room.players).forEach(p=>{all[p.id]=publicHuman(p);}); room.bots.forEach(b=>{ if (b.active!==false) all[b.id]=publicBot(b); }); return all; }
 function publicBot(b) { const { personality,goal,memory,lastChat,lastAttack,lastThink,combatTarget,moving,chatCooldown,mood,active,...safe }=b; return {...safe, isBot:true, verified:false}; }
 function botBroadcastJoin(roomId, bot) { io.to('srv_'+roomId).emit('player:joined',publicBot(bot)); }
 function botBroadcastMove(roomId, bot) { io.to('srv_'+roomId).emit('player:moved',publicBot(bot)); }
@@ -180,28 +188,52 @@ function botReply(bot, sender, text) {
 function botThink(roomId, bot, room, now) {
   if(!room.botsEnabled || bot.active===false)return;
   if(bot.weapon<0&&bot.memory.previousWeapon!==undefined&&now>(bot.memory.noHostilityExpiry||0)){bot.weapon=bot.memory.previousWeapon;delete bot.memory.previousWeapon;}
-  const humans=Object.values(room.players).filter(p=>p.hp>0);
-  const nearby=humans.map(p=>({p,d:Math.hypot(p.x-bot.x,p.y-bot.y)})).sort((a,b)=>a.d-b.d);
-  const enemy=nearby.find(({p,d})=>d<90&&!safeZoneAt(p.x,p.y,p.elevation)&&!safeZoneAt(bot.x,bot.y,bot.elevation)&&!(bot.memory.noHostility[p.id]>now));
-  const danger=nearby.find(({p,d})=>d<38&&!safeZoneAt(p.x,p.y,p.elevation)&&!safeZoneAt(bot.x,bot.y,bot.elevation)&&p.weapon>=0);
-  if(danger&&bot.personality==='protetor') { bot.combatTarget=danger.p.id; bot.goal={x:danger.p.x+12,z:danger.p.y+12,until:now+2500}; }
-  else if(enemy&&['competitivo','corajoso','protetor'].includes(bot.personality)&&Math.random()<0.30){bot.combatTarget=enemy.p.id;}
-  else if(enemy&&['desconfiado'].includes(bot.personality)&&Math.random()<0.12){bot.combatTarget=enemy.p.id;}
-  else if(bot.combatTarget&&(!enemy||bot.combatTarget!==enemy.p.id))bot.combatTarget=null;
-  if(bot.combatTarget){
-    const target=room.players[bot.combatTarget]; if(target){ const d=Math.hypot(target.x-bot.x,target.y-bot.y); if(d>28){bot.goal={x:target.x,z:target.y,until:now+1800};} else if(now-bot.lastAttack>1600){bot.lastAttack=now; const damage=8+Math.floor(Math.random()*12); const shootAngle=Math.atan2(target.x-bot.x,target.y-bot.y);io.to('srv_'+roomId).emit('player:shot',{id:bot.id,x:bot.x,y:bot.y,angle:shootAngle,range:48,dmg:damage});const hp=Math.max(0,target.hp-damage);target.hp=hp; io.to('srv_'+roomId).emit('player:damaged',{targetId:target.id,attackerId:bot.id,attackerName:bot.name,dmg:damage,hp,damageSource:'bot'}); if(hp<=0){target.hp=200;target.deaths=(target.deaths||0)+1; botSay(roomId,bot,`Foi mal, ${target.name}. Você caiu, mas já vai voltar.`);} }
-      }
+
+  // Decisões de IA em intervalo estável; movimento físico continua em passos curtos.
+  if(now-(bot.lastDecision||0)>=800){
+    bot.lastDecision=now;
+    const humans=Object.values(room.players).filter(p=>p.hp>0);
+    const botRivals=room.bots.filter(p=>p!==bot&&p.active!==false&&p.hp>0&&!safeZoneAt(p.x,p.y,p.elevation));
+    const nearbyBots=botRivals.map(p=>({p,d:Math.hypot(p.x-bot.x,p.y-bot.y)})).filter(({p,d})=>d<90&&!safeZoneAt(bot.x,bot.y,bot.elevation));
+    const nearbyHumans=humans.map(p=>({p,d:Math.hypot(p.x-bot.x,p.y-bot.y)})).filter(({p,d})=>d<90&&!safeZoneAt(p.x,p.y,p.elevation)&&!safeZoneAt(bot.x,bot.y,bot.elevation)&&!(bot.memory.noHostility[p.id]>now));
+    const chooseBot=nearbyBots.length>0&&Math.random()<0.78;
+    const enemy=(chooseBot?nearbyBots:nearbyHumans).sort((a,b)=>a.d-b.d)[0];
+    if(enemy&&enemy.p.isBot){bot.combatTarget=null;bot.goal={x:enemy.p.x,z:enemy.p.y,until:now+1800};}
+    else if(enemy&&['competitivo','corajoso','protetor','desconfiado'].includes(bot.personality)&&Math.random()<(bot.personality==='desconfiado'?.12:.30))bot.combatTarget=enemy.p.id;
+    else if(!enemy||!nearbyHumans.some(x=>x.p.id===bot.combatTarget))bot.combatTarget=null;
+
+    bot.memory.experiences++;
+    if(bot.memory.experiences%8===0&&Math.random()<.35){bot.memory.avoidUntil=now+3000;bot.goal={x:bot.x+Math.random()*80-40,z:bot.y+Math.random()*80-40,until:now+5000};}
+    botThinkCombatBots(roomId,room,bot,now);
+    botSocialThink(roomId,room,bot,now);
   }
-  if(now>bot.goal.until||Math.hypot(bot.goal.x-bot.x,bot.goal.z-bot.y)<8){bot.goal={x:32+Math.random()*150-75,z:32+Math.random()*150-75,until:now+4000+Math.random()*13000};bot.moving=Math.random()>.12;}
-  const dt=0.8,dx=bot.goal.x-bot.x,dz=bot.goal.z-bot.y,dist=Math.hypot(dx,dz);
+
+  if(bot.combatTarget){
+    const target=room.players[bot.combatTarget];
+    if(!target||safeZoneAt(target.x,target.y,target.elevation)||safeZoneAt(bot.x,bot.y,bot.elevation))bot.combatTarget=null;
+    else {
+      const d=Math.hypot(target.x-bot.x,target.y-bot.y);
+      if(d>28)bot.goal={x:target.x,z:target.y,until:now+900};
+      else if(now-bot.lastAttack>1600){
+        bot.lastAttack=now;const damage=8+Math.floor(Math.random()*12);const shootAngle=Math.atan2(target.x-bot.x,target.y-bot.y);
+        io.to('srv_'+roomId).emit('player:shot',{id:bot.id,x:bot.x,y:bot.y,angle:shootAngle,range:48,dmg:damage});
+        const hp=Math.max(0,target.hp-damage);target.hp=hp;
+        io.to('srv_'+roomId).emit('player:damaged',{targetId:target.id,attackerId:bot.id,attackerName:bot.name,dmg:damage,hp,damageSource:'bot'});
+        if(hp<=0){target.hp=200;target.deaths=(target.deaths||0)+1;botSay(roomId,bot,`Foi mal, ${target.name}. Você caiu, mas já vai voltar.`);}
+      }
+    }
+  }
+
+  if(now>bot.goal.until||Math.hypot(bot.goal.x-bot.x,bot.goal.z-bot.y)<8){
+    bot.goal={x:32+Math.random()*150-75,z:32+Math.random()*150-75,until:now+4000+Math.random()*13000};
+    bot.moving=Math.random()>.12;
+  }
+  const dt=Math.max(0.01,Math.min(0.08,Number(bot.frameDt)||0.05));
+  const dx=bot.goal.x-bot.x,dz=bot.goal.z-bot.y,dist=Math.hypot(dx,dz);
   if(bot.moving&&dist>1){const speed=bot.personality==='aventureiro'?4.3:3.0;bot.x+=dx/dist*speed*dt;bot.y+=dz/dist*speed*dt;bot.angle=Math.atan2(dx,dz);}
   bot.safeZone=safeZoneAt(bot.x,bot.y,bot.elevation);
   bot.hp=Math.max(0,Math.min(200,bot.hp));
-  bot.memory.experiences++;
-  if(bot.memory.experiences%8===0&&Math.random()<.4){bot.memory.avoidUntil=now+3000;bot.goal={x:bot.x+Math.random()*80-40,z:bot.y+Math.random()*80-40,until:now+5000};}
-  botThinkCombatBots(roomId,room,bot,now);
-  botSocialThink(roomId,room,bot,now);
-  botBroadcastMove(roomId,bot);
+  if(now-(bot.lastBroadcast||0)>=100){bot.lastBroadcast=now;botBroadcastMove(roomId,bot);}
 }
 function botSocialThink(roomId,room,bot,now){
   if(now-bot.lastChat<65000+Math.random()*35000||now-room.lastBotChatAt<8500)return;
@@ -211,8 +243,8 @@ function botSocialThink(roomId,room,bot,now){
 function botThinkCombatBots(roomId, room, bot, now) {
   if(safeZoneAt(bot.x,bot.y,bot.elevation))return;
   const others=room.bots.filter(o=>o!==bot&&o.active!==false&&!safeZoneAt(o.x,o.y,o.elevation));
-  const rival=others.find(o=>Math.hypot(o.x-bot.x,o.y-bot.y)<25&&o.personality==='competitivo');
-  if(rival&&Math.random()<.025){const old=rival.hp;rival.hp=Math.max(0,rival.hp-10);io.to('srv_'+roomId).emit('player:damaged',{targetId:rival.id,attackerId:bot.id,attackerName:bot.name,dmg:10,hp:rival.hp,damageSource:'bot'});if(rival.hp<=0){rival.hp=200;io.to('srv_'+roomId).emit('player:eliminated',{targetId:rival.id,attackerId:bot.id,attackerName:bot.name,targetName:rival.name});botSay(roomId,bot,`Foi mal, ${rival.name}. Foi uma briga boba.`);}}
+  const rival=others.filter(o=>Math.hypot(o.x-bot.x,o.y-bot.y)<30).sort((a,b)=>Math.hypot(a.x-bot.x,a.y-bot.y)-Math.hypot(b.x-bot.x,b.y-bot.y))[0];
+  if(rival&&Math.random()<.22){const old=rival.hp;rival.hp=Math.max(0,rival.hp-10);io.to('srv_'+roomId).emit('player:damaged',{targetId:rival.id,attackerId:bot.id,attackerName:bot.name,dmg:10,hp:rival.hp,damageSource:'bot'});if(rival.hp<=0){rival.hp=200;io.to('srv_'+roomId).emit('player:eliminated',{targetId:rival.id,attackerId:bot.id,attackerName:bot.name,targetName:rival.name});botSay(roomId,bot,`Foi mal, ${rival.name}. Foi uma briga boba.`);}}
 }
 function botsApplyCount(room) {
   room.bots.forEach((b,i)=>{b.active=i<room.botTargetCount;});
@@ -227,14 +259,13 @@ function syncBotPresence(roomId, before) {
   });
 }
 function autoBotCount(roomId, room) {
-  if(!room.botAuto)return;
   const before=new Set(room.bots.filter(b=>b.active!==false).map(b=>b.id));
   const n=Object.keys(room.players).length;
-  room.botTargetCount=n>=21?0:n>=11?10:n>=6?20:30;
+  const capacityForBots=Math.max(0,Math.min(BOT_TOTAL_PER_ROOM,BOT_TOTAL_PER_ROOM-n));
+  room.botTargetCount=room.botAuto?capacityForBots:Math.min(room.botTargetCount,capacityForBots);
   botsApplyCount(room);
   syncBotPresence(roomId,before);
 }
-function publicHuman(p) { return {...p, isBot:false, verified:isVerified(p.playerId)}; }
 function removePlayerFromRoom(socket, roomId) {
   const room=rooms[roomId]; if(!room)return;
   if(room.players[socket.id]) { delete room.players[socket.id]; socket.to('srv_'+roomId).emit('player:leave',socket.id); socket.to('srv_'+roomId).emit('player:left',socket.id); autoBotCount(roomId,room); }
@@ -252,7 +283,7 @@ function joinRoom(socket, nextRoomId) {
   room.players[socket.id]={id:socket.id,playerId,name:socket.data.name||('Player_'+socket.id.slice(0,4)),x:32,y:32,angle:0,inCarId:null,seatRole:'foot',elevation:0,look:{skin:1,shirt:0,pant:0,hair:0},weapon:0,hp:200,safeZone:false,verified:isVerified(playerId),damageDealt:0,damageReceived:0,kills:0,deaths:0};
   autoBotCount(targetRoom,room);
   const snapshot={room:targetRoom,players:combinedPlayers(room),cars:room.cars,chat:room.chat.slice(-15),botCount:room.bots.filter(b=>b.active!==false).length,humanCount:Object.keys(room.players).length};
-  socket.emit('init',snapshot);socket.emit('world:init',snapshot);socket.emit('player:identity',{playerId,verified:isVerified(playerId)});
+  socket.emit('init',snapshot);socket.emit('world:init',snapshot);socket.emit('player:identity',{playerId,verified:isVerified(playerId),owner:isOwner(playerId),kills:killsFor(playerId),nameColor:persisted.nameColors[playerId]||0,unlockedColors:unlockedColorCount(killsFor(playerId))});
   socket.to('srv_'+targetRoom).emit('player:join',publicHuman(room.players[socket.id]));socket.to('srv_'+targetRoom).emit('player:joined',publicHuman(room.players[socket.id]));
 }
 
@@ -264,6 +295,8 @@ io.on('connection',socket=>{
   if(persisted.banned[initialPlayerId]){socket.emit('server:banned',{message:'Sua conta está banida deste servidor.'});socket.disconnect(true);return;}
   joinRoom(socket,initialRoom);
   socket.on('room:select',choice=>joinRoom(socket,choice));
+  socket.on('owner:announce',payload=>{const roomId=socket.data.roomId||'1',pl=rooms[roomId].players[socket.id];if(!pl||!isOwner(pl.playerId))return;const message=String(payload&&payload.text||'').trim().slice(0,180);if(!message)return;const item={text:message,at:Date.now(),from:pl.name};io.emit('owner:announcement',item);logAdmin('Aviso global do dono',{playerId:pl.playerId,message});});
+  socket.on('player:name-color',payload=>{const roomId=socket.data.roomId||'1',pl=rooms[roomId].players[socket.id];if(!pl)return;const idx=Math.floor(Number(payload&&payload.index));const unlocked=unlockedColorCount(killsFor(pl.playerId));if(!Number.isInteger(idx)||idx<0||idx>=unlocked||idx>=50)return;persisted.nameColors[pl.playerId]=idx;saveData();io.to('srv_'+roomId).emit('player:moved',publicHuman(pl));socket.emit('player:identity',{playerId:pl.playerId,verified:isVerified(pl.playerId),owner:isOwner(pl.playerId),kills:killsFor(pl.playerId),nameColor:idx,unlockedColors:unlocked});});
   socket.on('player:join',data=>{
     if(data&&typeof data.name==='string'&&data.name.trim())socket.data.name=data.name.trim().slice(0,16);
     if(data&&typeof data.clientKey==='string')socket.data.clientKey=data.clientKey.slice(0,80);
@@ -273,7 +306,7 @@ io.on('connection',socket=>{
     if(data&&data.look&&typeof data.look==='object')p.look=data.look;if(data&&typeof data.weapon==='number')p.weapon=data.weapon;if(data&&Number.isFinite(data.hp))p.hp=Math.max(0,Math.min(200,data.hp));
     p.safeZone=safeZoneAt(p.x,p.y,p.elevation);
     p.safeZone=safeZoneAt(p.x,p.y,p.elevation);
-    socket.emit('player:identity',{playerId:p.playerId,verified:p.verified});
+    socket.emit('player:identity',{playerId:p.playerId,verified:p.verified,owner:isOwner(p.playerId),kills:killsFor(p.playerId),nameColor:persisted.nameColors[p.playerId]||0,unlockedColors:unlockedColorCount(killsFor(p.playerId))});
     socket.to('srv_'+roomId).emit('player:moved',publicHuman(p));
   });
   socket.on('player:move',data=>{
@@ -292,7 +325,7 @@ io.on('connection',socket=>{
     const dist=Math.hypot(attacker.x-target.x,attacker.y-target.y);if(dist>125)return;const weaponIndex=Math.floor(Number(attacker.weapon));const weaponMax=[26,11,18,22,120][weaponIndex]||20;const amount=Math.max(1,Math.min(weaponMax,Number(data.dmg)||20)),oldHp=typeof target.hp==='number'?target.hp:200,nextHp=Math.max(0,oldHp-amount);target.hp=nextHp;attacker.damageDealt=(attacker.damageDealt||0)+amount;
     if(targetHuman)targetHuman.damageReceived=(targetHuman.damageReceived||0)+amount;
     io.to('srv_'+roomId).emit('player:damaged',{targetId:data.targetId,attackerId:socket.id,attackerName:attacker.name||socket.data.name,dmg:amount,hp:nextHp,damageSource:'human',damageDealt:attacker.damageDealt,damageReceived:target.damageReceived||0});
-    if(nextHp<=0){target.hp=200;target.deaths=(target.deaths||0)+1;attacker.kills=(attacker.kills||0)+1;io.to('srv_'+roomId).emit('player:eliminated',{targetId:data.targetId,attackerId:socket.id,attackerName:attacker.name,targetName:target.name||target.id});}
+    if(nextHp<=0){target.hp=200;target.deaths=(target.deaths||0)+1;attacker.kills=(attacker.kills||0)+1;persisted.kills[attacker.playerId]=killsFor(attacker.playerId)+1;saveData();io.to(attacker.id).emit('player:progress',{kills:killsFor(attacker.playerId),unlockedColors:unlockedColorCount(killsFor(attacker.playerId)),nameColor:persisted.nameColors[attacker.playerId]||0});io.to('srv_'+roomId).emit('player:eliminated',{targetId:data.targetId,attackerId:socket.id,attackerName:attacker.name,targetName:target.name||target.id});}
   });
   socket.on('voice:signal',payload=>{const roomId=socket.data.roomId||'1',room=rooms[roomId];if(!room||!payload||typeof payload.to!=='string'||!room.players[payload.to]||!payload.signal||!['offer','answer','ice'].includes(payload.type))return;io.to(payload.to).emit('voice:signal',{from:socket.id,type:payload.type,signal:payload.signal});});
   socket.on('car:toggle',()=>{const roomId=socket.data.roomId||'1',room=rooms[roomId];if(!room)return;const existing=room.cars.find(c=>c.driverId===socket.id);if(existing){existing.driverId=null;existing.speed=0;if(room.players[socket.id])room.players[socket.id].inCarId=null;io.to('srv_'+roomId).emit('car:update',existing);return;}const p=room.players[socket.id];if(!p)return;let nearest=null,best=18;for(const car of room.cars){if(car.driverId&&car.driverId!==socket.id)continue;const d=Math.hypot(car.x-p.x,car.y-p.y);if(d<best){best=d;nearest=car;}}if(nearest){nearest.driverId=socket.id;p.inCarId=nearest.id;io.to('srv_'+roomId).emit('car:update',nearest);io.to('srv_'+roomId).emit('cars:update',room.cars);}});
@@ -302,11 +335,13 @@ io.on('connection',socket=>{
 });
 
 // AI update loop: light server-side movement/decision updates, never runs on the players' phones.
-setInterval(()=>{const now=Date.now();for(const roomId of ['1','2']){const room=rooms[roomId];if(!room.botsEnabled)continue;for(const bot of room.bots){if(bot.active!==false&&now-bot.lastThink>=800){bot.lastThink=now;botThink(roomId,bot,room,now);}}}},800);
+setInterval(()=>{const now=Date.now();for(const roomId of ['1','2']){const room=rooms[roomId];if(!room.botsEnabled)continue;for(const bot of room.bots){if(bot.active!==false){bot.frameDt=0.05;botThink(roomId,bot,room,now);}}}},50);
 
 // Admin API
-app.get('/api/admin/status',requireAdmin,(_req,res)=>res.json({ok:true,uptime:Math.floor(process.uptime()),rooms:Object.fromEntries(['1','2'].map(id=>{const r=rooms[id];return[id,{humans:Object.keys(r.players).length,bots:r.bots.filter(b=>b.active!==false).length,botTargetCount:r.botTargetCount,botAuto:r.botAuto,capacity:MAX_HUMANS_PER_ROOM,cars:r.cars.length}]})),restart:readJson(RESTART_FILE,null)}));
-app.get('/api/admin/players',requireAdmin,(_req,res)=>{const list=[];for(const roomId of ['1','2']){const r=rooms[roomId];Object.values(r.players).forEach(p=>list.push({room:roomId,id:p.playerId,socketId:p.id,name:p.name,verified:p.verified,hp:p.hp,damageDealt:p.damageDealt,damageReceived:p.damageReceived,kills:p.kills,deaths:p.deaths,online:true}));r.bots.filter(b=>b.active!==false).forEach(b=>list.push({room:roomId,id:b.id,socketId:b.id,name:b.name,verified:false,hp:b.hp,isBot:true,online:true}));}res.json({ok:true,players:list,profiles:Object.values(persisted.players).map(p=>({id:p.id,name:p.name,firstSeen:p.firstSeen,verified:isVerified(p.id),banned:!!persisted.banned[p.id],online:list.some(x=>x.id===p.id)}))});});
+app.get('/api/admin/status',requireAdmin,(_req,res)=>res.json({ok:true,ownerId:persisted.ownerId,uptime:Math.floor(process.uptime()),rooms:Object.fromEntries(['1','2'].map(id=>{const r=rooms[id];return[id,{humans:Object.keys(r.players).length,bots:r.bots.filter(b=>b.active!==false).length,botTargetCount:r.botTargetCount,botAuto:r.botAuto,capacity:MAX_HUMANS_PER_ROOM,cars:r.cars.length}]})),restart:readJson(RESTART_FILE,null)}));
+app.get('/api/admin/players',requireAdmin,(_req,res)=>{const list=[];for(const roomId of ['1','2']){const r=rooms[roomId];Object.values(r.players).forEach(p=>list.push({room:roomId,id:p.playerId,socketId:p.id,name:p.name,verified:p.verified,hp:p.hp,damageDealt:p.damageDealt,damageReceived:p.damageReceived,kills:p.kills,deaths:p.deaths,online:true}));r.bots.filter(b=>b.active!==false).forEach(b=>list.push({room:roomId,id:b.id,socketId:b.id,name:b.name,verified:false,hp:b.hp,isBot:true,online:true}));}res.json({ok:true,players:list,profiles:Object.values(persisted.players).map(p=>({id:p.id,name:p.name,firstSeen:p.firstSeen,verified:isVerified(p.id),owner:isOwner(p.id),kills:killsFor(p.id),banned:!!persisted.banned[p.id],online:list.some(x=>x.id===p.id)}))});});
+app.post('/api/admin/owner',requireAdmin,(req,res)=>{const id=String(req.body&&req.body.playerId||'').trim();if(!/^DX-\d{6}$/.test(id)||!profileById(id))return res.status(400).json({ok:false,error:'ID permanente não encontrado. Crie a conta no jogo primeiro.'});const grant=!!(req.body&&req.body.owner);const previous=persisted.ownerId;if(grant)persisted.ownerId=id;else if(persisted.ownerId===id)persisted.ownerId=null;else return res.status(400).json({ok:false,error:'Esse ID não é o dono atual.'});saveData();for(const roomId of ['1','2']){const room=rooms[roomId];for(const pl of Object.values(room.players)){if(pl.playerId===id||pl.playerId===previous)io.to(pl.id).emit('player:identity',{playerId:pl.playerId,verified:isVerified(pl.playerId),owner:isOwner(pl.playerId),kills:killsFor(pl.playerId),nameColor:persisted.nameColors[pl.playerId]||0,unlockedColors:unlockedColorCount(killsFor(pl.playerId))});}}logAdmin(grant?'Dono definido':'Dono removido',{playerId:id,previousOwner:previous});res.json({ok:true,ownerId:persisted.ownerId});});
+app.post('/api/admin/announce',requireAdmin,(req,res)=>{const message=String(req.body&&req.body.message||'').trim().slice(0,180);if(!message)return res.status(400).json({ok:false,error:'Digite um aviso.'});const payload={text:message,at:Date.now(),from:'DISTRITO X'};io.emit('owner:announcement',payload);logAdmin('Aviso global enviado',{message});res.json({ok:true});});
 app.post('/api/admin/verify',requireAdmin,(req,res)=>{const id=String(req.body&&req.body.playerId||'').trim();if(!/^DX-\d{6}$/.test(id))return res.status(400).json({ok:false,error:'ID permanente inválido.'});const value=!!(req.body&&req.body.verified);persisted.verified[id]=value;if(!value)delete persisted.verified[id];saveData();for(const roomId of ['1','2']){const room=rooms[roomId];for(const p of Object.values(room.players)){if(p.playerId===id){p.verified=value;io.to('srv_'+roomId).emit('player:verification',{playerId:id,verified:value});}}}logAdmin(value?'Verificado concedido':'Verificado retirado',{playerId:id});res.json({ok:true,playerId:id,verified:value});});
 app.post('/api/admin/kick',requireAdmin,(req,res)=>{const id=String(req.body&&req.body.playerId||'').trim();let found=null;for(const roomId of ['1','2']){const room=rooms[roomId];const p=Object.values(room.players).find(p=>p.playerId===id);if(p){found={room:roomId,socketId:p.id,name:p.name};break;}}if(!found)return res.status(404).json({ok:false,error:'Jogador não está online.'});const target=io.sockets.sockets.get(found.socketId);if(target)target.disconnect(true);logAdmin('Jogador expulso',{playerId:id,room:found.room});res.json({ok:true,playerId:id});});
 app.post('/api/admin/ban',requireAdmin,(req,res)=>{const id=String(req.body&&req.body.playerId||'').trim();if(!/^DX-\d{6}$/.test(id))return res.status(400).json({ok:false,error:'ID permanente inválido.'});persisted.banned[id]=true;saveData();for(const roomId of ['1','2']){const p=Object.values(rooms[roomId].players).find(p=>p.playerId===id);if(p){const target=io.sockets.sockets.get(p.id);if(target)target.disconnect(true);}}logAdmin('Jogador banido',{playerId:id});res.json({ok:true,playerId:id,banned:true});});
