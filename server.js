@@ -141,7 +141,7 @@ function safeZoneAt(x, z, elevation=0) {
 }
 
 function createInitialCars() {
-  return [
+  const cars = [
     { id: 'carro_1', x: 24, y: 50, angle: 0, speed: 0, driverId: null },
     { id: 'carro_2', x: 40, y: 10, angle: Math.PI, speed: 0, driverId: null },
     { id: 'carro_3', x: 74, y: 38, angle: Math.PI / 2, speed: 0, driverId: null },
@@ -150,23 +150,31 @@ function createInitialCars() {
     { id: 'moto_1', x: 50, y: 34, angle: Math.PI / 2, speed: 0, driverId: null },
     { id: 'aviao_aeroporto', x: AIRPORT_X - 76, y: AIRPORT_Z, angle: Math.PI / 2, speed: 0, altitude: 0, pitch: 0, roll: 0, driverId: null }
   ];
+  return cars.map(car => ({ ...car, spawn:{x:car.x,y:car.y,angle:car.angle}, abandonedAt:null, lastDrivenAt:0 }));
 }
 const BOT_NAMES = ['Carlos','Miguel','André','Bruno','Rafael','Mateus','Lucas','Pedro','Thiago','Diego','João','Gabriel','Felipe','Caio','Vinícius','Eduardo','Gustavo','Marcos','Daniel','Leandro','Samuel','Henrique','Vitor','Renan','Alex','Nicolas','Murilo','Enzo','Davi','Arthur'];
 const PERSONALITIES = ['tranquilo','curioso','competitivo','sociável','desconfiado','aventureiro','protetor','brincalhão','observador','corajoso'];
 function createBot(roomId, index) {
   const id = `BOT-S${roomId}-${String(index+1).padStart(2,'0')}`;
   const seed = index*137 + Number(roomId)*911;
-  const x = 32 + Math.sin(seed)*38, z = 32 + Math.cos(seed*1.7)*42;
+  const city = CITY_CENTERS[index % CITY_CENTERS.length];
+  const angle = Math.floor(index / CITY_CENTERS.length) * 2.399963229728653 + seed * 0.013;
+  const radius = Math.max(2, city.r - 2) * P;
+  const home = { x: city.ix * P + 32, z: city.iz * P + 32, radius };
+  const spawnRadius = radius * (0.28 + ((index * 7) % 5) * 0.075);
+  const x = home.x + Math.cos(angle) * spawnRadius;
+  const z = home.z + Math.sin(angle) * spawnRadius;
+  const goalAngle = angle + 1.7, goalRadius = radius * (0.2 + Math.random() * 0.45);
   return { id, name: BOT_NAMES[index%BOT_NAMES.length], x, y:z, angle:Math.random()*Math.PI*2, inCarId:null, seatRole:'foot', elevation:0,
-    look:{skin:index%5,shirt:index%8,pant:index%6,hair:index%6}, weapon:index%5, hp:200, safeZone:safeZoneAt(x,z), verified:false, isBot:true,
-    personality:PERSONALITIES[index%PERSONALITIES.length], goal:{x:32+Math.random()*120-60,z:32+Math.random()*120-60,until:Date.now()+5000+Math.random()*10000},
+    look:{skin:index%5,shirt:index%8,pant:index%6,hair:index%6}, weapon:index%5, hp:200, deaths:0, kills:0, safeZone:safeZoneAt(x,z), verified:false, isBot:true,
+    home, personality:PERSONALITIES[index%PERSONALITIES.length], goal:{x:home.x+Math.cos(goalAngle)*goalRadius,z:home.z+Math.sin(goalAngle)*goalRadius,until:Date.now()+5000+Math.random()*10000},
     memory:{ lastThreat:null, avoidUntil:0, friendlyIds:[], experiences:0, noHostility:{} }, vx:0,vy:0,lastChat:0,lastAttack:0, lastThink:0, combatTarget:null, moving:true, chatCooldown:0, mood:Math.random() };
 }
 function createRoom(roomId) { return { players:{}, bots:Array.from({length:BOT_TOTAL_PER_ROOM},(_,i)=>createBot(roomId,i)), cars:createInitialCars(), botTargetCount:BOT_TOTAL_PER_ROOM, botAuto:true, chat:[], stats:{damage:0,kills:0}, botsEnabled:true, lastBotChatAt:0 }; }
 const rooms = { '1':createRoom('1'), '2':createRoom('2') };
 function normalizeRoomId(raw) { return String(raw)==='2'?'2':'1'; }
 function combinedPlayers(room) { const all={}; Object.values(room.players).forEach(p=>{all[p.id]=publicHuman(p);}); room.bots.forEach(b=>{ if (b.active!==false) all[b.id]=publicBot(b); }); return all; }
-function publicBot(b) { const { personality,goal,memory,lastChat,lastAttack,lastThink,combatTarget,moving,chatCooldown,mood,active,...safe }=b; return {...safe, isBot:true, verified:false}; }
+function publicBot(b) { const { personality,goal,memory,home,lastChat,lastAttack,lastThink,combatTarget,moving,chatCooldown,mood,active,...safe }=b; return {...safe, isBot:true, verified:false, owner:false, kills:Math.max(0,Number(b.kills)||0), deaths:Math.max(0,Number(b.deaths)||0), nameColor:(Math.max(0,Number(b.kills)||0))%NAME_COLORS.length}; }
 function botBroadcastJoin(roomId, bot) { io.to('srv_'+roomId).emit('player:joined',publicBot(bot)); }
 function botBroadcastMove(roomId, bot) { io.to('srv_'+roomId).emit('player:moved',publicBot(bot)); }
 function botSay(roomId, bot, text) {
@@ -225,7 +233,7 @@ function botThink(roomId, bot, room, now) {
     else if(!enemy||!nearbyHumans.some(x=>x.p.id===bot.combatTarget))bot.combatTarget=null;
 
     bot.memory.experiences++;
-    if(bot.memory.experiences%8===0&&Math.random()<.35){bot.memory.avoidUntil=now+3000;bot.goal={x:bot.x+Math.random()*80-40,z:bot.y+Math.random()*80-40,until:now+5000};}
+    if(bot.memory.experiences%16===0&&Math.random()<.20){bot.memory.avoidUntil=now+3000;const h=bot.home||{x:32,z:32,radius:300};const a=Math.random()*Math.PI*2,r=Math.random()*h.radius*.55;bot.goal={x:h.x+Math.cos(a)*r,z:h.z+Math.sin(a)*r,until:now+6500};}
     botThinkCombatBots(roomId,room,bot,now);
     botSocialThink(roomId,room,bot,now);
   }
@@ -241,14 +249,22 @@ function botThink(roomId, bot, room, now) {
         io.to('srv_'+roomId).emit('player:shot',{id:bot.id,x:bot.x,y:bot.y,angle:shootAngle,range:48,dmg:damage});
         const hp=Math.max(0,target.hp-damage);target.hp=hp;
         io.to('srv_'+roomId).emit('player:damaged',{targetId:target.id,attackerId:bot.id,attackerName:bot.name,dmg:damage,hp,damageSource:'bot'});
-        if(hp<=0){target.hp=200;target.deaths=(target.deaths||0)+1;persisted.deaths[target.playerId]=(Number(persisted.deaths[target.playerId])||0)+1;saveData();botSay(roomId,bot,`Foi mal, ${target.name}. Você caiu, mas já vai voltar.`);}
+        if(hp<=0){
+          target.hp=200;target.deaths=(target.deaths||0)+1;
+          persisted.deaths[target.playerId]=(Number(persisted.deaths[target.playerId])||0)+1;
+          bot.kills=(bot.kills||0)+1;saveData();
+          io.to('srv_'+roomId).emit('player:eliminated',{targetId:target.id,attackerId:bot.id,attackerName:bot.name,targetName:target.name});
+          botSay(roomId,bot,`Foi mal, ${target.name}. Você caiu, mas já vai voltar.`);
+        }
       }
     }
   }
 
   if(now>bot.goal.until||Math.hypot(bot.goal.x-bot.x,bot.goal.z-bot.y)<5){
-    bot.goal={x:32+Math.random()*150-75,z:32+Math.random()*150-75,until:now+4000+Math.random()*13000};
-    bot.moving=Math.random()>.12;
+    const h=bot.home||{x:32,z:32,radius:300};
+    const a=Math.random()*Math.PI*2,r=Math.random()*h.radius*.72;
+    bot.goal={x:h.x+Math.cos(a)*r,z:h.z+Math.sin(a)*r,until:now+7000+Math.random()*12000};
+    bot.moving=Math.random()>.08;
   }
   const dt=Math.max(0.01,Math.min(0.08,Number(bot.frameDt)||0.05));
   const dx=bot.goal.x-bot.x,dz=bot.goal.z-bot.y,dist=Math.hypot(dx,dz);
@@ -261,7 +277,7 @@ function botThink(roomId, bot, room, now) {
   if(Math.hypot(bot.vx,bot.vy)>.08){bot.x+=bot.vx*dt;bot.y+=bot.vy*dt;bot.angle=Math.atan2(bot.vx,bot.vy);}
   bot.safeZone=safeZoneAt(bot.x,bot.y,bot.elevation);
   bot.hp=Math.max(0,Math.min(200,bot.hp));
-  if(now-(bot.lastBroadcast||0)>=50){bot.lastBroadcast=now;botBroadcastMove(roomId,bot);}
+  if(now-(bot.lastBroadcast||0)>=80){bot.lastBroadcast=now;botBroadcastMove(roomId,bot);}
 }
 function botSocialThink(roomId,room,bot,now){
   if(now-bot.lastChat<65000+Math.random()*35000||now-room.lastBotChatAt<8500)return;
@@ -272,7 +288,7 @@ function botThinkCombatBots(roomId, room, bot, now) {
   if(safeZoneAt(bot.x,bot.y,bot.elevation))return;
   const others=room.bots.filter(o=>o!==bot&&o.active!==false&&!safeZoneAt(o.x,o.y,o.elevation));
   const rival=others.filter(o=>Math.hypot(o.x-bot.x,o.y-bot.y)<30).sort((a,b)=>Math.hypot(a.x-bot.x,a.y-bot.y)-Math.hypot(b.x-bot.x,b.y-bot.y))[0];
-  if(rival&&Math.random()<.22){const old=rival.hp;rival.hp=Math.max(0,rival.hp-10);io.to('srv_'+roomId).emit('player:damaged',{targetId:rival.id,attackerId:bot.id,attackerName:bot.name,dmg:10,hp:rival.hp,damageSource:'bot'});if(rival.hp<=0){rival.hp=200;io.to('srv_'+roomId).emit('player:eliminated',{targetId:rival.id,attackerId:bot.id,attackerName:bot.name,targetName:rival.name});botSay(roomId,bot,`Foi mal, ${rival.name}. Foi uma briga boba.`);}}
+  if(rival&&Math.random()<.22){rival.hp=Math.max(0,rival.hp-10);io.to('srv_'+roomId).emit('player:damaged',{targetId:rival.id,attackerId:bot.id,attackerName:bot.name,dmg:10,hp:rival.hp,damageSource:'bot'});if(rival.hp<=0){rival.hp=200;rival.deaths=(rival.deaths||0)+1;bot.kills=(bot.kills||0)+1;io.to('srv_'+roomId).emit('player:eliminated',{targetId:rival.id,attackerId:bot.id,attackerName:bot.name,targetName:rival.name});botSay(roomId,bot,`Foi mal, ${rival.name}. Foi uma briga boba.`);}}
 }
 function botsApplyCount(room) {
   room.bots.forEach((b,i)=>{b.active=i<room.botTargetCount;});
@@ -297,7 +313,7 @@ function autoBotCount(roomId, room) {
 function removePlayerFromRoom(socket, roomId) {
   const room=rooms[roomId]; if(!room)return;
   if(room.players[socket.id]) { delete room.players[socket.id]; socket.to('srv_'+roomId).emit('player:leave',socket.id); socket.to('srv_'+roomId).emit('player:left',socket.id); autoBotCount(roomId,room); }
-  room.cars.forEach(car=>{if(car.driverId===socket.id){car.driverId=null;car.speed=0;io.to('srv_'+roomId).emit('car:update',car);io.to('srv_'+roomId).emit('cars:update',room.cars);}});
+  room.cars.forEach(car=>{if(car.driverId===socket.id){car.driverId=null;car.speed=0;car.abandonedAt=Date.now();io.to('srv_'+roomId).emit('car:update',car);io.to('srv_'+roomId).emit('cars:update',room.cars);}});
   socket.leave('srv_'+roomId);
 }
 function joinRoom(socket, nextRoomId) {
@@ -369,8 +385,8 @@ socket.on('owner:announce',payload=>{const roomId=socket.data.roomId||'1',pl=roo
     if(nextHp<=0){target.hp=200;target.deaths=(target.deaths||0)+1;if(targetHuman)persisted.deaths[targetHuman.playerId]=(Number(persisted.deaths[targetHuman.playerId])||0)+1;attacker.kills=(attacker.kills||0)+1;persisted.kills[attacker.playerId]=killsFor(attacker.playerId)+1;if(!persisted.roomKills[roomId])persisted.roomKills[roomId]={};const previousOwnRoomKills=Number(persisted.roomKills[roomId][attacker.playerId])||0;persisted.roomKills[roomId][attacker.playerId]=previousOwnRoomKills+1;const previousTop=Math.max(0,...Object.entries(persisted.roomKills[roomId]).filter(([id])=>id!==attacker.playerId).map(([,v])=>Number(v)||0));if(previousOwnRoomKills<=previousTop&&persisted.roomKills[roomId][attacker.playerId]>previousTop)persisted.mvp[attacker.playerId]=(Number(persisted.mvp[attacker.playerId])||0)+1;saveData();io.to(attacker.id).emit('player:progress',{kills:killsFor(attacker.playerId),unlockedColors:unlockedColorCount(killsFor(attacker.playerId)),nameColor:persisted.nameColors[attacker.playerId]||0});io.to('srv_'+roomId).emit('player:eliminated',{targetId:data.targetId,attackerId:socket.id,attackerName:attacker.name,targetName:target.name||target.id});}
   });
   socket.on('voice:signal',payload=>{const roomId=socket.data.roomId||'1',room=rooms[roomId];if(!room||!payload||typeof payload.to!=='string'||!room.players[payload.to]||!payload.signal||!['offer','answer','ice'].includes(payload.type))return;io.to(payload.to).emit('voice:signal',{from:socket.id,type:payload.type,signal:payload.signal});});
-  socket.on('car:toggle',()=>{const roomId=socket.data.roomId||'1',room=rooms[roomId];if(!room)return;const existing=room.cars.find(c=>c.driverId===socket.id);if(existing){existing.driverId=null;existing.speed=0;if(room.players[socket.id])room.players[socket.id].inCarId=null;io.to('srv_'+roomId).emit('car:update',existing);return;}const p=room.players[socket.id];if(!p)return;let nearest=null,best=18;for(const car of room.cars){if(car.driverId&&car.driverId!==socket.id)continue;const d=Math.hypot(car.x-p.x,car.y-p.y);if(d<best){best=d;nearest=car;}}if(nearest){nearest.driverId=socket.id;p.inCarId=nearest.id;io.to('srv_'+roomId).emit('car:update',nearest);io.to('srv_'+roomId).emit('cars:update',room.cars);}});
-  socket.on('car:drive',data=>{const roomId=socket.data.roomId||'1',room=rooms[roomId];if(!room||!data||!data.id)return;const car=room.cars.find(c=>c.id===data.id);if(!car||car.driverId&&car.driverId!==socket.id)return;car.driverId=socket.id;['x','y','angle','speed','altitude','pitch','roll'].forEach(k=>{if(Number.isFinite(data[k]))car[k]=data[k];});socket.to('srv_'+roomId).emit('car:drive',car);socket.to('srv_'+roomId).emit('cars:update',room.cars);});
+  socket.on('car:toggle',()=>{const roomId=socket.data.roomId||'1',room=rooms[roomId];if(!room)return;const existing=room.cars.find(c=>c.driverId===socket.id);if(existing){existing.driverId=null;existing.speed=0;existing.abandonedAt=Date.now();if(room.players[socket.id])room.players[socket.id].inCarId=null;io.to('srv_'+roomId).emit('car:update',existing);io.to('srv_'+roomId).emit('cars:update',room.cars);return;}const p=room.players[socket.id];if(!p)return;let nearest=null,best=18;for(const car of room.cars){if(car.driverId&&car.driverId!==socket.id)continue;const d=Math.hypot(car.x-p.x,car.y-p.y);if(d<best){best=d;nearest=car;}}if(nearest){nearest.driverId=socket.id;nearest.abandonedAt=null;nearest.lastDrivenAt=Date.now();p.inCarId=nearest.id;io.to('srv_'+roomId).emit('car:update',nearest);io.to('srv_'+roomId).emit('cars:update',room.cars);}});
+  socket.on('car:drive',data=>{const roomId=socket.data.roomId||'1',room=rooms[roomId];if(!room||!data||!data.id)return;const car=room.cars.find(c=>c.id===data.id);if(!car||car.driverId&&car.driverId!==socket.id)return;car.driverId=socket.id;car.abandonedAt=null;car.lastDrivenAt=Date.now();['x','y','angle','speed','altitude','pitch','roll'].forEach(k=>{if(Number.isFinite(data[k]))car[k]=data[k];});socket.to('srv_'+roomId).emit('car:drive',car);socket.to('srv_'+roomId).emit('cars:update',room.cars);});
   const handleChat=payload=>{const roomId=socket.data.roomId||'1',room=rooms[roomId],p=room&&room.players[socket.id];if(!p||!payload||typeof payload.text!=='string')return;const text=payload.text.trim().slice(0,110);if(!text)return;const msg={id:socket.id,playerId:p.playerId,name:p.name,text,verified:p.verified};room.chat.push(msg);room.chat=room.chat.slice(-30);io.to('srv_'+roomId).emit('chat:msg',msg);io.to('srv_'+roomId).emit('chat:message',msg);chatWithBots(roomId,p,text);};socket.on('chat:msg',handleChat);socket.on('chat:send',handleChat);
   socket.on('disconnect',()=>removePlayerFromRoom(socket,socket.data.roomId||initialRoom));
 });
@@ -381,10 +397,29 @@ setInterval(()=>{try{saveData();}catch(e){console.error('Falha ao salvar estatí
 // AI update loop: light server-side movement/decision updates, never runs on the players' phones.
 setInterval(()=>{const now=Date.now();for(const roomId of ['1','2']){const room=rooms[roomId];if(!room.botsEnabled)continue;for(const bot of room.bots){if(bot.active!==false){bot.frameDt=0.05;botThink(roomId,bot,room,now);}}}},50);
 
+// Veículos abandonados retornam ao ponto original após 40 segundos.
+// Sair da cidade, sozinho, não inicia o retorno.
+setInterval(()=>{
+  const now=Date.now();
+  for(const roomId of ['1','2']){
+    const room=rooms[roomId];
+    let changed=false;
+    for(const car of room.cars){
+      if(car.driverId||!car.abandonedAt||now-car.abandonedAt<40000)continue;
+      const spawn=car.spawn||{x:car.x,y:car.y,angle:car.angle};
+      car.x=spawn.x;car.y=spawn.y;car.angle=spawn.angle;
+      car.speed=0;car.altitude=0;car.pitch=0;car.roll=0;
+      car.driverId=null;car.abandonedAt=null;car.lastDrivenAt=0;
+      changed=true;
+    }
+    if(changed)io.to('srv_'+roomId).emit('cars:update',room.cars);
+  }
+},1000);
+
 // Admin API
 app.get('/api/admin/status',requireAdmin,(_req,res)=>res.json({ok:true,ownerId:persisted.ownerId,uptime:Math.floor(process.uptime()),rooms:Object.fromEntries(['1','2'].map(id=>{const r=rooms[id];return[id,{humans:Object.keys(r.players).length,bots:r.bots.filter(b=>b.active!==false).length,botTargetCount:r.botTargetCount,botAuto:r.botAuto,capacity:MAX_HUMANS_PER_ROOM,cars:r.cars.length}]})),restart:readJson(RESTART_FILE,null)}));
 app.get('/api/admin/players',requireAdmin,(_req,res)=>{const list=[];for(const roomId of ['1','2']){const r=rooms[roomId];Object.values(r.players).forEach(p=>list.push({room:roomId,id:p.playerId,socketId:p.id,name:p.name,verified:p.verified,hp:p.hp,damageDealt:p.damageDealt,damageReceived:p.damageReceived,kills:p.kills,deaths:p.deaths,online:true}));r.bots.filter(b=>b.active!==false).forEach(b=>list.push({room:roomId,id:b.id,socketId:b.id,name:b.name,verified:false,hp:b.hp,isBot:true,online:true}));}res.json({ok:true,players:list,profiles:Object.values(persisted.players).map(p=>({id:p.id,name:p.name,firstSeen:p.firstSeen,verified:isVerified(p.id),vip:isVip(p.id),owner:isOwner(p.id),kills:killsFor(p.id),mvp:Number(persisted.mvp[p.id])||0,deaths:Number(persisted.deaths[p.id])||0,damageDealt:Number(persisted.damage[p.id])||0,banned:!!persisted.banned[p.id],online:list.some(x=>x.id===p.id)}))});});
-app.post('/api/admin/owner',requireAdmin,(req,res)=>{const id=String(req.body&&req.body.playerId||'').trim();if(!/^DX-\d{6}$/.test(id)||!profileById(id))return res.status(400).json({ok:false,error:'ID permanente não encontrado. Crie a conta no jogo primeiro.'});const grant=!!(req.body&&req.body.owner);const previous=persisted.ownerId;if(grant)persisted.ownerId=id;else if(persisted.ownerId===id)persisted.ownerId=null;else return res.status(400).json({ok:false,error:'Esse ID não é o dono atual.'});saveData();for(const roomId of ['1','2']){const room=rooms[roomId];for(const pl of Object.values(room.players)){if(pl.playerId===id||pl.playerId===previous){pl.invulnerable=false;pl.speedBoost=false;io.to(pl.id).emit('player:identity',{playerId:pl.playerId,verified:isVerified(pl.playerId),owner:isOwner(pl.playerId),kills:killsFor(pl.playerId),nameColor:persisted.nameColors[pl.playerId]||0,unlockedColors:unlockedColorCount(killsFor(pl.playerId)),vip:isVip(pl.playerId),invulnerable:false,speedBoost:false});}}}logAdmin(grant?'Dono definido':'Dono removido',{playerId:id,previousOwner:previous});res.json({ok:true,ownerId:persisted.ownerId});});
+app.post('/api/admin/owner',requireAdmin,(req,res)=>{const id=String(req.body&&req.body.playerId||'').trim();if(!/^DX-\d{6}$/.test(id)||!profileById(id))return res.status(400).json({ok:false,error:'ID permanente não encontrado. Crie a conta no jogo primeiro.'});const grant=!!(req.body&&req.body.owner);const previous=persisted.ownerId;if(grant)persisted.ownerId=id;else if(persisted.ownerId===id)persisted.ownerId=null;else return res.status(400).json({ok:false,error:'Esse ID não é o dono atual.'});saveData();for(const roomId of ['1','2']){const room=rooms[roomId];for(const pl of Object.values(room.players)){if(pl.playerId===id||pl.playerId===previous){pl.invulnerable=false;pl.speedBoost=false;io.to(pl.id).emit('player:identity',{playerId:pl.playerId,verified:isVerified(pl.playerId),owner:isOwner(pl.playerId),kills:killsFor(pl.playerId),nameColor:persisted.nameColors[pl.playerId]||0,unlockedColors:unlockedColorCount(killsFor(pl.playerId)),vip:isVip(pl.playerId),invulnerable:false,speedBoost:false});io.to('srv_'+roomId).emit('player:moved',publicHuman(pl));}}}logAdmin(grant?'Dono definido':'Dono removido',{playerId:id,previousOwner:previous});res.json({ok:true,ownerId:persisted.ownerId});});
 app.post('/api/admin/announce',requireAdmin,(req,res)=>{const message=String(req.body&&req.body.message||'').trim().slice(0,180);if(!message)return res.status(400).json({ok:false,error:'Digite um aviso.'});const payload={text:message,at:Date.now(),from:'DISTRITO X'};io.emit('owner:announcement',payload);logAdmin('Aviso global enviado',{message});res.json({ok:true});});
 app.post('/api/admin/vip',requireAdmin,(req,res)=>{const id=String(req.body&&req.body.playerId||'').trim();if(!/^DX-\d{6}$/.test(id)||!profileById(id))return res.status(400).json({ok:false,error:'ID permanente não encontrado.'});const vip=!!(req.body&&req.body.vip);if(vip)persisted.vips[id]=true;else delete persisted.vips[id];saveData();for(const roomId of ['1','2'])for(const pl of Object.values(rooms[roomId].players))if(pl.playerId===id)io.to('srv_'+roomId).emit('player:vip',{playerId:id,vip});logAdmin(vip?'VIP concedido':'VIP retirado',{playerId:id});res.json({ok:true,playerId:id,vip});});
 app.post('/api/admin/verify',requireAdmin,(req,res)=>{const id=String(req.body&&req.body.playerId||'').trim();if(!/^DX-\d{6}$/.test(id))return res.status(400).json({ok:false,error:'ID permanente inválido.'});const value=!!(req.body&&req.body.verified);persisted.verified[id]=value;if(!value)delete persisted.verified[id];saveData();for(const roomId of ['1','2']){const room=rooms[roomId];for(const p of Object.values(room.players)){if(p.playerId===id){p.verified=value;io.to('srv_'+roomId).emit('player:verification',{playerId:id,verified:value});}}}logAdmin(value?'Verificado concedido':'Verificado retirado',{playerId:id});res.json({ok:true,playerId:id,verified:value});});
