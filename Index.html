@@ -3127,13 +3127,17 @@ function frame(t){
         rp.prevX=curVis.x;
         rp.prevZ=curVis.z;
         rp.prevYaw=curVis.yaw;
-        rp.vx=cl((nx-curVis.x)/netDt,-18,18);
-        rp.vz=cl((nz-curVis.z)/netDt,-18,18);
+        // Bots recebem uma interpolacao mais suave para reduzir tremores entre pacotes.
+        // Jogadores humanos mantem exatamente a interpolacao original.
+        const botNetDt=p.isBot?Math.max(netDt,0.22):netDt;
+        const botSpeedLimit=p.isBot?8:18;
+        rp.vx=cl((nx-curVis.x)/botNetDt,-botSpeedLimit,botSpeedLimit);
+        rp.vz=cl((nz-curVis.z)/botNetDt,-botSpeedLimit,botSpeedLimit);
         rp.targetX=nx;
         rp.targetZ=nz;
         rp.targetYaw=nyaw;
         rp.lastNetAt=nowT;
-        rp.netInterval=netDt*1000;
+        rp.netInterval=p.isBot?Math.max(240,netDt*1000):netDt*1000;
         const dist=Math.hypot(nx-curVis.x,nz-curVis.z);
         rp.x=nx;rp.z=nz;rp.yaw=nyaw;
         if(p.name)rp.name=p.name;
@@ -3145,8 +3149,13 @@ function frame(t){
         if(p.inCarId!==undefined)rp.inCarId=p.inCarId;
         if(typeof p.elevation==='number')rp.elevation=p.elevation;
         if(dist>0.03&&!rp.inCarId){
-          rp.amp=Math.min(1,dist*3.2);
-          rp.ph+=dist*1.9;
+          if(p.isBot){
+            const targetAmp=Math.min(0.72,dist*1.35);
+            rp.amp=(rp.amp||0)*0.72+targetAmp*0.28;
+          }else{
+            rp.amp=Math.min(1,dist*3.2);
+          }
+          rp.ph+=dist*(p.isBot?1.15:1.9);
           if(nowT-(rp.lastStepT||0)>360){
             rp.lastStepT=nowT;
             const dMe=Math.hypot(nx-player.x,nz-player.z);
@@ -3241,10 +3250,11 @@ function frame(t){
   window.remoteRenderState=function(rp,nowT){
     if(!rp)return {x:0,z:0,yaw:0};
     const t0=rp.lastNetAt||nowT;
-    const span=Math.max(45,Math.min(260,rp.netInterval||90));
+    const span=rp.isBot?Math.max(240,Math.min(320,rp.netInterval||260)):Math.max(45,Math.min(260,rp.netInterval||90));
     const elapsed=Math.max(0,nowT-t0);
-    const alpha=Math.min(1,elapsed/span);
-    const extra=Math.min(0.10,Math.max(0,(elapsed-span)/1000));
+    let alpha=Math.min(1,elapsed/span);
+    if(rp.isBot)alpha=alpha*alpha*(3-2*alpha);
+    const extra=rp.isBot?0:Math.min(0.10,Math.max(0,(elapsed-span)/1000));
     const baseX=(rp.prevX!==undefined?rp.prevX:rp.x)+((rp.targetX!==undefined?rp.targetX:rp.x)-(rp.prevX!==undefined?rp.prevX:rp.x))*alpha;
     const baseZ=(rp.prevZ!==undefined?rp.prevZ:rp.z)+((rp.targetZ!==undefined?rp.targetZ:rp.z)-(rp.prevZ!==undefined?rp.prevZ:rp.z))*alpha;
     const x=baseX+(rp.vx||0)*extra;
