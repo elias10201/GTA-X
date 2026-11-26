@@ -286,6 +286,9 @@ canvas{display:block;width:100vw;height:100vh}
 </div>
 
 <script>
+// Compatibilidade: evita ReferenceError caso algum trecho legado chame killstart.
+var killstart = (typeof window.killstart === 'function') ? window.killstart : function(){ return false; };
+window.killstart = killstart;
 (()=>{'use strict';
 
 const DEFAULT_SERVER_URL = 'https://reinos-de-aco-server.onrender.com';
