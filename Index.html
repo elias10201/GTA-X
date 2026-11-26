@@ -2612,8 +2612,12 @@ function render(){
     const localNick=(window.getMpNick&&window.getMpNick())||'Jogador';
     const localOwner=!!window.mpOwnerSelf;
     const localHue=(performance.now()/18)%360;
-    const localRainbow=killsStat>=100000;
-    const localColor=localOwner?`hsl(${(localHue+35)%360},100%,68%)`:verifiedSelf?`hsl(${(localHue+175)%360},95%,70%)`:vipSelf?`hsl(${(localHue+260)%360},95%,72%)`:localRainbow?`hsl(${localHue},100%,65%)`:NAME_PALETTE[selectedNameColor]||'#ffffff';
+    const localKills=Number(window.mpKillsStat)||0;
+    const localVerified=!!window.mpVerifiedSelf;
+    const localVip=!!window.mpVipSelf;
+    const localNameColor=Number(window.mpSelectedNameColor)||0;
+    const localRainbow=localKills>=100000;
+    const localColor=localOwner?`hsl(${(localHue+35)%360},100%,68%)`:localVerified?`hsl(${(localHue+175)%360},95%,70%)`:localVip?`hsl(${(localHue+260)%360},95%,72%)`:localRainbow?`hsl(${localHue},100%,65%)`:NAME_PALETTE[localNameColor]||'#ffffff';
     const localX=cur&&Number.isFinite(cur.x)?cur.x:player.x;
     const localZ=cur&&Number.isFinite(cur.z)?cur.z:player.z;
     if(localOwner||verifiedSelf||vipSelf)drawIdentityAura(localX,localZ,localOwner?'owner':verifiedSelf?'verified':'vip');
@@ -2862,6 +2866,7 @@ function frame(t){
 
   window.mpRemotePlayers=remotePlayers;
   window.mpOwnerSelf=false;window.mpOwnerSpeedBoost=false;
+  window.mpKillsStat=0;window.mpVerifiedSelf=false;window.mpVipSelf=false;window.mpSelectedNameColor=0;
   let mpConnected=false;
   let mpConnecting=false;
   let mpNick=(localStorage.getItem('gtax_mp_nick')||'').trim()||('Player_'+Math.floor(100+Math.random()*899));
@@ -2884,7 +2889,7 @@ function frame(t){
   function requestRanking(scope){if(window.mpSocket&&window.mpSocket.connected)window.mpSocket.emit('ranking:request',{scope});else say('Conecte-se ao multiplayer para ver o ranking.');}if($('myProfileBtn'))$('myProfileBtn').onclick=()=>{if(!permanentPlayerId||permanentPlayerId==='---')return;$('playerProfileModal').style.display='flex';$('publicProfileContent').textContent='Carregando seu perfil...';if(window.mpSocket&&window.mpSocket.connected)window.mpSocket.emit('profile:request',{playerId:permanentPlayerId});};if($('playerProfileClose'))$('playerProfileClose').onclick=()=>{$('playerProfileModal').style.display='none'};if($('saveProfileBio'))$('saveProfileBio').onclick=()=>{if(window.mpSocket&&window.mpSocket.connected)window.mpSocket.emit('profile:bio:update',{bio:$('myProfileBio').value.trim()});};
   C.addEventListener('pointerup',ev=>{if(!window.mpRemotePlayers||!window.mpSocket||!window.mpSocket.connected||!isInSafeZone(player.x,player.z))return;let best=null,bd=42;window.mpRemotePlayers.forEach(rp=>{if(!rp||!rp.playerId||!isInSafeZone(rp.x,rp.z))return;const q=project(rp.x,2.1+(rp.elevation||0),rp.z);if(!q)return;const d=Math.hypot(ev.clientX-q[0],ev.clientY-q[1]);if(d<bd){bd=d;best=rp;}});if(best){$('playerProfileModal').style.display='flex';$('publicProfileContent').textContent='Carregando '+(best.name||'jogador')+'...';window.mpSocket.emit('profile:request',{playerId:best.playerId});}});
   if($('rankingOpenBtn'))$('rankingOpenBtn').onclick=()=>{$('rankingModal').style.display='flex';requestRanking('global');};if($('rankingClose'))$('rankingClose').onclick=()=>{$('rankingModal').style.display='none'};document.querySelectorAll('[data-rank]').forEach(b=>b.onclick=()=>requestRanking(b.dataset.rank));
-  const nameColorSelect=$('nameColorSelect');if(nameColorSelect)nameColorSelect.onchange=()=>{selectedNameColor=Number(nameColorSelect.value)||0;if(window.mpSocket&&window.mpSocket.connected)window.mpSocket.emit('player:name-color',{index:selectedNameColor});};
+  const nameColorSelect=$('nameColorSelect');if(nameColorSelect)nameColorSelect.onchange=()=>{selectedNameColor=Number(nameColorSelect.value)||0;window.mpSelectedNameColor=selectedNameColor;if(window.mpSocket&&window.mpSocket.connected)window.mpSocket.emit('player:name-color',{index:selectedNameColor});};
   let selectedServer=localStorage.getItem('gtax_selected_server')||'1';
   const fallbackUrl=DEFAULT_SERVER_URL.trim();
   let serverUrls={
@@ -3167,10 +3172,10 @@ function frame(t){
       socket.on('player:identity',data=>{
         if(!data)return;
         if(data.playerId){permanentPlayerId=String(data.playerId);localStorage.setItem('distrito_x_player_id',permanentPlayerId);}
-        verifiedSelf=!!data.verified;vipSelf=!!data.vip;ownerSelf=!!data.owner;window.mpOwnerSelf=ownerSelf;ownerInvulnerable=!!data.invulnerable;ownerSpeedBoost=!!data.speedBoost;window.mpOwnerSpeedBoost=ownerSpeedBoost;killsStat=Number(data.kills)||killsStat;selectedNameColor=Number(data.nameColor)||0;unlockedNameColors=Math.max(1,Math.min(50,Number(data.unlockedColors)||1));refreshCombatStats();refreshOwnerControls();refreshNameColorChoices();if($('ownerInvulnerable'))$('ownerInvulnerable').textContent='INVULNERABILIDADE: '+(ownerInvulnerable?'ON':'OFF');if($('ownerSpeed'))$('ownerSpeed').textContent='VELOCIDADE +30%: '+(ownerSpeedBoost?'ON':'OFF');
+        verifiedSelf=!!data.verified;vipSelf=!!data.vip;window.mpVerifiedSelf=verifiedSelf;window.mpVipSelf=vipSelf;ownerSelf=!!data.owner;window.mpOwnerSelf=ownerSelf;ownerInvulnerable=!!data.invulnerable;ownerSpeedBoost=!!data.speedBoost;window.mpOwnerSpeedBoost=ownerSpeedBoost;killsStat=Number(data.kills)||killsStat;window.mpKillsStat=killsStat;selectedNameColor=Number(data.nameColor)||0;window.mpSelectedNameColor=selectedNameColor;unlockedNameColors=Math.max(1,Math.min(50,Number(data.unlockedColors)||1));refreshCombatStats();refreshOwnerControls();refreshNameColorChoices();if($('ownerInvulnerable'))$('ownerInvulnerable').textContent='INVULNERABILIDADE: '+(ownerInvulnerable?'ON':'OFF');if($('ownerSpeed'))$('ownerSpeed').textContent='VELOCIDADE +30%: '+(ownerSpeedBoost?'ON':'OFF');
         const idLabel=$('playerIdLabel');if(idLabel)idLabel.textContent='ID: '+permanentPlayerId+(ownerSelf?' · ✦ DONO':verifiedSelf?' · ✧ VERIFICADO':'');
       });
-      socket.on('player:progress',data=>{if(!data)return;killsStat=Number(data.kills)||killsStat;unlockedNameColors=Math.max(1,Math.min(50,Number(data.unlockedColors)||1));selectedNameColor=Number(data.nameColor)||selectedNameColor;refreshCombatStats();refreshNameColorChoices();});
+      socket.on('player:progress',data=>{if(!data)return;killsStat=Number(data.kills)||killsStat;window.mpKillsStat=killsStat;unlockedNameColors=Math.max(1,Math.min(50,Number(data.unlockedColors)||1));selectedNameColor=Number(data.nameColor)||selectedNameColor;window.mpSelectedNameColor=selectedNameColor;refreshCombatStats();refreshNameColorChoices();});
       socket.on('owner:announcement',data=>{if(!data)return;const text=String(data.text||'');appendChatLine('✦ DONO '+String(data.from||''),text);const toast=$('announcementToast');if(toast){toast.innerHTML='<b>✦ COMUNICADO OFICIAL · DISTRITO X CITY ✦</b>';const line=document.createElement('div');line.textContent=text;toast.appendChild(line);toast.style.display='block';clearTimeout(window.dxAnnounceTimer);window.dxAnnounceTimer=setTimeout(()=>{toast.style.display='none';toast.innerHTML='';},7500);}say('Aviso do dono: '+text);});
       socket.on('owner:profile:data',data=>{const box=$('ownerProfileResult');if(box)box.textContent=data.error||`${data.name||'Jogador'} · ${data.playerId}\n${data.owner?'DONO · ':''}${data.verified?'VERIFICADO · ':''}${data.vip?'VIP · ':''}${data.online?'ONLINE':'OFFLINE'}\nKills: ${data.kills||0} · Mortes: ${data.deaths||0} · Dano: ${data.damageDealt||0} · MVPs: ${data.mvp||0}\nServidor: ${data.room||'—'}\nBio: ${data.bio||'Sem descrição.'}`;});
       socket.on('profile:data',data=>{if(!data)return;const box=$('publicProfileContent');if(box)box.textContent=data.error||`${data.name||'Jogador'}${data.owner?' · ✦ DONO':''}${data.verified?' · ✧ VERIFICADO':''}${data.vip?' · ◆ VIP':''}\nID: ${data.playerId}\nKills: ${data.kills||0} · Mortes: ${data.deaths||0} · Dano causado: ${data.damageDealt||0} · MVPs: ${data.mvp||0}\nBio: ${data.bio||'Sem descrição.'}`;if($('myProfileBio')&&data.playerId===permanentPlayerId)$('myProfileBio').value=data.bio||'';});
@@ -3201,7 +3206,7 @@ function frame(t){
       });
       socket.on('player:eliminated',data=>{
         if(!data)return;
-        if(data.attackerId===socket.id){killsStat++;refreshCombatStats();}
+        if(data.attackerId===socket.id){killsStat++;window.mpKillsStat=killsStat;refreshCombatStats();}
         if(data.targetId===socket.id){deathsStat++;refreshCombatStats();}
       });
 
