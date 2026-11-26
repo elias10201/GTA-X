@@ -2697,12 +2697,15 @@ function render(){
     const getRemoteState=window.remoteRenderState||(function(p){return {x:p.x||0,z:p.z||0,yaw:p.yaw||0}});
     window.mpRemotePlayers.forEach(rp=>{
       if(!rp)return;
+      if(rp.isBot&&Number(rp.hp)<=0)return;
       g.save();g.globalAlpha=1;g.globalCompositeOperation='source-over';
       const visual=getRemoteState(rp,remoteNow);
       const rx=Number.isFinite(visual.x)?visual.x:(rp.x||0);
       const rz=Number.isFinite(visual.z)?visual.z:(rp.z||0);
       const ryaw=Number.isFinite(visual.yaw)?visual.yaw:(rp.yaw||0);
       const elev=Number.isFinite(rp.elevation)?rp.elevation:0;
+      // Não desenha corpo, nome ou distintivos quando um prédio bloqueia a visão.
+      if(!hasSceneLineOfSight(rx,rz)){g.restore();return;}
       if(rp.owner||rp.verified||rp.vip)drawIdentityAura(rx,rz,rp.owner?'owner':rp.verified?'verified':'vip');
       const rLook=rp.look||{skin:0,shirt:1,pant:0,hair:0};
       const rWp=typeof rp.weapon==='number'?rp.weapon:-1;
