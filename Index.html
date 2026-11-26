@@ -20,7 +20,18 @@ canvas{display:block;width:100vw;height:100vh}
 #msg{position:absolute;left:50%;top:17%;transform:translateX(-50%);font-weight:bold;color:#ffe082;text-align:center;font-size:clamp(12px,1.8vw,18px);max-width:75vw}
 #joy{position:fixed;left:5%;bottom:11%;width:clamp(105px,19vw,165px);aspect-ratio:1;border:2px solid #ffffff80;border-radius:50%;background:#1117;pointer-events:auto}
 #knob{position:absolute;left:31%;top:31%;width:38%;height:38%;border-radius:50%;background:#ffffff88;border:2px solid #fff}
-#buttons{position:fixed;right:2%;bottom:4%;display:grid;grid-template-columns:repeat(2,clamp(58px,8.5vw,76px));gap:7px;pointer-events:auto;align-items:center}
+#buttons{position:fixed;right:2%;bottom:4%;display:grid;grid-template-columns:repeat(3,clamp(52px,7.5vw,68px));grid-auto-rows:clamp(52px,7.5vw,68px);gap:6px;pointer-events:auto;align-items:center}
+#buttons:not(.car-mode) #carFoot{grid-column:1;grid-row:1}
+#buttons:not(.car-mode) #passenger{grid-column:2;grid-row:1}
+#buttons:not(.car-mode) #fire{grid-column:3;grid-row:1;transform:scale(1.12)}
+#buttons:not(.car-mode) #elevator{grid-column:1;grid-row:2}
+#buttons:not(.car-mode) #run{grid-column:2;grid-row:2}
+#buttons:not(.car-mode) #aim{grid-column:3;grid-row:2}
+#buttons:not(.car-mode) #weapon{grid-column:1;grid-row:3}
+#buttons:not(.car-mode) #crouch{grid-column:2;grid-row:3}
+#buttons:not(.car-mode) #jump{grid-column:3;grid-row:3}
+#joy{left:4%;bottom:12%;width:clamp(112px,18vw,158px)}
+#crosshairDot{position:fixed;left:50%;top:50%;width:5px;height:5px;margin-left:-2.5px;margin-top:-2.5px;border-radius:50%;background:#fff;border:1px solid #10151a;box-shadow:0 0 2px #000,0 0 5px #fff8;z-index:8;pointer-events:none}
 #buttons.car-mode{grid-template-columns:repeat(2,clamp(58px,9vw,82px));gap:9px}
 #buttons.car-mode [data-vehicle]:last-child{grid-column:1/-1;justify-self:end}
 .b{aspect-ratio:1;border-radius:50%;border:1px solid #ffffffaa;background:#111b;color:#fff;font-size:clamp(9px,1.2vw,13px);font-weight:bold;touch-action:none}
@@ -128,6 +139,7 @@ canvas{display:block;width:100vw;height:100vh}
 <body>
 <div id="rot">↻ Gire o celular para o modo deitado</div>
 <canvas id="c"></canvas>
+<div id="crosshairDot" aria-hidden="true"></div>
 
 <div id="splashScreen" style="position:fixed;inset:0;z-index:45;display:flex;align-items:center;justify-content:center;text-align:center;padding:24px;background:radial-gradient(ellipse at 50% 65%,#244b61 0%,#101e30 48%,#050a12 100%);pointer-events:auto">
   <div style="width:min(92vw,620px);padding:32px 22px;border:1px solid #72dfff88;border-radius:22px;background:#071522dd;box-shadow:0 20px 80px #000c,inset 0 0 28px #2dd5ff22">
@@ -2240,18 +2252,19 @@ function hasSceneLineOfSight(x,z){
 function drawIdentityAura(x,z,kind='owner'){const p=project(x,.08,z);if(!p)return;const hue=(performance.now()/12+(kind==='verified'?130:kind==='vip'?245:0))%360;g.save();g.translate(p[0],p[1]);g.scale(1,.42);g.strokeStyle=`hsla(${hue},100%,67%,${kind==='owner'?.95:.72})`;g.shadowColor=`hsl(${hue},100%,60%)`;g.shadowBlur=kind==='owner'?18:12;g.lineWidth=kind==='owner'?3:2;g.beginPath();g.ellipse(0,0,Math.max(10,p[3]*(kind==='owner'?1.05:.82)),Math.max(5,p[3]*(kind==='owner'?.52:.4)),0,0,Math.PI*2);g.stroke();g.restore();}
 
 function drawPrivilegeCube(x,y,kind,scale=1){
-  const t=performance.now()/650,sz=Math.max(11,Math.min(19,scale*.34));
-  const a=t,ca=Math.cos(a),sa=Math.sin(a),h=sz*.72;
-  const pts=[[-1,-1], [1,-1], [1,1], [-1,1]].map(([u,v])=>[u*sz*.62*ca-v*sz*.62*sa,u*sz*.25*sa+v*sz*.25*ca]);
+  const t=performance.now()/520,sz=Math.max(17,Math.min(26,scale*.52));
+  const a=t,ca=Math.cos(a),sa=Math.sin(a),h=sz*.82;
+  const pts=[[-1,-1],[1,-1],[1,1],[-1,1]].map(([u,v])=>[u*sz*.66*ca-v*sz*.66*sa,u*sz*.29*sa+v*sz*.29*ca]);
   const top=[0,-h],left=pts[0],front=pts[1],right=pts[2],back=pts[3];
-  const hue=kind==='owner'?(t*70)%360:190;
+  const hue=kind==='owner'?(t*82)%360:190;
   const main=kind==='owner'?`hsl(${hue},100%,62%)`:'#27dfff';
-  g.save();g.translate(x,y);g.lineJoin='round';g.lineWidth=1.5;
-  g.shadowColor=main;g.shadowBlur=kind==='owner'?16:11;
-  g.beginPath();g.moveTo(top[0],top[1]);g.lineTo(left[0],left[1]);g.lineTo(0,0);g.lineTo(right[0],right[1]);g.closePath();g.fillStyle=kind==='owner'?'#ffe18a':'#b9f8ff';g.fill();g.strokeStyle='#fff';g.stroke();
+  g.save();g.translate(x,y);g.lineJoin='round';g.lineWidth=2;
+  g.shadowColor=main;g.shadowBlur=kind==='owner'?22:16;
+  g.beginPath();g.moveTo(top[0],top[1]);g.lineTo(left[0],left[1]);g.lineTo(0,0);g.lineTo(right[0],right[1]);g.closePath();g.fillStyle=kind==='owner'?'#ffe18a':'#d9fbff';g.fill();g.strokeStyle='#fff';g.stroke();
   g.beginPath();g.moveTo(left[0],left[1]);g.lineTo(0,0);g.lineTo(front[0],front[1]);g.lineTo(back[0],back[1]);g.closePath();g.fillStyle=main;g.fill();g.stroke();
   g.beginPath();g.moveTo(0,0);g.lineTo(right[0],right[1]);g.lineTo(front[0],front[1]);g.closePath();g.fillStyle=kind==='owner'?'#9b4bff':'#087fae';g.fill();g.stroke();
-  g.shadowBlur=0;g.fillStyle=kind==='owner'?'#201326':'#06212b';g.font=`900 ${Math.max(7,sz*.48)}px Arial`;g.textAlign='center';g.textBaseline='middle';g.fillText(kind==='owner'?'DONO':'V',0,sz*.22);
+  g.shadowBlur=0;g.fillStyle='#fff';g.strokeStyle='#06131d';g.lineWidth=1;g.font=`900 ${Math.max(9,sz*.48)}px Arial`;g.textAlign='center';g.textBaseline='middle';
+  const mark=kind==='owner'?'DONO':'V';g.strokeText(mark,0,sz*.20);g.fillText(mark,0,sz*.20);
   g.restore();
 }
 
@@ -2275,7 +2288,7 @@ function drawBubbleAbove(x,yTop,label,bubble,zPos,labelColor,ownerGlow=false,bad
     g.fillText(bubble,p3[0],by+bh/2);
   }
   if(label){
-    if(badgeText==='DONO'||badgeText==='VERIFICADO')drawPrivilegeCube(p3[0],p3[1]-57,badgeText==='DONO'?'owner':'verified',p3[3]);
+    if(badgeText==='DONO'||badgeText==='VERIFICADO')drawPrivilegeCube(p3[0],p3[1]-76,badgeText==='DONO'?'owner':'verified',p3[3]);
     const pulse=0.72+0.28*Math.sin(performance.now()/210);
     if(ownerGlow||badgeText){const hue=(performance.now()/12+(badgeText==='VIP'?245:badgeText==='VERIFICADO'?130:0))%360,bw=Math.min(170,g.measureText(label).width+26),bx=p3[0]-bw/2,by=p3[1]-31;g.save();g.shadowColor=`hsl(${hue},100%,65%)`;g.shadowBlur=(ownerGlow?18:12)*pulse;g.fillStyle='rgba(8,14,24,.96)';g.strokeStyle=`hsl(${hue},100%,70%)`;g.lineWidth=ownerGlow?2:1.5;g.beginPath();if(g.roundRect)g.roundRect(bx,by,bw,17,5);else g.rect(bx,by,bw,17);g.fill();g.stroke();g.fillStyle=`hsl(${(hue+75)%360},100%,82%)`;g.font='900 9px Arial';g.fillText(ownerGlow?'✦ PROPRIETÁRIO ✦':badgeText==='VERIFICADO'?'✧ VERIFICADO ✧':'◆ VIP ◆',p3[0],by+8.5);g.restore();}
     g.strokeStyle='rgba(0,0,0,.96)';
@@ -2636,7 +2649,7 @@ function render(){
     const localVip=!!window.mpVipSelf;
     const localNameColor=Number(window.mpSelectedNameColor)||0;
     const localRainbow=localKills>=100000;
-    const localColor=localOwner?`hsl(${(localHue+35)%360},100%,68%)`:localVerified?`hsl(${(localHue+175)%360},95%,70%)`:localVip?`hsl(${(localHue+260)%360},95%,72%)`:localRainbow?`hsl(${localHue},100%,65%)`:NAME_PALETTE[localNameColor]||'#ffffff';
+    const localColor=localOwner?`hsl(${(localHue+35)%360},100%,68%)`:localVip?`hsl(${(localHue+260)%360},95%,72%)`:localRainbow?`hsl(${localHue},100%,65%)`:NAME_PALETTE[localNameColor]||'#ffffff';
     const localX=cur&&Number.isFinite(cur.x)?cur.x:player.x;
     const localZ=cur&&Number.isFinite(cur.z)?cur.z:player.z;
     if(localOwner||localVerified||localVip)drawIdentityAura(localX,localZ,localOwner?'owner':localVerified?'verified':'vip');
@@ -2682,7 +2695,7 @@ function render(){
       if(!rp.inCarId){
         person(rx,rz,ryaw,SHIRT_PAL[rLook.shirt%SHIRT_PAL.length],SKIN[rLook.skin%SKIN.length],11,1.75,0,rWp,rp.ph||0,rp.amp||0,rp.amp>0.2?0.95:0,0,0,0,0,'remote',0,elev,rLook);
       }
-      const isRainbow=(Number(rp.kills)||0)>=100000;const hue=(performance.now()/18)%360;const nameCol=rp.owner?`hsl(${(hue+35)%360},100%,68%)`:rp.verified?`hsl(${(hue+175)%360},95%,70%)`:rp.vip?`hsl(${(hue+260)%360},95%,72%)`:isRainbow?`hsl(${hue},100%,65%)`:(rp.nameColorHex||'#00e5ff');const roleTag=rp.vip?'◆ VIP ':'';drawBubbleAbove(rx,(rp.inCarId?2.6:2.15)+elev,roleTag+(rp.name||'Jogador'),rp.bubbleT>0?rp.bubble:'',rz,nameCol,!!rp.owner,rp.owner?'DONO':rp.verified?'VERIFICADO':rp.vip?'VIP':'');
+      const isRainbow=(Number(rp.kills)||0)>=100000;const hue=(performance.now()/18)%360;const nameCol=rp.owner?`hsl(${(hue+35)%360},100%,68%)`:rp.vip?`hsl(${(hue+260)%360},95%,72%)`:isRainbow?`hsl(${hue},100%,65%)`:(rp.nameColorHex||'#00e5ff');const roleTag=rp.vip?'◆ VIP ':'';drawBubbleAbove(rx,(rp.inCarId?2.6:2.15)+elev,roleTag+(rp.name||'Jogador'),rp.bubbleT>0?rp.bubble:'',rz,nameCol,!!rp.owner,rp.owner?'DONO':rp.verified?'VERIFICADO':rp.vip?'VIP':'');
       g.restore();
     });
   }
@@ -3162,7 +3175,8 @@ function frame(t){
         if(p.inCarId!==undefined)rp.inCarId=p.inCarId;
         if(typeof p.elevation==='number')rp.elevation=p.elevation;
         if(dist>0.03&&!rp.inCarId){
-          rp.amp=Math.min(1,dist*3.2);
+          const targetAmp=Math.min(1,dist*2.7);
+          rp.amp+=(targetAmp-(rp.amp||0))*0.22;
           rp.ph+=dist*1.9;
           if(nowT-(rp.lastStepT||0)>360){
             rp.lastStepT=nowT;
@@ -3170,7 +3184,7 @@ function frame(t){
             if(dMe<24)sfx.step(dMe,rp.amp>0.75,false,false);
           }
         }else{
-          rp.amp*=0.5;
+          rp.amp*=0.78;
         }
       });
 
@@ -3214,7 +3228,7 @@ function frame(t){
       socket.on('player:vip',data=>{if(!data)return;if(data.playerId===permanentPlayerId)vipSelf=!!data.vip;remotePlayers.forEach(rp=>{if(rp.playerId===data.playerId)rp.vip=!!data.vip;});});
       socket.on('player:verification',data=>{
         if(!data)return;
-        if(data.playerId===permanentPlayerId){verifiedSelf=!!data.verified;const idLabel=$('playerIdLabel');if(idLabel)idLabel.textContent='ID: '+permanentPlayerId+(verifiedSelf?' · ✓ VERIFICADO':'');}
+        if(data.playerId===permanentPlayerId){verifiedSelf=!!data.verified;window.mpVerifiedSelf=verifiedSelf;const idLabel=$('playerIdLabel');if(idLabel)idLabel.textContent='ID: '+permanentPlayerId+(verifiedSelf?' · ✓ VERIFICADO':'');}
         remotePlayers.forEach(rp=>{if(rp.playerId===data.playerId)rp.verified=!!data.verified;});
       });
       socket.on('player:damaged',data=>{
