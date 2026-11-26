@@ -2678,7 +2678,21 @@ function render(){
   let vg=g.createRadialGradient(W/2,H*.5,H*.35,W/2,H*.5,Math.max(W,H)*.75);
   vg.addColorStop(0,'rgba(0,0,0,0)');vg.addColorStop(1,'rgba(0,0,0,.38)');
   g.fillStyle=vg;g.fillRect(0,0,W,H);
-  if(!cur&&!passengerCar){const lock=aimAssistEnabled&&getAimTarget();g.save();g.translate(W/2,H/2);g.strokeStyle=lock?'#ff3434':'#ffffff';g.fillStyle=lock?'#ff3434':'#ffffff';g.lineWidth=2;g.beginPath();g.arc(0,0,5,0,Math.PI*2);g.stroke();g.beginPath();g.moveTo(-10,0);g.lineTo(-4,0);g.moveTo(4,0);g.lineTo(10,0);g.moveTo(0,-10);g.lineTo(0,-4);g.moveTo(0,4);g.lineTo(0,10);g.stroke();g.restore();}
+  if(!cur&&!passengerCar){
+    const lock=aimAssistEnabled&&getAimTarget(),reticleColor=lock?'#ff4545':'#f7fbff';
+    const pulse=lock?(0.8+Math.sin(performance.now()*0.012)*0.12):1;
+    g.save();g.translate(W/2,H/2);g.scale(pulse,pulse);g.lineWidth=2;g.lineCap='round';g.strokeStyle=reticleColor;g.fillStyle=reticleColor;g.shadowColor=lock?'#ff2525':'#8bdcff';g.shadowBlur=lock?10:5;
+    // Mira fixa no centro da tela, inspirada no HUD de tiro do Free Fire.
+    const gap=7,arm=8,offset=13;
+    g.beginPath();
+    g.moveTo(-offset-arm,-offset);g.lineTo(-offset,-offset);g.lineTo(-offset,-offset-arm);
+    g.moveTo(offset+arm,-offset);g.lineTo(offset,-offset);g.lineTo(offset,-offset-arm);
+    g.moveTo(-offset-arm,offset);g.lineTo(-offset,offset);g.lineTo(-offset,offset+arm);
+    g.moveTo(offset+arm,offset);g.lineTo(offset,offset);g.lineTo(offset,offset+arm);
+    g.stroke();g.beginPath();g.arc(0,0,2.2,0,Math.PI*2);g.fill();
+    if(lock){g.beginPath();g.arc(0,0,18,0,Math.PI*2);g.stroke();}
+    g.restore();
+  }
   drawWeaponWheel();
   drawMap();
   if(cur&&cur.type===8){
@@ -2879,9 +2893,10 @@ function frame(t){
   window.mpOwnerSelf=ownerSelf;window.mpOwnerSpeedBoost=ownerSpeedBoost;
   function refreshCombatStats(){const el=$('combatStats');if(el)el.textContent='DANO: '+damageDealtStat+' · RECEBIDO: '+damageReceivedStat+' · KILLS: '+killsStat+' · MORTES: '+deathsStat;}
   function refreshNameColorChoices(){const sel=$('nameColorSelect');if(!sel)return;sel.innerHTML='';for(let i=0;i<unlockedNameColors;i++){const op=document.createElement('option');op.value=String(i);op.textContent='Cor '+(i+1)+(i===selectedNameColor?' · selecionada':'');op.style.color=NAME_PALETTE[i];sel.appendChild(op)}sel.value=String(Math.min(selectedNameColor,unlockedNameColors-1));sel.style.display=mpConnected?'inline-block':'none';}
-  function refreshOwnerControls(){['ownerAnnounceBtn','ownerPanelBtn'].forEach(id=>{const b=$(id);if(b)b.style.display=ownerSelf&&mpConnected?'inline-block':'none';});}
-  const ownerAnnounceBtn=$('ownerAnnounceBtn');if(ownerAnnounceBtn)ownerAnnounceBtn.onclick=()=>{const m=$('ownerPanelModal');if(m)m.style.display='flex';};
-  if($('ownerPanelBtn'))$('ownerPanelBtn').onclick=()=>{$('ownerPanelModal').style.display='flex'};if($('ownerPanelClose'))$('ownerPanelClose').onclick=()=>{$('ownerPanelModal').style.display='none'};
+  function refreshOwnerControls(){const allowed=!!ownerSelf&&!!mpConnected;['ownerAnnounceBtn','ownerPanelBtn'].forEach(id=>{const b=$(id);if(b){b.style.display=allowed?'inline-block':'none';b.disabled=!allowed;}});const modal=$('ownerPanelModal');if(modal){modal.setAttribute('aria-hidden',allowed?'false':'true');if(!allowed)modal.style.display='none';}}
+  const openOwnerPanel=()=>{if(!ownerSelf||!mpConnected){const m=$('ownerPanelModal');if(m)m.style.display='none';return;}const m=$('ownerPanelModal');if(m){m.setAttribute('aria-hidden','false');m.style.display='flex';}};
+  const ownerAnnounceBtn=$('ownerAnnounceBtn');if(ownerAnnounceBtn)ownerAnnounceBtn.onclick=openOwnerPanel;
+  if($('ownerPanelBtn'))$('ownerPanelBtn').onclick=openOwnerPanel;if($('ownerPanelClose'))$('ownerPanelClose').onclick=()=>{$('ownerPanelModal').style.display='none';$('ownerPanelModal').setAttribute('aria-hidden','true');};
   function ownerEmit(event,payload={}){if(!ownerSelf||!window.mpSocket||!window.mpSocket.connected){say('Painel disponível somente para o dono conectado.');return;}window.mpSocket.emit(event,payload);}
   if($('ownerAnnounceSend'))$('ownerAnnounceSend').onclick=()=>{const text=$('ownerAnnounceInput').value.trim();if(text){ownerEmit('owner:announce',{text});$('ownerAnnounceInput').value='';}};
   if($('ownerLookup'))$('ownerLookup').onclick=()=>ownerEmit('owner:panel:profile',{playerId:$('ownerTargetId').value.trim()});if($('ownerVerify'))$('ownerVerify').onclick=()=>ownerEmit('owner:panel:toggle-verify',{playerId:$('ownerTargetId').value.trim()});if($('ownerVip'))$('ownerVip').onclick=()=>ownerEmit('owner:panel:toggle-vip',{playerId:$('ownerTargetId').value.trim()});if($('ownerPull'))$('ownerPull').onclick=()=>ownerEmit('owner:panel:pull',{playerId:$('ownerTargetId').value.trim()});
@@ -3031,7 +3046,7 @@ function frame(t){
       });
 
       socket.on('disconnect',()=>{
-        mpConnected=false;mpConnecting=false;ownerSelf=false;window.mpOwnerSelf=false;window.mpOwnerSpeedBoost=false;
+        mpConnected=false;mpConnecting=false;ownerSelf=false;window.mpOwnerSelf=false;window.mpOwnerSpeedBoost=false;refreshOwnerControls();
         remotePlayers.clear();
         for(const id of Array.from(voicePeers.keys()))voiceClosePeer(id);
         cars.forEach(c=>{if(!cur||cur.id!==c.id)c.driverId=null});
@@ -3550,7 +3565,8 @@ function applyGfx(mode){
 }
 
 function getHudTargetList(prof){
-  return prof==='vehicle'?['joy','accelerate','brake','carExit','voicePTT','chatOpenBtn','mpOpenBtn','botVoiceToggle','ownerAnnounceBtn','ownerPanelBtn','rankingOpenBtn','myProfileBtn','pause','zoomIn','zoomOut']:['joy','aim','fire','weapon','run','crouch','jump','carFoot','passenger','elevator','voicePTT','chatOpenBtn','mpOpenBtn','botVoiceToggle','ownerAnnounceBtn','ownerPanelBtn','rankingOpenBtn','myProfileBtn','pause','zoomIn','zoomOut'];
+  const ids=prof==='vehicle'?['joy','accelerate','brake','carExit','voicePTT','chatOpenBtn','mpOpenBtn','botVoiceToggle','ownerAnnounceBtn','ownerPanelBtn','rankingOpenBtn','myProfileBtn','pause','zoomIn','zoomOut']:['joy','aim','fire','weapon','run','crouch','jump','carFoot','passenger','elevator','voicePTT','chatOpenBtn','mpOpenBtn','botVoiceToggle','ownerAnnounceBtn','ownerPanelBtn','rankingOpenBtn','myProfileBtn','pause','zoomIn','zoomOut'];
+  return ids.filter(id=>!['ownerAnnounceBtn','ownerPanelBtn'].includes(id)||!!window.mpOwnerSelf);
 }
 
 function applyHudProfile(prof){
