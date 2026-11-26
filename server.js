@@ -57,7 +57,6 @@ if (!persisted.deaths || typeof persisted.deaths !== 'object') persisted.deaths 
 if (!persisted.damage || typeof persisted.damage !== 'object') persisted.damage = {};
 if (typeof persisted.ownerId !== 'string') persisted.ownerId = null;
 if (!Number.isFinite(persisted.nextPlayerId)) persisted.nextPlayerId = 1001;
-const adminSessions = new Map();
 const loginAttempts = new Map();
 function saveData() { writeJsonAtomic(DATA_FILE, persisted); }
 function stablePlayerId(clientKey, nick) {
@@ -79,9 +78,25 @@ function unlockedColorCount(kills) { const n=Math.max(0,Number(kills)||0);return
 function publicHuman(p) { const k=killsFor(p.playerId); return {...p, isBot:false, verified:isVerified(p.playerId), vip:isVip(p.playerId), owner:isOwner(p.playerId), kills:k, nameColor:persisted.nameColors[p.playerId]||0, unlockedColors:unlockedColorCount(k)}; }
 function logAdmin(action, details) { persisted.adminLog.unshift({ at: Date.now(), action, details }); persisted.adminLog = persisted.adminLog.slice(0, 100); saveData(); }
 function authToken(req) { const raw = req.headers.authorization || ''; return raw.startsWith('Bearer ') ? raw.slice(7) : ''; }
+function adminTokenSignature(issuedAt, expiresAt) {
+  return crypto.createHmac('sha256', ADMIN_PASSWORD).update('distrito-x-admin:' + issuedAt + ':' + expiresAt).digest('hex');
+}
+function createAdminToken() {
+  const issuedAt = Date.now(), expiresAt = issuedAt + 12 * 60 * 60 * 1000;
+  return issuedAt + '.' + expiresAt + '.' + adminTokenSignature(issuedAt, expiresAt);
+}
+function isValidAdminToken(token) {
+  if (!ADMIN_PASSWORD || typeof token !== 'string') return false;
+  const parts = token.split('.');
+  if (parts.length !== 3) return false;
+  const issuedAt = Number(parts[0]), expiresAt = Number(parts[1]);
+  if (!Number.isFinite(issuedAt) || !Number.isFinite(expiresAt) || issuedAt > Date.now() + 60000 || issuedAt < (Number(persisted.adminTokenRevokedBefore) || 0) || expiresAt <= Date.now() || expiresAt - issuedAt !== 12 * 60 * 60 * 1000) return false;
+  const expected = Buffer.from(adminTokenSignature(issuedAt, expiresAt));
+  const supplied = Buffer.from(parts[2]);
+  return expected.length === supplied.length && crypto.timingSafeEqual(expected, supplied);
+}
 function requireAdmin(req, res, next) {
-  const token = authToken(req), session = adminSessions.get(token);
-  if (!session || session.expires < Date.now()) { adminSessions.delete(token); return res.status(401).json({ ok: false, error: 'Sessão administrativa inválida ou expirada.' }); }
+  if (!isValidAdminToken(authToken(req))) return res.status(401).json({ ok: false, error: 'Sessão administrativa inválida ou expirada. Entre novamente no painel.' });
   next();
 }
 app.post('/api/admin/login', (req, res) => {
@@ -94,11 +109,11 @@ app.post('/api/admin/login', (req, res) => {
   const valid=pwBuf.length===adminBuf.length&&crypto.timingSafeEqual(pwBuf,adminBuf);
   if(!valid){attempt.count++;if(attempt.count>=5)attempt.blockedUntil=now+15*60*1000;loginAttempts.set(ip,attempt);return res.status(attempt.blockedUntil?429:401).json({ok:false,error:attempt.blockedUntil?'Muitas tentativas. Aguarde 15 minutos.':'Senha incorreta.'});}
   loginAttempts.delete(ip);
-  const token = crypto.randomBytes(32).toString('hex');
-  adminSessions.set(token, { expires: Date.now() + 12 * 60 * 60 * 1000 });
+  const token = createAdminToken();
+  res.set('Cache-Control', 'no-store');
   res.json({ ok: true, token, expiresIn: 43200 });
 });
-app.post('/api/admin/logout', requireAdmin, (req, res) => { adminSessions.delete(authToken(req)); res.json({ ok: true }); });
+app.post('/api/admin/logout', requireAdmin, (_req, res) => { persisted.adminTokenRevokedBefore = Date.now(); saveData(); res.json({ ok: true }); });
 
 const CITY_CENTERS = [
   { ix: 0, iz: 0, r: 12 }, { ix: 34, iz: 0, r: 8 }, { ix: -34, iz: 0, r: 8 },
