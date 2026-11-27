@@ -2316,11 +2316,8 @@ function dxShowVerifiedWelcome(){
 
 
 function drawPrivilegeCube(x,y,kind,scale=1){
-  // Distintivo premium estático: formas vetoriais simples, sem glow, filtros ou gradientes.
-  const size=Math.max(17,Math.min(24,scale*.50));
-  const palette=kind==='owner'?{fill:'#b98220',edge:'#ffe3a0',text:'#fff8df'}:
-    kind==='vip'?{fill:'#7045a5',edge:'#d9bdff',text:'#fff'}:
-    {fill:'#147da4',edge:'#b9f2ff',text:'#fff'};
+  // Distintivos vetoriais leves: sem filtros, sombras, gradientes ou composição aditiva.
+  const size=Math.max(18,Math.min(26,scale*.54));
   g.save();
   g.translate(x,y);
   g.globalAlpha=1;
@@ -2328,26 +2325,65 @@ function drawPrivilegeCube(x,y,kind,scale=1){
   g.shadowBlur=0;
   g.filter='none';
   g.lineJoin='round';
-  g.lineWidth=1.6;
-  // Escudo compacto com topo chanfrado e ponta inferior.
-  g.beginPath();
-  g.moveTo(0,-size*.58);
-  g.lineTo(size*.48,-size*.40);
-  g.lineTo(size*.43,size*.18);
-  g.lineTo(0,size*.62);
-  g.lineTo(-size*.43,size*.18);
-  g.lineTo(-size*.48,-size*.40);
-  g.closePath();
-  g.fillStyle=palette.fill;
-  g.strokeStyle=palette.edge;
-  g.fill();
-  g.stroke();
-  g.fillStyle=palette.text;
-  g.font=`900 ${Math.max(9,size*.58)}px Arial`;
-  g.textAlign='center';
-  g.textBaseline='middle';
-  const mark=kind==='owner'?'D':kind==='vip'?'★':'✓';
-  g.fillText(mark,0,0);
+  g.lineCap='round';
+
+  if(kind==='owner'){
+    // Cubo 3D dourado: rotação lenta, com cores fixas (sem troca de matiz).
+    const a=performance.now()*0.00075;
+    const c=Math.cos(a), sn=Math.sin(a);
+    const w=size*.43, h=size*.40, d=size*.27;
+    const pts=[
+      [-w,-h], [w,-h], [w,h], [-w,h]
+    ].map(([px,py])=>[px*c-py*sn,px*sn+py*c]);
+    const top=[0,-h-d], left=[-w-d,0], right=[w+d,0], bottom=[0,h+d];
+    // faces do cubo, com tons constantes e bordas definidas
+    g.lineWidth=1.35;
+    g.beginPath(); g.moveTo(top[0],top[1]); g.lineTo(pts[1][0],pts[1][1]); g.lineTo(right[0],right[1]); g.lineTo(0,0); g.closePath();
+    g.fillStyle='#f0c65b'; g.fill(); g.strokeStyle='#fff0b2'; g.stroke();
+    g.beginPath(); g.moveTo(top[0],top[1]); g.lineTo(pts[0][0],pts[0][1]); g.lineTo(left[0],left[1]); g.lineTo(0,0); g.closePath();
+    g.fillStyle='#b77b20'; g.fill(); g.strokeStyle='#ffe09a'; g.stroke();
+    g.beginPath(); g.moveTo(left[0],left[1]); g.lineTo(0,0); g.lineTo(right[0],right[1]); g.lineTo(bottom[0],bottom[1]); g.closePath();
+    g.fillStyle='#d99a2b'; g.fill(); g.strokeStyle='#ffe09a'; g.stroke();
+    g.beginPath(); g.moveTo(top[0],top[1]); g.lineTo(right[0],right[1]); g.lineTo(bottom[0],bottom[1]); g.lineTo(left[0],left[1]); g.closePath();
+    g.strokeStyle='#fff2c2'; g.lineWidth=1.5; g.stroke();
+    // Pequeno monograma central, sem efeitos
+    g.fillStyle='#fff8df';
+    g.font=`900 ${Math.max(8,size*.34)}px Arial`;
+    g.textAlign='center'; g.textBaseline='middle';
+    g.fillText('D',0,1);
+  } else {
+    // Verificado e VIP usam o mesmo distintivo compacto, com paletas fixas.
+    const verified=kind==='verified';
+    const fill=verified?'#147da4':'#7045a5';
+    const edge=verified?'#b9f2ff':'#d9bdff';
+    const ink='#ffffff';
+    g.lineWidth=1.6;
+    g.beginPath();
+    g.moveTo(0,-size*.60);
+    g.lineTo(size*.49,-size*.40);
+    g.lineTo(size*.43,size*.18);
+    g.lineTo(0,size*.62);
+    g.lineTo(-size*.43,size*.18);
+    g.lineTo(-size*.49,-size*.40);
+    g.closePath();
+    g.fillStyle=fill; g.strokeStyle=edge; g.fill(); g.stroke();
+    g.fillStyle=ink;
+    g.textAlign='center'; g.textBaseline='middle';
+    if(verified){
+      g.font=`900 ${Math.max(11,size*.62)}px Arial`;
+      g.fillText('✓',0,0);
+    }else{
+      // Estrela VIP simples, com cinco pontas e contorno limpo.
+      const outer=size*.25, inner=size*.115;
+      g.beginPath();
+      for(let i=0;i<10;i++){
+        const a=-Math.PI/2+i*Math.PI/5, r=i%2?inner:outer;
+        const px=Math.cos(a)*r, py=Math.sin(a)*r;
+        if(i===0)g.moveTo(px,py); else g.lineTo(px,py);
+      }
+      g.closePath(); g.fillStyle=ink; g.fill();
+    }
+  }
   g.restore();
 }
 
