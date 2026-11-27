@@ -31,8 +31,6 @@ canvas{display:block;width:100vw;height:100vh}
 #buttons:not(.car-mode) #crouch{grid-column:2;grid-row:3}
 #buttons:not(.car-mode) #jump{grid-column:3;grid-row:3}
 #joy{left:4%;bottom:12%;width:clamp(112px,18vw,158px)}
-/* Escala física compensada pela densidade do Android; não altera as posições-base do HUD. */
-#joy,#buttons,#mpBar,#voicePTT,#chatOpenBtn,#pause,#zoomControls{zoom:var(--dx-hud-scale,1)}
 #crosshairDot{position:fixed;left:50%;top:50%;width:5px;height:5px;margin-left:-2.5px;margin-top:-2.5px;border-radius:50%;background:#fff;border:1px solid #10151a;box-shadow:0 0 2px #000,0 0 5px #fff8;z-index:8;pointer-events:none}
 #buttons.car-mode{grid-template-columns:repeat(2,clamp(58px,9vw,82px));gap:9px}
 #buttons.car-mode [data-vehicle]:last-child{grid-column:1/-1;justify-self:end}
@@ -385,11 +383,10 @@ function initCitySprites(){
   // 1. Asfalto urbano com granulação e micro-brilho
   CITY_TEX.asphalt=makeSpriteTex(96,(c,s)=>{
     c.fillStyle='#363b44';c.fillRect(0,0,s,s);
-    // Granulação discreta: evita quadradinhos escuros aparentes no Android/WebView.
-    for(let i=0;i<150;i++){
+    for(let i=0;i<260;i++){
       const x=(i*37)%s,y=(i*53)%s;
-      c.fillStyle=(i&1)?'rgba(255,255,255,0.035)':'rgba(24,30,38,0.025)';
-      c.fillRect(x,y,1,1);
+      c.fillStyle=(i&1)?'rgba(255,255,255,0.05)':'rgba(0,0,0,0.11)';
+      c.fillRect(x,y,2,2);
     }
     c.fillStyle='rgba(255,255,255,0.03)';
     c.fillRect(0,s*0.5,s,1);
@@ -403,10 +400,9 @@ function initCitySprites(){
     c.strokeRect(s/2,1,s/2-1,s/2-1);
     c.strokeRect(1,s/2,s/2-1,s/2-1);
     c.strokeRect(s/2,s/2,s/2-1,s/2-1);
-    // Microtextura clara e quase imperceptível; sem pontos pretos quadrados.
-    for(let i=0;i<36;i++){
-      c.fillStyle='rgba(255,255,255,0.045)';
-      c.fillRect((i*19)%s,(i*29)%s,1,1);
+    for(let i=0;i<60;i++){
+      c.fillStyle='rgba(0,0,0,0.04)';
+      c.fillRect((i*19)%s,(i*29)%s,2,2);
     }
   });
 
@@ -2290,12 +2286,6 @@ function hasSceneLineOfSight(x,z){
 function drawIdentityAura(x,z,kind='owner'){const p=project(x,.08,z);if(!p)return;const hue=(performance.now()/12+(kind==='verified'?130:kind==='vip'?245:0))%360;g.save();g.translate(p[0],p[1]);g.scale(1,.42);g.strokeStyle=`hsla(${hue},100%,67%,${kind==='owner'?.95:.72})`;g.shadowColor=`hsl(${hue},100%,60%)`;g.shadowBlur=kind==='owner'?18:12;g.lineWidth=kind==='owner'?3:2;g.beginPath();g.ellipse(0,0,Math.max(10,p[3]*(kind==='owner'?1.05:.82)),Math.max(5,p[3]*(kind==='owner'?.52:.4)),0,0,Math.PI*2);g.stroke();g.restore();}
 // Efeito de entrada de cargos: poucas partículas, sem filtros pesados ou imagens externas.
 const dxRoleBursts=[];
-// Partículas usam tempo real e são limpas quando o app vai para segundo plano.
-let dxParticleDt=1/60;
-function dxClearRoleBursts(){dxRoleBursts.length=0;}
-document.addEventListener('visibilitychange',()=>{if(document.hidden){dxClearRoleBursts();if(typeof frame==='function')frame.last=0;}});
-document.addEventListener('pause',()=>{dxClearRoleBursts();if(typeof frame==='function')frame.last=0;},false);
-document.addEventListener('resume',()=>{if(typeof frame==='function'){frame.last=0;frame.lastRender=0;}},false);
 function dxRoleOf(data){return data&&data.owner?'DONO':data&&data.verified?'VERIFICADO':data&&data.vip?'VIP':'';}
 function dxRoleColor(role){return role==='DONO'?'#ffd76a':role==='VERIFICADO'?'#55dcff':'#c58aff';}
 function dxRoleBurst(x,z,role){
@@ -2781,7 +2771,7 @@ function render(){
   }
 
   for(let i=dxRoleBursts.length-1;i>=0;i--){const a=dxRoleBursts[i],p=project(a.x,a.y,a.z);if(p){g.save();g.globalAlpha=Math.max(0,Math.min(1,a.life));g.fillStyle=a.color;g.shadowColor=a.color;g.shadowBlur=5;g.beginPath();g.arc(p[0],p[1],a.size,0,Math.PI*2);g.fill();g.restore();}
-    const step=dxParticleDt*60;a.x+=a.vx*step;a.y+=a.vy*step;a.z+=a.vz*step;a.vy-=.004*step;a.life-=.025*step;if(a.life<=0)dxRoleBursts.splice(i,1);}
+    a.x+=a.vx;a.y+=a.vy;a.z+=a.vz;a.vy-=.004;a.life-=.025;if(a.life<=0)dxRoleBursts.splice(i,1);}
   damageFloaters=damageFloaters.filter(a=>a.life>0);damageFloaters.forEach(a=>{const p=project(a.x,a.y,a.z);if(p){g.save();g.globalAlpha=Math.min(1,a.life);g.fillStyle='#ff5757';g.strokeStyle='#250000';g.lineWidth=3;g.font='bold 16px Arial';g.textAlign='center';g.strokeText(a.text,p[0],p[1]);g.fillText(a.text,p[0],p[1]);g.restore();a.y+=.025;a.life-=.016;}});
   drawFineRain();
 
@@ -2870,7 +2860,6 @@ function frame(t){
   frame.lastRender=t;
   try{
     let raw=(t-(frame.last||t))/1000,dt=Math.min(.05,Math.max(0.001,raw));
-    dxParticleDt=dt;
     frame.last=t;qa+=raw;
     // Ajuste automático apenas na escala da cidade (cityScale), mantendo o personagem sempre nítido!
     const minCityScale=gfxTier==='low'?0.42:(gfxTier==='medium'?0.72:0.86);
@@ -3700,15 +3689,6 @@ let hudEditorOpen=false,hudProfileMode='foot',hudSelected=null;
 const hudStoreKey='dx_hud_profiles_v1';
 const HUD_IDS=['joy','aim','fire','weapon','run','crouch','jump','carFoot','passenger','elevator','accelerate','brake','carExit','voicePTT','chatOpenBtn','mpOpenBtn','botVoiceToggle','ownerPanelBtn','rankingOpenBtn','myProfileBtn','pause','zoomIn','zoomOut'];
 let hudStore={};
-function updateHudDensityScale(){
-  const ratio=Math.max(1,Number(window.devicePixelRatio)||1);
-  // Referência de densidade 2.5; limita a compensação para não deixar HUD minúsculo.
-  const scale=cl(2.5/ratio,.72,1.12);
-  document.documentElement.style.setProperty('--dx-hud-scale',scale.toFixed(3));
-}
-updateHudDensityScale();
-window.addEventListener('resize',updateHudDensityScale,{passive:true});
-window.addEventListener('orientationchange',updateHudDensityScale,{passive:true});
 try{hudStore=JSON.parse(localStorage.getItem(hudStoreKey)||'{}')}catch(_){}
 if(!hudStore.foot)hudStore.foot={};
 if(!hudStore.vehicle)hudStore.vehicle={};
