@@ -120,12 +120,12 @@ canvas{display:block;width:100vw;height:100vh}
 .lobby-actions button.sec{border-color:#8be9ff66;background:linear-gradient(180deg,#25465b,#142b3c);color:#eafaff;box-shadow:0 4px 0 #07121d;font-size:11px;padding:9px}
 #voicePTT:active{background:#b3261e} #voicePTT.voice-active{background:#b3261e;border-color:#ffb5ae}
 /* Celebração especial ao receber o selo verificado */
-#verifiedCelebration{position:fixed;inset:0;z-index:9999;display:none;align-items:center;justify-content:center;padding:20px;background:radial-gradient(circle at 50% 45%,rgba(28,76,120,.48),rgba(3,7,18,.88) 68%);backdrop-filter:blur(7px);pointer-events:auto;text-shadow:none}
+#verifiedCelebration{position:fixed;inset:0;z-index:9999;display:none;align-items:center;justify-content:center;padding:20px;background:radial-gradient(circle at 50% 45%,rgba(28,76,120,.48),rgba(3,7,18,.88) 68%);backdrop-filter:none;pointer-events:auto;text-shadow:none}
 #verifiedCelebration.show{display:flex;animation:verifiedFadeIn .45s ease both}
-#verifiedCelebration .vc-card{position:relative;width:min(440px,92vw);padding:32px 24px 25px;text-align:center;border:1px solid rgba(116,224,255,.8);border-radius:24px;background:linear-gradient(145deg,rgba(12,31,58,.98),rgba(22,12,55,.98) 58%,rgba(7,28,43,.98));box-shadow:0 0 18px #42dfff99,0 0 55px #8b5cff66,inset 0 0 28px #48dfff20;overflow:hidden;animation:verifiedCardIn .65s cubic-bezier(.18,.9,.25,1.2) both}
-#verifiedCelebration .vc-card:before{content:"";position:absolute;inset:-60%;background:conic-gradient(from 0deg,transparent 0 35%,#62eaff33 43%,transparent 52%,#c27aff33 62%,transparent 72%);animation:verifiedSpin 9s linear infinite;pointer-events:none}
+#verifiedCelebration .vc-card{position:relative;width:min(440px,92vw);padding:32px 24px 25px;text-align:center;border:1px solid rgba(116,224,255,.8);border-radius:24px;background:linear-gradient(145deg,rgba(12,31,58,.98),rgba(22,12,55,.98) 58%,rgba(7,28,43,.98));box-shadow:0 0 12px #42dfff66,0 0 26px #8b5cff44,inset 0 0 16px #48dfff18;overflow:hidden;animation:verifiedCardIn .65s cubic-bezier(.18,.9,.25,1.2) both}
+#verifiedCelebration .vc-card:before{content:"";position:absolute;inset:-60%;background:conic-gradient(from 0deg,transparent 0 35%,#62eaff33 43%,transparent 52%,#c27aff33 62%,transparent 72%);animation:none;pointer-events:none}
 #verifiedCelebration .vc-content{position:relative;z-index:1}
-#verifiedCelebration .vc-emblem{width:88px;height:88px;margin:0 auto 15px;border-radius:50%;display:grid;place-items:center;font-size:48px;color:#eafcff;background:radial-gradient(circle,#b9f7ff 0,#38bde9 32%,#3156bb 68%,#17205b 100%);border:3px solid #e4fcff;box-shadow:0 0 12px #7ceaff,0 0 30px #3acbff,0 0 55px #9272ff;animation:verifiedPulse 1.8s ease-in-out infinite}
+#verifiedCelebration .vc-emblem{width:88px;height:88px;margin:0 auto 15px;border-radius:50%;display:grid;place-items:center;font-size:48px;color:#eafcff;background:radial-gradient(circle,#b9f7ff 0,#38bde9 32%,#3156bb 68%,#17205b 100%);border:3px solid #e4fcff;box-shadow:0 0 9px #7ceaff,0 0 20px #3acbff;animation:verifiedPulse 2.8s ease-in-out infinite}
 #verifiedCelebration .vc-kicker{font-size:11px;letter-spacing:3px;font-weight:900;color:#9ceeff;margin-bottom:8px}
 #verifiedCelebration .vc-title{font-size:clamp(25px,6vw,34px);font-weight:1000;letter-spacing:1px;color:#fff;text-shadow:0 0 8px #66eaff,0 0 22px #477dff;margin:0 0 10px}
 #verifiedCelebration .vc-name{font-size:17px;font-weight:900;color:#ffe58a;margin:0 0 10px;text-shadow:0 0 12px #ffc94c99}
@@ -292,7 +292,7 @@ canvas{display:block;width:100vw;height:100vh}
   <button id="ownerPanelBtn" class="mp-pill" type="button" style="display:none;border-color:#ffd76a;color:#fff0b2">✧ PAINEL DONO</button><button id="rankingOpenBtn" class="mp-pill" type="button">🏆 RANKING</button><button id="myProfileBtn" class="mp-pill" type="button">👤 MEU PERFIL</button>
 </div>
 
-<div id="announcementToast" aria-live="polite"></div><style>#announcementToast{display:none;position:fixed;left:50%;top:15%;transform:translateX(-50%);z-index:110;width:min(92vw,560px);padding:13px 18px;border:1px solid #ffe28a;border-radius:13px;background:linear-gradient(110deg,#101a2af5,#25133af5);color:#fff;text-align:center;font-weight:900;letter-spacing:.4px;box-shadow:0 0 18px #ffcf5a99,0 12px 35px #000b;text-shadow:0 2px 4px #000;animation:announceIn .25s ease-out}#announcementToast b{display:block;color:#ffe28a;font-size:10px;letter-spacing:2px;margin-bottom:4px}@keyframes announceIn{from{opacity:0;transform:translate(-50%,-10px)}to{opacity:1;transform:translate(-50%,0)}}</style>
+<div id="announcementToast" aria-live="polite"></div><style>#announcementToast{display:none;position:fixed;left:50%;top:15%;transform:translateX(-50%);z-index:110;width:min(92vw,560px);padding:13px 18px;border:1px solid #ffe28a;border-radius:13px;background:linear-gradient(110deg,#101a2af5,#25133af5);color:#fff;text-align:center;font-weight:900;letter-spacing:.4px;box-shadow:0 0 18px #ffcf5a99,0 12px 35px #000b;text-shadow:0 2px 4px #000;animation:announceIn .25s ease-out}#announcementToast b{display:block;color:#ffe28a;font-size:10px;letter-spacing:2px;margin-bottom:4px}@keyframes announceIn{from{opacity:0;transform:translate(-50%,-10px)}to{opacity:1;transform:translate(-50%,0)}}#announcementToast.dx-rank-entry{border-color:var(--dx-rank-color,#7ceaff);box-shadow:0 0 12px color-mix(in srgb,var(--dx-rank-color,#7ceaff) 45%,transparent),0 10px 26px #000b;background:linear-gradient(115deg,#081827f5,#15102bf5)}#announcementToast.dx-rank-entry b{color:var(--dx-rank-color,#9ceeff);font-size:11px}#announcementToast.dx-rank-entry .dx-rank-message{font-size:15px;line-height:1.4;color:#fff}</style>
 <div id="ownerPanelModal" class="dx-panel-modal"><div class="dx-panel-card"><div class="dx-panel-head"><b>✦ CENTRAL DO DONO</b><button type="button" id="ownerPanelClose">FECHAR ✕</button></div><div class="dx-panel-scroll"><section><h3>📢 Anúncio global</h3><textarea id="ownerAnnounceInput" maxlength="180" placeholder="Escreva um aviso para todos os jogadores..."></textarea><button id="ownerAnnounceSend">ENVIAR PARA TODOS</button></section><section><h3>👥 Jogadores e bots online</h3><p style="font-size:11px;color:#b9dce9;margin:0 0 7px">Lista do servidor em que você está conectado. Toque em um jogador para selecionar o ID.</p><button id="ownerRefreshPlayers" type="button">↻ ATUALIZAR LISTA</button><div id="ownerPlayerList" class="dx-owner-player-list"><div class="dx-panel-result">Abra o painel e atualize a lista.</div></div></section><section><h3>👤 Jogador / perfil</h3><input id="ownerTargetId" maxlength="12" placeholder="ID DX-000000"><div class="dx-panel-actions"><button id="ownerLookup">VER PERFIL</button><button id="ownerVerify">DAR / RETIRAR VERIFICADO</button><button id="ownerVip">DAR / RETIRAR VIP</button><button id="ownerPull">PUXAR ATÉ MIM</button></div><div id="ownerProfileResult" class="dx-panel-result">Selecione um jogador da lista ou digite um ID.</div></section><section><h3>🛡️ Proteção e velocidade</h3><div class="dx-panel-actions"><button id="ownerInvulnerable">INVULNERABILIDADE: OFF</button><button id="ownerSpeed">VELOCIDADE +30%: OFF</button></div></section><section><h3>🤖 Controle de bots</h3><label>Servidor <select id="ownerBotRoom"><option value="1">Servidor 1</option><option value="2">Servidor 2</option></select></label><label>Quantidade <input id="ownerBotAmount" type="number" min="0" max="30" value="1"></label><div class="dx-panel-actions"><button id="ownerBotAdd">ADICIONAR</button><button id="ownerBotRemove">RETIRAR</button><button id="ownerBotSet">DEFINIR TOTAL</button></div><div id="ownerBotStatus" class="dx-panel-result"></div></section></div></div></div>
 <div id="playerProfileModal" class="dx-panel-modal"><div class="dx-panel-card"><div class="dx-panel-head"><b>👤 PERFIL DO JOGADOR</b><button type="button" id="playerProfileClose">FECHAR ✕</button></div><div class="dx-panel-scroll"><div id="publicProfileContent" class="dx-panel-result">Carregando perfil...</div><section><h3>✍️ Minha descrição</h3><textarea id="myProfileBio" maxlength="100" placeholder="Escreva uma frase para aparecer no seu perfil..."></textarea><button id="saveProfileBio">SALVAR DESCRIÇÃO</button></section></div></div></div>
 <div id="rankingModal" class="dx-panel-modal"><div class="dx-panel-card"><div class="dx-panel-head"><b>🏆 RANKING DO DISTRITO X</b><button type="button" id="rankingClose">FECHAR ✕</button></div><div class="dx-panel-scroll"><div class="dx-panel-actions"><button data-rank="1">SERVIDOR 1</button><button data-rank="2">SERVIDOR 2</button><button data-rank="global">GLOBAL</button></div><div id="rankingResults" class="dx-panel-result">Carregando ranking...</div></div></div></div>
@@ -2284,6 +2284,34 @@ function hasSceneLineOfSight(x,z){
 }
 
 function drawIdentityAura(x,z,kind='owner'){const p=project(x,.08,z);if(!p)return;const hue=(performance.now()/12+(kind==='verified'?130:kind==='vip'?245:0))%360;g.save();g.translate(p[0],p[1]);g.scale(1,.42);g.strokeStyle=`hsla(${hue},100%,67%,${kind==='owner'?.95:.72})`;g.shadowColor=`hsl(${hue},100%,60%)`;g.shadowBlur=kind==='owner'?18:12;g.lineWidth=kind==='owner'?3:2;g.beginPath();g.ellipse(0,0,Math.max(10,p[3]*(kind==='owner'?1.05:.82)),Math.max(5,p[3]*(kind==='owner'?.52:.4)),0,0,Math.PI*2);g.stroke();g.restore();}
+// Efeito de entrada de cargos: poucas partículas, sem filtros pesados ou imagens externas.
+const dxRoleBursts=[];
+function dxRoleOf(data){return data&&data.owner?'DONO':data&&data.verified?'VERIFICADO':data&&data.vip?'VIP':'';}
+function dxRoleColor(role){return role==='DONO'?'#ffd76a':role==='VERIFICADO'?'#55dcff':'#c58aff';}
+function dxRoleBurst(x,z,role){
+  const color=dxRoleColor(role),count=role==='DONO'?20:role==='VERIFICADO'?16:12;
+  for(let i=0;i<count;i++){const a=Math.PI*2*i/count+(Math.random()-.5)*.22,s=.045+Math.random()*.075;
+    dxRoleBursts.push({x:Number(x)||0,z:Number(z)||0,y:.25+Math.random()*.65,vx:Math.cos(a)*s,vy:.045+Math.random()*.075,vz:Math.sin(a)*s,life:.75+Math.random()*.35,color,size:1.5+Math.random()*2.2});}
+}
+function dxRoleAnnouncement(name,role){
+  if(!role)return;
+  const safeName=String(name||'Jogador').slice(0,32),color=dxRoleColor(role);
+  const toast=$('announcementToast');
+  if(toast){toast.classList.add('dx-rank-entry');toast.style.setProperty('--dx-rank-color',color);toast.innerHTML='';
+    const head=document.createElement('b');head.textContent='✦ ENTRADA ESPECIAL · '+role+' ✦';
+    const line=document.createElement('div');line.className='dx-rank-message';line.textContent=safeName+' entrou na cidade com o nível '+role+'!';
+    toast.appendChild(head);toast.appendChild(line);toast.style.display='block';
+    clearTimeout(window.dxAnnounceTimer);window.dxAnnounceTimer=setTimeout(()=>{toast.style.display='none';toast.innerHTML='';toast.classList.remove('dx-rank-entry');},5200);
+  }
+  if(typeof appendChatLine==='function')appendChatLine('✦ '+role,safeName+' entrou na cidade.');
+}
+function dxShowVerifiedWelcome(){
+  const overlay=$('verifiedCelebration'),nameBox=$('verifiedCelebrationName'),close=$('verifiedCelebrationClose');
+  if(nameBox)nameBox.textContent=$('name')?.textContent||'Jogador';
+  if(overlay){overlay.classList.add('show');if(close)close.onclick=()=>overlay.classList.remove('show');overlay.onclick=e=>{if(e.target===overlay)overlay.classList.remove('show');};}
+  dxRoleBurst(player.x,player.z,'VERIFICADO');
+}
+
 
 function drawPrivilegeCube(x,y,kind,scale=1){
   const t=performance.now()/520,sz=Math.max(17,Math.min(26,scale*.52));
@@ -2742,6 +2770,8 @@ function render(){
     });
   }
 
+  for(let i=dxRoleBursts.length-1;i>=0;i--){const a=dxRoleBursts[i],p=project(a.x,a.y,a.z);if(p){g.save();g.globalAlpha=Math.max(0,Math.min(1,a.life));g.fillStyle=a.color;g.shadowColor=a.color;g.shadowBlur=5;g.beginPath();g.arc(p[0],p[1],a.size,0,Math.PI*2);g.fill();g.restore();}
+    a.x+=a.vx;a.y+=a.vy;a.z+=a.vz;a.vy-=.004;a.life-=.025;if(a.life<=0)dxRoleBursts.splice(i,1);}
   damageFloaters=damageFloaters.filter(a=>a.life>0);damageFloaters.forEach(a=>{const p=project(a.x,a.y,a.z);if(p){g.save();g.globalAlpha=Math.min(1,a.life);g.fillStyle='#ff5757';g.strokeStyle='#250000';g.lineWidth=3;g.font='bold 16px Arial';g.textAlign='center';g.strokeText(a.text,p[0],p[1]);g.fillText(a.text,p[0],p[1]);g.restore();a.y+=.025;a.life-=.016;}});
   drawFineRain();
 
@@ -3205,6 +3235,8 @@ Toque em VER PERFIL para consultar os dados completos.`;
           ph:0,amp:0,bubble:'',bubbleT:0,lastStepT:0
         });
         updateBadge();
+        const joinedRole=dxRoleOf(p);
+        if(joinedRole){dxRoleBurst(px,pz,joinedRole);dxRoleAnnouncement(p.name||'Jogador',joinedRole);}
         if(!p.isBot)say((p.name||'Um jogador')+' entrou na cidade');
       });
 
@@ -3284,8 +3316,11 @@ Toque em VER PERFIL para consultar os dados completos.`;
       socket.on('player:identity',data=>{
         if(!data)return;
         if(data.playerId){permanentPlayerId=String(data.playerId);localStorage.setItem('distrito_x_player_id',permanentPlayerId);}
+        const previousVerified=localStorage.getItem('distrito_x_seen_verified')==='1';
         verifiedSelf=!!data.verified;vipSelf=!!data.vip;window.mpVerifiedSelf=verifiedSelf;window.mpVipSelf=vipSelf;ownerSelf=!!data.owner;window.mpOwnerSelf=ownerSelf;ownerInvulnerable=!!data.invulnerable;ownerSpeedBoost=!!data.speedBoost;window.mpOwnerSpeedBoost=ownerSpeedBoost;killsStat=Number(data.kills)||killsStat;window.mpKillsStat=killsStat;selectedNameColor=Number(data.nameColor)||0;window.mpSelectedNameColor=selectedNameColor;unlockedNameColors=Math.max(1,Math.min(50,Number(data.unlockedColors)||1));refreshCombatStats();refreshOwnerControls();refreshNameColorChoices();if($('ownerInvulnerable'))$('ownerInvulnerable').textContent='INVULNERABILIDADE: '+(ownerInvulnerable?'ON':'OFF');if($('ownerSpeed'))$('ownerSpeed').textContent='VELOCIDADE +30%: '+(ownerSpeedBoost?'ON':'OFF');
         const idLabel=$('playerIdLabel');if(idLabel)idLabel.textContent='ID: '+permanentPlayerId+(ownerSelf?' · ✦ DONO':verifiedSelf?' · ✧ VERIFICADO':'');
+        if(verifiedSelf&&!previousVerified){dxShowVerifiedWelcome();localStorage.setItem('distrito_x_seen_verified','1');}
+        else if(!verifiedSelf)localStorage.removeItem('distrito_x_seen_verified');
       });
       socket.on('player:progress',data=>{if(!data)return;killsStat=Number(data.kills)||killsStat;window.mpKillsStat=killsStat;unlockedNameColors=Math.max(1,Math.min(50,Number(data.unlockedColors)||1));selectedNameColor=Number(data.nameColor)||selectedNameColor;window.mpSelectedNameColor=selectedNameColor;refreshCombatStats();refreshNameColorChoices();});
       socket.on('owner:announcement',data=>{if(!data)return;const text=String(data.text||'');appendChatLine('✦ DONO '+String(data.from||''),text);const toast=$('announcementToast');if(toast){toast.innerHTML='<b>✦ COMUNICADO OFICIAL · DISTRITO X CITY ✦</b>';const line=document.createElement('div');line.textContent=text;toast.appendChild(line);toast.style.display='block';clearTimeout(window.dxAnnounceTimer);window.dxAnnounceTimer=setTimeout(()=>{toast.style.display='none';toast.innerHTML='';},7500);}say('Aviso do dono: '+text);});
@@ -3302,11 +3337,8 @@ Toque em VER PERFIL para consultar os dados completos.`;
           const wasVerified=verifiedSelf;
           verifiedSelf=!!data.verified;window.mpVerifiedSelf=verifiedSelf;
           const idLabel=$('playerIdLabel');if(idLabel)idLabel.textContent='ID: '+permanentPlayerId+(verifiedSelf?' · ✓ VERIFICADO':'');
-          if(verifiedSelf&&!wasVerified){
-            const overlay=$('verifiedCelebration'),nameBox=$('verifiedCelebrationName'),close=$('verifiedCelebrationClose');
-            if(nameBox)nameBox.textContent=$('name')?.textContent||'Jogador';
-            if(overlay){overlay.classList.add('show');if(close)close.onclick=()=>overlay.classList.remove('show');overlay.onclick=e=>{if(e.target===overlay)overlay.classList.remove('show');};}
-          }
+          if(verifiedSelf&&!wasVerified){dxShowVerifiedWelcome();localStorage.setItem('distrito_x_seen_verified','1');}
+          else if(!verifiedSelf)localStorage.removeItem('distrito_x_seen_verified');
         }
         remotePlayers.forEach(rp=>{if(rp.playerId===data.playerId)rp.verified=!!data.verified;});
       });
