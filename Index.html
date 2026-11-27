@@ -2316,7 +2316,8 @@ function dxShowVerifiedWelcome(){
 
 
 function drawPrivilegeCube(x,y,kind,scale=1){
-  // Distintivos vetoriais leves: sem filtros, sombras, gradientes ou composição aditiva.
+  // Selos com iluminação vetorial controlada: sem glow, filtros,
+  // gradientes animados ou composição aditiva (mais estável no Android WebView).
   const size=Math.max(18,Math.min(26,scale*.54));
   g.save();
   g.translate(x,y);
@@ -2328,31 +2329,58 @@ function drawPrivilegeCube(x,y,kind,scale=1){
   g.lineCap='round';
 
   if(kind==='owner'){
-    // Cubo 3D dourado: rotação lenta, com cores fixas (sem troca de matiz).
-    const a=performance.now()*0.00075;
+    // Cubo 3D dourado com rotação lenta e paleta fixa.
+    const a=performance.now()*0.00055;
     const c=Math.cos(a), sn=Math.sin(a);
     const w=size*.43, h=size*.40, d=size*.27;
-    const pts=[
-      [-w,-h], [w,-h], [w,h], [-w,h]
-    ].map(([px,py])=>[px*c-py*sn,px*sn+py*c]);
+    const pts=[[-w,-h],[w,-h],[w,h],[-w,h]]
+      .map(([px,py])=>[px*c-py*sn,px*sn+py*c]);
     const top=[0,-h-d], left=[-w-d,0], right=[w+d,0], bottom=[0,h+d];
-    // faces do cubo, com tons constantes e bordas definidas
+
     g.lineWidth=1.35;
-    g.beginPath(); g.moveTo(top[0],top[1]); g.lineTo(pts[1][0],pts[1][1]); g.lineTo(right[0],right[1]); g.lineTo(0,0); g.closePath();
-    g.fillStyle='#f0c65b'; g.fill(); g.strokeStyle='#fff0b2'; g.stroke();
-    g.beginPath(); g.moveTo(top[0],top[1]); g.lineTo(pts[0][0],pts[0][1]); g.lineTo(left[0],left[1]); g.lineTo(0,0); g.closePath();
-    g.fillStyle='#b77b20'; g.fill(); g.strokeStyle='#ffe09a'; g.stroke();
-    g.beginPath(); g.moveTo(left[0],left[1]); g.lineTo(0,0); g.lineTo(right[0],right[1]); g.lineTo(bottom[0],bottom[1]); g.closePath();
-    g.fillStyle='#d99a2b'; g.fill(); g.strokeStyle='#ffe09a'; g.stroke();
-    g.beginPath(); g.moveTo(top[0],top[1]); g.lineTo(right[0],right[1]); g.lineTo(bottom[0],bottom[1]); g.lineTo(left[0],left[1]); g.closePath();
+    // Face superior
+    g.beginPath();
+    g.moveTo(top[0],top[1]); g.lineTo(pts[1][0],pts[1][1]);
+    g.lineTo(right[0],right[1]); g.lineTo(0,0); g.closePath();
+    g.fillStyle='#f2d477'; g.fill();
+    g.strokeStyle='#fff0b2'; g.stroke();
+
+    // Face lateral
+    g.beginPath();
+    g.moveTo(top[0],top[1]); g.lineTo(pts[0][0],pts[0][1]);
+    g.lineTo(left[0],left[1]); g.lineTo(0,0); g.closePath();
+    g.fillStyle='#b77b20'; g.fill();
+    g.strokeStyle='#ffe09a'; g.stroke();
+
+    // Face frontal
+    g.beginPath();
+    g.moveTo(left[0],left[1]); g.lineTo(0,0);
+    g.lineTo(right[0],right[1]); g.lineTo(bottom[0],bottom[1]);
+    g.closePath();
+    g.fillStyle='#d99a2b'; g.fill();
+    g.strokeStyle='#ffe09a'; g.stroke();
+
+    // Reflexo fino desenhado como traço sólido, sem sombra luminosa.
+    g.beginPath();
+    g.moveTo(top[0]*.72,top[1]*.72);
+    g.lineTo(pts[1][0]*.78,pts[1][1]*.78);
+    g.strokeStyle='rgba(255,255,235,0.82)';
+    g.lineWidth=1.1;
+    g.stroke();
+
+    g.beginPath();
+    g.moveTo(top[0],top[1]); g.lineTo(right[0],right[1]);
+    g.lineTo(bottom[0],bottom[1]); g.lineTo(left[0],left[1]);
+    g.closePath();
     g.strokeStyle='#fff2c2'; g.lineWidth=1.5; g.stroke();
-    // Pequeno monograma central, sem efeitos
+
     g.fillStyle='#fff8df';
     g.font=`900 ${Math.max(8,size*.34)}px Arial`;
     g.textAlign='center'; g.textBaseline='middle';
     g.fillText('D',0,1);
+
   } else {
-    // Verificado e VIP usam o mesmo distintivo compacto, com paletas fixas.
+    // Verificado mantém o escudo e o símbolo já existentes.
     const verified=kind==='verified';
     const fill=verified?'#147da4':'#7045a5';
     const edge=verified?'#b9f2ff':'#d9bdff';
@@ -2367,13 +2395,25 @@ function drawPrivilegeCube(x,y,kind,scale=1){
     g.lineTo(-size*.49,-size*.40);
     g.closePath();
     g.fillStyle=fill; g.strokeStyle=edge; g.fill(); g.stroke();
+
+    if(!verified){
+      // Filete interno de luz no VIP: brilho estático, sem blur ou gradiente.
+      g.beginPath();
+      g.moveTo(-size*.31,-size*.34);
+      g.lineTo(0,-size*.48);
+      g.lineTo(size*.30,-size*.35);
+      g.strokeStyle='rgba(255,255,255,0.78)';
+      g.lineWidth=1.15;
+      g.stroke();
+    }
+
     g.fillStyle=ink;
     g.textAlign='center'; g.textBaseline='middle';
     if(verified){
       g.font=`900 ${Math.max(11,size*.62)}px Arial`;
       g.fillText('✓',0,0);
     }else{
-      // Estrela VIP simples, com cinco pontas e contorno limpo.
+      // Estrela VIP de cinco pontas.
       const outer=size*.25, inner=size*.115;
       g.beginPath();
       for(let i=0;i<10;i++){
@@ -2757,13 +2797,12 @@ function render(){
   if(window.mpSocket&&window.mpSocket.connected){
     const localNick=(window.getMpNick&&window.getMpNick())||'Jogador';
     const localOwner=!!window.mpOwnerSelf;
-    const localHue=(performance.now()/18)%360;
     const localKills=Number(window.mpKillsStat)||0;
     const localVerified=!!window.mpVerifiedSelf;
     const localVip=!!window.mpVipSelf;
     const localNameColor=Number(window.mpSelectedNameColor)||0;
-    const localRainbow=localKills>=100000;
-    const localColor=localOwner?`hsl(${(localHue+35)%360},100%,68%)`:localVip?`hsl(${(localHue+260)%360},95%,72%)`:localRainbow?`hsl(${localHue},100%,65%)`:NAME_PALETTE[localNameColor]||'#ffffff';
+    // Cores fixas: o nome não fica alternando de cor nem usa brilho animado.
+    const localColor=localOwner?'#ffd76a':localVip?'#c58aff':localKills>=100000?'#ffdf78':NAME_PALETTE[localNameColor]||'#ffffff';
     const localX=cur&&Number.isFinite(cur.x)?cur.x:player.x;
     const localZ=cur&&Number.isFinite(cur.z)?cur.z:player.z;
     if(localOwner||localVerified||localVip){const auraPoint=project(localX,playerElevation+.08,localZ);if(auraPoint){const hue=dxRoleHue(localOwner?'owner':localVerified?'verified':'vip');g.save();g.translate(auraPoint[0],auraPoint[1]);g.scale(1,.42);g.strokeStyle=`hsla(${hue},100%,67%,.82)`;g.shadowColor=`hsl(${hue},100%,60%)`;g.shadowBlur=0;g.lineWidth=localOwner?3:2;g.beginPath();g.ellipse(0,0,Math.max(10,auraPoint[3]*(localOwner?1.05:.82)),Math.max(5,auraPoint[3]*(localOwner?.52:.4)),0,0,Math.PI*2);g.stroke();g.restore();}}
@@ -2812,7 +2851,11 @@ function render(){
       if(!rp.inCarId){
         person(rx,rz,ryaw,SHIRT_PAL[rLook.shirt%SHIRT_PAL.length],SKIN[rLook.skin%SKIN.length],11,1.75,0,rWp,rp.ph||0,rp.amp||0,rp.amp>0.2?0.95:0,0,0,0,0,'remote',0,elev,rLook);
       }
-      const isRainbow=(Number(rp.kills)||0)>=100000;const hue=(performance.now()/18)%360;const nameCol=rp.owner?`hsl(${(hue+35)%360},100%,68%)`:rp.vip?`hsl(${(hue+260)%360},95%,72%)`:isRainbow?`hsl(${hue},100%,65%)`:(rp.nameColorHex||'#00e5ff');const roleTag=rp.vip?'◆ VIP ':'';drawBubbleAbove(rx,(rp.inCarId?2.6:2.15)+elev,roleTag+(rp.name||'Jogador'),rp.bubbleT>0?rp.bubble:'',rz,nameCol,!!rp.owner,rp.owner?'DONO':rp.verified?'VERIFICADO':rp.vip?'VIP':'');
+      const remoteKills=Number(rp.kills)||0;
+      // Mantém as cores de identidade estáveis; nenhum nome muda de cor com o tempo.
+      const nameCol=rp.owner?'#ffd76a':rp.vip?'#c58aff':remoteKills>=100000?'#ffdf78':(rp.nameColorHex||'#00e5ff');
+      const roleTag=rp.vip?'◆ VIP ':'';
+      drawBubbleAbove(rx,(rp.inCarId?2.6:2.15)+elev,roleTag+(rp.name||'Jogador'),rp.bubbleT>0?rp.bubble:'',rz,nameCol,!!rp.owner,rp.owner?'DONO':rp.verified?'VERIFICADO':rp.vip?'VIP':'');
       g.restore();
     });
   }
