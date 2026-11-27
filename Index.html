@@ -225,7 +225,7 @@ canvas{display:block;width:100vw;height:100vh}
 </div>
 
 
-<div id="verifiedCelebration" role="dialog" aria-modal="true" aria-labelledby="verifiedTitle"><div class="vc-card"><span class="vc-spark vc-s1">✦</span><span class="vc-spark vc-s2">✧</span><span class="vc-spark vc-s3">✦</span><span class="vc-spark vc-s4">✧</span><div class="vc-content"><div class="vc-emblem">✓</div><div class="vc-kicker">DISTRITO X CITY · RECONHECIMENTO OFICIAL</div><h2 class="vc-title" id="verifiedTitle">VOCÊ FOI VERIFICADO!</h2><div class="vc-name" id="verifiedCelebrationName">Jogador</div><p class="vc-copy">Seu perfil agora tem o selo oficial de verificação. Uma conquista especial para destacar sua identidade na cidade!</p><button class="vc-close" id="verifiedCelebrationClose" type="button">CONTINUAR</button></div></div></div>
+<div id="verifiedCelebration" role="dialog" aria-modal="true" aria-labelledby="verifiedTitle"><div class="vc-card"><div class="vc-content"><div class="vc-emblem">✓</div><div class="vc-kicker">DISTRITO X CITY · RECONHECIMENTO OFICIAL</div><h2 class="vc-title" id="verifiedTitle">VOCÊ FOI VERIFICADO!</h2><div class="vc-name" id="verifiedCelebrationName">Jogador</div><p class="vc-copy">Seu perfil agora tem o selo oficial de verificação. Uma conquista especial para destacar sua identidade na cidade!</p><button class="vc-close" id="verifiedCelebrationClose" type="button">CONTINUAR</button></div></div></div>
 <canvas id="map" width="180" height="180"></canvas>
 <div id="joy"><div id="knob"></div></div>
 
@@ -2287,30 +2287,21 @@ function hasSceneLineOfSight(x,z){
   return true;
 }
 
-function dxRoleHue(kind){return kind==='owner'?43:kind==='verified'?194:270;}
+function dxRoleHue(kind){return kind==='owner'?43:kind==='verified'?194:kind==='influencer'?155:270;}
 function drawIdentityAura(x,z,kind='owner'){const p=project(x,.08,z);if(!p)return;const isVerified=kind==='verified',hue=dxRoleHue(kind),stroke=isVerified?'rgba(39,223,255,.86)':`hsla(${hue},100%,67%,${kind==='owner'?.95:.72})`,glow=isVerified?'#27dfff':`hsl(${hue},100%,60%)`;g.save();g.translate(p[0],p[1]);g.scale(1,.42);g.strokeStyle=stroke;g.shadowColor=glow;g.shadowBlur=kind==='owner'?18:12;g.lineWidth=kind==='owner'?3:2;g.beginPath();g.ellipse(0,0,Math.max(10,p[3]*(kind==='owner'?1.05:.82)),Math.max(5,p[3]*(kind==='owner'?.52:.4)),0,0,Math.PI*2);g.stroke();g.restore();}
-// Efeito de entrada de cargos: poucas partículas, sem filtros pesados ou imagens externas.
-const dxRoleBursts=[];
-// Partículas usam tempo real e são limpas quando o app vai para segundo plano.
-let dxParticleDt=1/60;
-function dxClearRoleBursts(){dxRoleBursts.length=0;}
-document.addEventListener('visibilitychange',()=>{if(document.hidden){dxClearRoleBursts();if(typeof frame==='function')frame.last=0;}});
-document.addEventListener('pause',()=>{dxClearRoleBursts();if(typeof frame==='function')frame.last=0;},false);
+// Retoma o loop normal ao voltar do segundo plano; não cria partículas de entrada.
+document.addEventListener('visibilitychange',()=>{if(document.hidden&&typeof frame==='function')frame.last=0;});
+document.addEventListener('pause',()=>{if(typeof frame==='function')frame.last=0;},false);
 document.addEventListener('resume',()=>{if(typeof frame==='function'){frame.last=0;frame.lastRender=0;}},false);
-function dxRoleOf(data){return data&&data.owner?'DONO':data&&data.verified?'VERIFICADO':data&&data.vip?'VIP':'';}
-function dxRoleColor(role){return role==='DONO'?'#ffd76a':role==='VERIFICADO'?'#55dcff':'#c58aff';}
-function dxRoleBurst(x,z,role){
-  const color=dxRoleColor(role),count=role==='DONO'?20:role==='VERIFICADO'?16:12;
-  for(let i=0;i<count;i++){const a=Math.PI*2*i/count+(Math.random()-.5)*.22,s=.045+Math.random()*.075;
-    dxRoleBursts.push({x:Number(x)||0,z:Number(z)||0,y:.25+Math.random()*.65,vx:Math.cos(a)*s,vy:.045+Math.random()*.075,vz:Math.sin(a)*s,life:.75+Math.random()*.35,color,size:1.5+Math.random()*2.2});}
-}
+function dxRoleOf(data){return data&&data.owner?'DONO':data&&data.influencer?'INFLUENCIADOR':data&&data.verified?'VERIFICADO':data&&data.vip?'VIP':'';}
+function dxRoleColor(role){return role==='DONO'?'#ffd76a':role==='VERIFICADO'?'#55dcff':role==='INFLUENCIADOR'?'#65f0b0':'#c58aff';}
 function dxRoleAnnouncement(name,role){
   if(!role)return;
   const safeName=String(name||'Jogador').slice(0,32),color=dxRoleColor(role);
   const toast=$('announcementToast');
   if(toast){toast.classList.add('dx-rank-entry');toast.style.setProperty('--dx-rank-color',color);toast.innerHTML='';
     const head=document.createElement('b');head.textContent='✦ ENTRADA ESPECIAL · '+role+' ✦';
-    const line=document.createElement('div');line.className='dx-rank-message';line.textContent=safeName+' entrou na cidade com o nível '+role+'!';
+    const line=document.createElement('div');line.className='dx-rank-message';line.textContent=safeName+' chegou à cidade como '+role+'!';
     toast.appendChild(head);toast.appendChild(line);toast.style.display='block';
     clearTimeout(window.dxAnnounceTimer);window.dxAnnounceTimer=setTimeout(()=>{toast.style.display='none';toast.innerHTML='';toast.classList.remove('dx-rank-entry');},5200);
   }
@@ -2320,7 +2311,6 @@ function dxShowVerifiedWelcome(){
   const overlay=$('verifiedCelebration'),nameBox=$('verifiedCelebrationName'),close=$('verifiedCelebrationClose');
   if(nameBox)nameBox.textContent=$('name')?.textContent||'Jogador';
   if(overlay){overlay.classList.add('show');if(close)close.onclick=()=>overlay.classList.remove('show');overlay.onclick=e=>{if(e.target===overlay)overlay.classList.remove('show');};}
-  dxRoleBurst(player.x,player.z,'VERIFICADO');
 }
 
 
@@ -2770,7 +2760,7 @@ function render(){
       const elev=Number.isFinite(rp.elevation)?rp.elevation:0;
       // Não desenha corpo, nome ou distintivos quando um prédio bloqueia a visão.
       if(!hasSceneLineOfSight(rx,rz)){g.restore();return;}
-      if(rp.owner||rp.verified||rp.vip)drawIdentityAura(rx,rz,rp.owner?'owner':rp.verified?'verified':'vip');
+      if(rp.owner||rp.verified||rp.vip||rp.influencer)drawIdentityAura(rx,rz,rp.owner?'owner':rp.verified?'verified':rp.influencer?'influencer':'vip');
       const rLook=rp.look||{skin:0,shirt:1,pant:0,hair:0};
       const rWp=typeof rp.weapon==='number'?rp.weapon:-1;
       if(!rp.inCarId){
@@ -2781,8 +2771,6 @@ function render(){
     });
   }
 
-  for(let i=dxRoleBursts.length-1;i>=0;i--){const a=dxRoleBursts[i],p=project(a.x,a.y,a.z);if(p){g.save();g.globalAlpha=Math.max(0,Math.min(1,a.life));g.fillStyle=a.color;g.shadowColor=a.color;g.shadowBlur=5;g.beginPath();g.arc(p[0],p[1],a.size,0,Math.PI*2);g.fill();g.restore();}
-    const step=dxParticleDt*60;a.x+=a.vx*step;a.y+=a.vy*step;a.z+=a.vz*step;a.vy-=.004*step;a.life-=.025*step;if(a.life<=0)dxRoleBursts.splice(i,1);}
   damageFloaters=damageFloaters.filter(a=>a.life>0);damageFloaters.forEach(a=>{const p=project(a.x,a.y,a.z);if(p){g.save();g.globalAlpha=Math.min(1,a.life);g.fillStyle='#ff5757';g.strokeStyle='#250000';g.lineWidth=3;g.font='bold 16px Arial';g.textAlign='center';g.strokeText(a.text,p[0],p[1]);g.fillText(a.text,p[0],p[1]);g.restore();a.y+=.025;a.life-=.016;}});
   drawFineRain();
 
@@ -2871,7 +2859,6 @@ function frame(t){
   frame.lastRender=t;
   try{
     let raw=(t-(frame.last||t))/1000,dt=Math.min(.05,Math.max(0.001,raw));
-    dxParticleDt=dt;
     frame.last=t;qa+=raw;
     // Ajuste automático apenas na escala da cidade (cityScale), mantendo o personagem sempre nítido!
     const minCityScale=gfxTier==='low'?0.42:(gfxTier==='medium'?0.72:0.86);
@@ -2998,8 +2985,8 @@ function frame(t){
   let playerClientKey=localStorage.getItem('distrito_x_client_key')||'';
   if(!playerClientKey){try{playerClientKey=crypto.randomUUID()}catch(_){playerClientKey='dx-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2)}localStorage.setItem('distrito_x_client_key',playerClientKey)}
   let permanentPlayerId=localStorage.getItem('distrito_x_player_id')||'---';
-  let damageDealtStat=0,damageReceivedStat=0,killsStat=0,deathsStat=0,verifiedSelf=false,ownerSelf=false,selectedNameColor=0,unlockedNameColors=1,ownerInvulnerable=false,ownerSpeedBoost=false,vipSelf=false;
-  window.mpOwnerSelf=ownerSelf;window.mpOwnerSpeedBoost=ownerSpeedBoost;
+  let damageDealtStat=0,damageReceivedStat=0,killsStat=0,deathsStat=0,verifiedSelf=false,ownerSelf=false,selectedNameColor=0,unlockedNameColors=1,ownerInvulnerable=false,ownerSpeedBoost=false,vipSelf=false,influencerSelf=false;
+  window.mpOwnerSelf=ownerSelf;window.mpOwnerSpeedBoost=ownerSpeedBoost;window.mpInfluencerSelf=influencerSelf;
   function refreshCombatStats(){const el=$('combatStats');if(el)el.textContent='DANO: '+damageDealtStat+' · RECEBIDO: '+damageReceivedStat+' · KILLS: '+killsStat+' · MORTES: '+deathsStat;}
   function refreshNameColorChoices(){const sel=$('nameColorSelect');if(!sel)return;sel.innerHTML='';for(let i=0;i<unlockedNameColors;i++){const op=document.createElement('option');op.value=String(i);op.textContent='Cor '+(i+1)+(i===selectedNameColor?' · selecionada':'');op.style.color=NAME_PALETTE[i];sel.appendChild(op)}sel.value=String(Math.min(selectedNameColor,unlockedNameColors-1));sel.style.display=mpConnected?'inline-block':'none';}
   function refreshOwnerControls(){const allowed=!!ownerSelf&&!!mpConnected;['ownerPanelBtn'].forEach(id=>{const b=$(id);if(b){b.style.display=allowed?'inline-block':'none';b.disabled=!allowed;}});const modal=$('ownerPanelModal');if(modal){modal.setAttribute('aria-hidden',allowed?'false':'true');if(!allowed)modal.style.display='none';}}
@@ -3216,7 +3203,7 @@ Toque em VER PERFIL para consultar os dados completos.`;
               x:px,z:pz,yaw:pyaw,
               prevX:px,prevZ:pz,prevYaw:pyaw,targetX:px,targetZ:pz,targetYaw:pyaw,
               vx:0,vz:0,lastNetAt:nowT,netInterval:90,
-              hp:Number(p.hp)||200,isBot:!!p.isBot,verified:!!p.verified,vip:!!p.vip,owner:!!p.owner,kills:Number(p.kills)||0,nameColor:Number(p.nameColor)||0,nameColorHex:NAME_PALETTE[Number(p.nameColor)||0],inCarId:p.inCarId||null,
+              hp:Number(p.hp)||200,isBot:!!p.isBot,verified:!!p.verified,vip:!!p.vip,influencer:!!p.influencer,owner:!!p.owner,kills:Number(p.kills)||0,nameColor:Number(p.nameColor)||0,nameColorHex:NAME_PALETTE[Number(p.nameColor)||0],inCarId:p.inCarId||null,
               elevation:Number(p.elevation)||0,
               look:p.look||{skin:0,shirt:1,pant:0,hair:0},
               weapon:typeof p.weapon==='number'?p.weapon:-1,
@@ -3240,7 +3227,7 @@ Toque em VER PERFIL para consultar os dados completos.`;
           x:px,z:pz,yaw:pyaw,
           prevX:px,prevZ:pz,prevYaw:pyaw,targetX:px,targetZ:pz,targetYaw:pyaw,
           vx:0,vz:0,lastNetAt:nowT,netInterval:90,
-          hp:Number(p.hp)||200,isBot:!!p.isBot,verified:!!p.verified,vip:!!p.vip,owner:!!p.owner,kills:Number(p.kills)||0,nameColor:Number(p.nameColor)||0,nameColorHex:NAME_PALETTE[Number(p.nameColor)||0],inCarId:p.inCarId||null,
+          hp:Number(p.hp)||200,isBot:!!p.isBot,verified:!!p.verified,vip:!!p.vip,influencer:!!p.influencer,owner:!!p.owner,kills:Number(p.kills)||0,nameColor:Number(p.nameColor)||0,nameColorHex:NAME_PALETTE[Number(p.nameColor)||0],inCarId:p.inCarId||null,
           elevation:Number(p.elevation)||0,
           look:p.look||{skin:0,shirt:1,pant:0,hair:0},
           weapon:typeof p.weapon==='number'?p.weapon:-1,
@@ -3248,8 +3235,8 @@ Toque em VER PERFIL para consultar os dados completos.`;
         });
         updateBadge();
         const joinedRole=dxRoleOf(p);
-        if(joinedRole){dxRoleBurst(px,pz,joinedRole);dxRoleAnnouncement(p.name||'Jogador',joinedRole);}
-        if(!p.isBot)say((p.name||'Um jogador')+' entrou na cidade');
+        if(joinedRole)dxRoleAnnouncement(p.name||'Jogador',joinedRole);
+        if(!p.isBot&&!joinedRole)say((p.name||'Um jogador')+' entrou na cidade');
       });
 
       socket.on('player:moved',p=>{
@@ -3259,7 +3246,7 @@ Toque em VER PERFIL para consultar os dados completos.`;
         const nowT=performance.now();
         let rp=remotePlayers.get(p.id);
         if(!rp){
-          rp={id:p.id,playerId:p.playerId||'',name:p.name||'Jogador',x:nx,z:nz,yaw:nyaw,prevX:nx,prevZ:nz,prevYaw:nyaw,targetX:nx,targetZ:nz,targetYaw:nyaw,vx:0,vz:0,lastNetAt:nowT,netInterval:90,hp:200,isBot:!!p.isBot,verified:!!p.verified,vip:!!p.vip,inCarId:null,elevation:0,look:{skin:0,shirt:1,pant:0,hair:0},weapon:-1,ph:0,amp:0,bubble:'',bubbleT:0,lastStepT:0};
+          rp={id:p.id,playerId:p.playerId||'',name:p.name||'Jogador',x:nx,z:nz,yaw:nyaw,prevX:nx,prevZ:nz,prevYaw:nyaw,targetX:nx,targetZ:nz,targetYaw:nyaw,vx:0,vz:0,lastNetAt:nowT,netInterval:90,hp:200,isBot:!!p.isBot,verified:!!p.verified,vip:!!p.vip,influencer:!!p.influencer,owner:!!p.owner,inCarId:null,elevation:0,look:{skin:0,shirt:1,pant:0,hair:0},weapon:-1,ph:0,amp:0,bubble:'',bubbleT:0,lastStepT:0};
           remotePlayers.set(p.id,rp);
           updateBadge();
         }
@@ -3283,7 +3270,7 @@ Toque em VER PERFIL para consultar os dados completos.`;
         if(p.name)rp.name=p.name;
         if(p.playerId)rp.playerId=p.playerId;
         if(typeof p.hp==='number')rp.hp=p.hp;
-        rp.isBot=!!p.isBot;rp.verified=!!p.verified;rp.vip=!!p.vip;rp.owner=!!p.owner;rp.kills=Number(p.kills)||rp.kills||0;rp.nameColor=Number(p.nameColor)||0;rp.nameColorHex=NAME_PALETTE[rp.nameColor]||'#00e5ff';
+        rp.isBot=!!p.isBot;rp.verified=!!p.verified;rp.vip=!!p.vip;rp.influencer=!!p.influencer;rp.owner=!!p.owner;rp.kills=Number(p.kills)||rp.kills||0;rp.nameColor=Number(p.nameColor)||0;rp.nameColorHex=NAME_PALETTE[rp.nameColor]||'#00e5ff';
         if(p.look)rp.look=p.look;
         if(typeof p.weapon==='number')rp.weapon=p.weapon;
         if(p.inCarId!==undefined)rp.inCarId=p.inCarId;
@@ -3328,9 +3315,11 @@ Toque em VER PERFIL para consultar os dados completos.`;
       socket.on('player:identity',data=>{
         if(!data)return;
         if(data.playerId){permanentPlayerId=String(data.playerId);localStorage.setItem('distrito_x_player_id',permanentPlayerId);}
-        const previousVerified=localStorage.getItem('distrito_x_seen_verified')==='1';
-        verifiedSelf=!!data.verified;vipSelf=!!data.vip;window.mpVerifiedSelf=verifiedSelf;window.mpVipSelf=vipSelf;ownerSelf=!!data.owner;window.mpOwnerSelf=ownerSelf;ownerInvulnerable=!!data.invulnerable;ownerSpeedBoost=!!data.speedBoost;window.mpOwnerSpeedBoost=ownerSpeedBoost;killsStat=Number(data.kills)||killsStat;window.mpKillsStat=killsStat;selectedNameColor=Number(data.nameColor)||0;window.mpSelectedNameColor=selectedNameColor;unlockedNameColors=Math.max(1,Math.min(50,Number(data.unlockedColors)||1));refreshCombatStats();refreshOwnerControls();refreshNameColorChoices();if($('ownerInvulnerable'))$('ownerInvulnerable').textContent='INVULNERABILIDADE: '+(ownerInvulnerable?'ON':'OFF');if($('ownerSpeed'))$('ownerSpeed').textContent='VELOCIDADE +30%: '+(ownerSpeedBoost?'ON':'OFF');
+        const previousVerified=verifiedSelf,previousVip=vipSelf,previousOwner=ownerSelf,previousInfluencer=influencerSelf;
+        verifiedSelf=!!data.verified;vipSelf=!!data.vip;influencerSelf=!!data.influencer;window.mpVerifiedSelf=verifiedSelf;window.mpVipSelf=vipSelf;window.mpInfluencerSelf=influencerSelf;ownerSelf=!!data.owner;window.mpOwnerSelf=ownerSelf;ownerInvulnerable=!!data.invulnerable;ownerSpeedBoost=!!data.speedBoost;window.mpOwnerSpeedBoost=ownerSpeedBoost;killsStat=Number(data.kills)||killsStat;window.mpKillsStat=killsStat;selectedNameColor=Number(data.nameColor)||0;window.mpSelectedNameColor=selectedNameColor;unlockedNameColors=Math.max(1,Math.min(50,Number(data.unlockedColors)||1));refreshCombatStats();refreshOwnerControls();refreshNameColorChoices();if($('ownerInvulnerable'))$('ownerInvulnerable').textContent='INVULNERABILIDADE: '+(ownerInvulnerable?'ON':'OFF');if($('ownerSpeed'))$('ownerSpeed').textContent='VELOCIDADE +30%: '+(ownerSpeedBoost?'ON':'OFF');
         const idLabel=$('playerIdLabel');if(idLabel)idLabel.textContent='ID: '+permanentPlayerId+(ownerSelf?' · ✦ DONO':verifiedSelf?' · ✧ VERIFICADO':'');
+        const grantedRole=ownerSelf&&!previousOwner?'DONO':influencerSelf&&!previousInfluencer?'INFLUENCIADOR':verifiedSelf&&!previousVerified?'VERIFICADO':vipSelf&&!previousVip?'VIP':'';
+        if(grantedRole)dxRoleAnnouncement($('name')?.textContent||'Jogador',grantedRole);
         if(verifiedSelf&&!previousVerified){dxShowVerifiedWelcome();localStorage.setItem('distrito_x_seen_verified','1');}
         else if(!verifiedSelf)localStorage.removeItem('distrito_x_seen_verified');
       });
@@ -3342,17 +3331,19 @@ Toque em VER PERFIL para consultar os dados completos.`;
       socket.on('owner:panel:result',data=>{const box=$('ownerBotStatus');if(box)box.textContent=data.message||'Comando concluído.';});
       socket.on('owner:state',data=>{ownerInvulnerable=!!data.invulnerable;ownerSpeedBoost=!!data.speedBoost;window.mpOwnerSpeedBoost=ownerSpeedBoost;if($('ownerInvulnerable'))$('ownerInvulnerable').textContent='INVULNERABILIDADE: '+(ownerInvulnerable?'ON':'OFF');if($('ownerSpeed'))$('ownerSpeed').textContent='VELOCIDADE +30%: '+(ownerSpeedBoost?'ON':'OFF');});
       socket.on('ranking:data',data=>{const box=$('rankingResults');if(!box)return;box.innerHTML='';(data.rows||[]).forEach((r,i)=>{const row=document.createElement('div');row.className='dx-rank-row';row.textContent=`#${i+1} ${r.name||'Jogador'} · ${r.kills||0} kills${r.server?' · Servidor '+r.server:''}${r.vip?' · VIP':''}${r.owner?' · DONO':''}`;box.appendChild(row);});if(!box.children.length)box.textContent='Ainda não há pontuação registrada.';});
-      socket.on('player:vip',data=>{if(!data)return;if(data.playerId===permanentPlayerId)vipSelf=!!data.vip;remotePlayers.forEach(rp=>{if(rp.playerId===data.playerId)rp.vip=!!data.vip;});});
+      socket.on('player:vip',data=>{if(!data)return;let targetName='Jogador',wasVip=false;if(data.playerId===permanentPlayerId){wasVip=vipSelf;vipSelf=!!data.vip;if(vipSelf&&!wasVip)dxRoleAnnouncement($('name')?.textContent||'Jogador','VIP');}remotePlayers.forEach(rp=>{if(rp.playerId===data.playerId){targetName=rp.name||targetName;wasVip=!!rp.vip;rp.vip=!!data.vip;if(rp.vip&&!wasVip)dxRoleAnnouncement(targetName,'VIP');}});});
+      socket.on('player:influencer',data=>{if(!data)return;let targetName='Jogador',wasInfluencer=false;if(data.playerId===permanentPlayerId){wasInfluencer=influencerSelf;influencerSelf=!!data.influencer;window.mpInfluencerSelf=influencerSelf;if(influencerSelf&&!wasInfluencer)dxRoleAnnouncement($('name')?.textContent||'Jogador','INFLUENCIADOR');}remotePlayers.forEach(rp=>{if(rp.playerId===data.playerId){targetName=rp.name||targetName;wasInfluencer=!!rp.influencer;rp.influencer=!!data.influencer;if(rp.influencer&&!wasInfluencer)dxRoleAnnouncement(targetName,'INFLUENCIADOR');}});});
       socket.on('player:verification',data=>{
         if(!data)return;
+        let targetName='Jogador';
         if(data.playerId===permanentPlayerId){
           const wasVerified=verifiedSelf;
           verifiedSelf=!!data.verified;window.mpVerifiedSelf=verifiedSelf;
           const idLabel=$('playerIdLabel');if(idLabel)idLabel.textContent='ID: '+permanentPlayerId+(verifiedSelf?' · ✓ VERIFICADO':'');
-          if(verifiedSelf&&!wasVerified){dxShowVerifiedWelcome();localStorage.setItem('distrito_x_seen_verified','1');}
+          if(verifiedSelf&&!wasVerified){dxShowVerifiedWelcome();dxRoleAnnouncement($('name')?.textContent||'Jogador','VERIFICADO');localStorage.setItem('distrito_x_seen_verified','1');}
           else if(!verifiedSelf)localStorage.removeItem('distrito_x_seen_verified');
         }
-        remotePlayers.forEach(rp=>{if(rp.playerId===data.playerId)rp.verified=!!data.verified;});
+        remotePlayers.forEach(rp=>{if(rp.playerId===data.playerId){targetName=rp.name||targetName;const wasVerified=!!rp.verified;rp.verified=!!data.verified;if(rp.verified&&!wasVerified)dxRoleAnnouncement(targetName,'VERIFICADO');}});
       });
       socket.on('player:damaged',data=>{
         if(!data)return;
