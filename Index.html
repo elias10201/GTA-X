@@ -1400,6 +1400,12 @@ function polygon3(points,col,outlineW,texPattern,texAlpha){
   out.forEach((v,i)=>{let k=f/v[2],x=W/2+v[0]*k,y=hor-v[1]*k;i?g.lineTo(x,y):g.moveTo(x,y)});
   g.closePath();
   g.fill();
+  // Evita frestas subpixel entre polígonos ao girar a câmera (comum em WebView Android).
+  // Expande apenas a borda sem contorno, em aproximadamente 1 pixel do canvas de origem.
+  if(!(outlineW>0)){
+    const seamScale=g===gMain?dpr:Math.max(.45,dpr*cityScale);
+    g.save();g.strokeStyle=col;g.lineWidth=Math.min(2.2,1/Math.max(.45,seamScale));g.lineJoin='round';g.stroke();g.restore();
+  }
   if(texPattern&&gfxTier!=='low'){
     g.save();
     g.globalAlpha=(texAlpha||0.38)*(1-fogK*0.85);
